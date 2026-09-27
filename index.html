@@ -31,7 +31,7 @@
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); display: inline-block; margin-right: 6px; }
   .dot.on { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
   .dot.busy { background: var(--warn); }
-  #status { font-size: 14px; color: var(--muted); white-space: nowrap; }
+  #status { font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 62vw; }
 
   button { font: inherit; border: 0; border-radius: 12px; padding: 12px 16px; cursor: pointer;
     background: var(--panel2); color: var(--text); font-weight: 600; }
@@ -350,9 +350,18 @@ async function connect() {
     const server = await device.gatt.connect();
     const svc = await server.getPrimaryService(SVC);
 
-    const live = await svc.getCharacteristic(LIVE);
-    live.addEventListener("characteristicvaluechanged", e => showLive(parseLive(e.target.value)));
-    await live.startNotifications();
+    // Older firmware has no live channel. Connect anyway so throw results still
+    // arrive, and say what is missing instead of failing the whole connection.
+    let hasLive = true;
+    try {
+      const live = await svc.getCharacteristic(LIVE);
+      live.addEventListener("characteristicvaluechanged", e => showLive(parseLive(e.target.value)));
+      await live.startNotifications();
+    } catch (e) {
+      hasLive = false;
+      $("state").textContent = "Board firmware has no live stream – update it";
+      $("state").className = "pill clipped";
+    }
 
     const summary = await svc.getCharacteristic(SUMMARY);
     summary.addEventListener("characteristicvaluechanged", e => {
@@ -363,12 +372,13 @@ async function connect() {
     cmdChar = await svc.getCharacteristic(CMD);
     $("calBtn").disabled = $("clearBoard").disabled = false;
     $("connectBtn").textContent = "Disconnect";
-    setStatus("Connected", "on");
+    setStatus(hasLive ? "Connected" : "Connected (no live data)", "on");
     keepAwake();
   } catch (err) {
-    if (err && err.name === "NotFoundError") { setStatus("Not connected"); return; }  // user cancelled the picker
+    if (err && err.name === "NotFoundError" && /cancel/i.test(err.message)) { setStatus("Not connected"); return; }
     console.error(err);
-    setStatus("Connect failed – tap to retry", "");
+    // Show the real reason; "tap to retry" alone made failures impossible to diagnose.
+    setStatus("Failed: " + (err && err.message ? err.message : err), "");
   }
 }
 
