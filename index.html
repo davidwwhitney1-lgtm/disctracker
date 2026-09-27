@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<title>DiscTracker Live</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel2: #1f2630; --line: #2a323d;
+    --text: #e8edf3; --muted: #8b96a5; --accent: #3ddc97; --accent2: #4aa8ff;
+    --warn: #ffb547; --bad: #ff5d5d;
+    --radius: 16px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f4f6f8; --panel: #ffffff; --panel2: #eef1f4; --line: #dde2e8;
+      --text: #111820; --muted: #5c6773; --accent: #0f9d63; --accent2: #1f6fd1;
+      --warn: #b86e00; --bad: #d12f2f;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent; }
+  body { padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
+  main { max-width: 720px; margin: 0 auto; display: grid; gap: 14px; }
+
+  header { display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 20px; margin: 0; letter-spacing: .02em; flex: 1; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); display: inline-block; margin-right: 6px; }
+  .dot.on { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+  .dot.busy { background: var(--warn); }
+  #status { font-size: 14px; color: var(--muted); white-space: nowrap; }
+
+  button { font: inherit; border: 0; border-radius: 12px; padding: 12px 16px; cursor: pointer;
+    background: var(--panel2); color: var(--text); font-weight: 600; }
+  button.primary { background: var(--accent); color: #062015; }
+  button:disabled { opacity: .45; cursor: default; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row > button { flex: 1; min-width: 120px; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+
+  /* live hero */
+  .hero { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+  .big { font-size: clamp(56px, 18vw, 96px); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .unit { font-size: 18px; color: var(--muted); font-weight: 600; margin-left: 6px; }
+  .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 700;
+    background: var(--panel2); color: var(--muted); margin-top: 8px; }
+  .pill.still { color: var(--accent); }
+  .pill.moving { color: var(--accent2); }
+  .pill.capturing { color: #062015; background: var(--warn); }
+  .pill.clipped { color: var(--bad); }
+
+  /* disc attitude */
+  .stage { width: 120px; height: 120px; perspective: 360px; display: grid; place-items: center; }
+  .disc { width: 96px; height: 96px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, var(--panel) 0 22%, var(--accent2) 23% 27%, var(--panel2) 28% 100%);
+    border: 3px solid var(--accent2); transition: transform .12s linear; position: relative; }
+  .disc::after { content: ""; position: absolute; top: 4px; left: 50%; width: 4px; height: 14px;
+    margin-left: -2px; background: var(--warn); border-radius: 2px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 480px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+  .tile { background: var(--panel2); border-radius: 12px; padding: 10px 12px; }
+  .tile .v { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tile .v small { font-size: 13px; color: var(--muted); font-weight: 600; }
+
+  canvas { width: 100%; height: 110px; display: block; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+
+  /* throw result */
+  .result-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .speed { font-size: clamp(48px, 15vw, 80px); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .chip { font-size: 12px; padding: 4px 8px; border-radius: 8px; background: var(--panel2); color: var(--warn); }
+  .empty { color: var(--muted); text-align: center; padding: 18px 0; }
+  .flash { animation: flash 1.2s ease-out; }
+  @keyframes flash { from { box-shadow: 0 0 0 3px var(--accent); } to { box-shadow: 0 0 0 0 transparent; } }
+
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; }
+  th, td { text-align: right; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+
+  .note { font-size: 14px; color: var(--muted); }
+  .note b { color: var(--text); }
+  #unsupported { border-color: var(--warn); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>🥏 DiscTracker</h1>
+    <span id="status"><span class="dot" id="dot"></span><span id="statusText">Not connected</span></span>
+  </header>
+
+  <div class="card hidden" id="unsupported">
+    <b>This browser can't use Bluetooth.</b>
+    <p class="note">On <b>Android</b>, open this page in <b>Chrome</b>. On <b>iPhone</b>, Safari can't do it, so install the free
+      <b>Bluefy</b> browser from the App Store and open this page there. You can still try the demo below.</p>
+  </div>
+
+  <div class="row">
+    <button class="primary" id="connectBtn">Connect to disc</button>
+    <button id="demoBtn">Demo</button>
+  </div>
+
+  <section class="card">
+    <div class="hero">
+      <div>
+        <div class="label">Spin</div>
+        <div><span class="big" id="spin">–</span><span class="unit">rpm</span></div>
+        <span class="pill" id="state">waiting</span>
+      </div>
+      <div class="stage" title="Disc tilt (valid while still)"><div class="disc" id="disc"></div></div>
+    </div>
+    <div class="tiles" style="margin-top:14px">
+      <div class="tile"><div class="label">G-force</div><div class="v" id="g">–<small> g</small></div></div>
+      <div class="tile"><div class="label">Rotation</div><div class="v" id="rot">–<small> °/s</small></div></div>
+      <div class="tile"><div class="label">Roll</div><div class="v" id="roll">–<small>°</small></div></div>
+      <div class="tile"><div class="label">Pitch</div><div class="v" id="pitch">–<small>°</small></div></div>
+    </div>
+    <div style="margin-top:14px">
+      <canvas id="chart" width="700" height="110"></canvas>
+      <div class="legend"><span><i style="background:var(--accent)"></i>spin (rpm)</span><span><i style="background:var(--accent2)"></i>g-force</span><span>last 10 s</span></div>
+    </div>
+  </section>
+
+  <section class="card" id="resultCard">
+    <div class="result-head">
+      <div class="label">Last throw</div>
+      <div class="note" id="resultMeta"></div>
+    </div>
+    <div id="resultEmpty" class="empty">Throw the disc. Results appear here about 3 seconds after release.</div>
+    <div id="resultBody" class="hidden">
+      <div><span class="speed" id="rSpeed">–</span><span class="unit">mph</span></div>
+      <div class="grid3">
+        <div class="tile"><div class="label">Spin</div><div class="v" id="rSpin">–</div></div>
+        <div class="tile"><div class="label">Hyzer</div><div class="v" id="rHyzer">–</div></div>
+        <div class="tile"><div class="label">Nose</div><div class="v" id="rNose">–</div></div>
+        <div class="tile"><div class="label">Launch</div><div class="v" id="rLaunch">–</div></div>
+        <div class="tile"><div class="label">Wobble</div><div class="v" id="rWobble">–</div></div>
+        <div class="tile"><div class="label">Peak</div><div class="v" id="rPeak">–</div></div>
+      </div>
+      <div class="chips" id="rChips"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="result-head">
+      <div class="label">History</div>
+      <button id="clearLocal" style="padding:6px 10px;font-size:13px">Clear</button>
+    </div>
+    <div id="histEmpty" class="empty">No throws yet.</div>
+    <table id="histTable" class="hidden">
+      <thead><tr><th>#</th><th>mph</th><th>rpm</th><th>hyzer</th><th>nose</th><th>launch</th></tr></thead>
+      <tbody id="histBody"></tbody>
+    </table>
+  </section>
+
+  <div class="row">
+    <button id="calBtn" disabled>Recalibrate (hold still)</button>
+    <button id="clearBoard" disabled>Clear board memory</button>
+  </div>
+
+  <p class="note">Battery: <b id="batt">–</b> · Roll/pitch are only accurate while the disc is still.
+    Spin above ~333 rpm exceeds the gyro's range; the board then estimates it from the accelerometer.</p>
+</main>
+
+<script>
+"use strict";
+// ---- protocol (must match disc_tracker_v2.ino) ----
+const SVC     = "19b10000-e8f2-537e-4f6c-d104768a1214";
+const SUMMARY = "19b10001-e8f2-537e-4f6c-d104768a1214";
+const CMD     = "19b10002-e8f2-537e-4f6c-d104768a1214";
+const LIVE    = "19b10004-e8f2-537e-4f6c-d104768a1214";
+
+const LIVE_STILL = 1, LIVE_CAPTURING = 2, LIVE_GYRO_SAT = 4;
+const F = { VALID: 1, GYRO_Z_SAT: 2, ACCEL_SAT: 4, NO_RELEASE: 8, NO_STATIC: 16, SPIN_FROM_ACC: 32, SHORT_FLIGHT: 64 };
+
+const $ = id => document.getElementById(id);
+let device = null, cmdChar = null, demoTimer = null, userDisconnect = false, wakeLock = null;
+
+// ---- live history for the chart ----
+const series = [];                 // {t, spin, g}
+const WINDOW_MS = 10000;
+
+function setStatus(text, cls) {
+  $("statusText").textContent = text;
+  $("dot").className = "dot" + (cls ? " " + cls : "");
+}
+
+function parseLive(dv) {
+  return {
+    flags: dv.getUint8(1),
+    seq: dv.getUint16(2, true),
+    t: dv.getUint32(4, true),
+    g: dv.getUint16(8, true) / 1000,
+    spin: dv.getUint16(10, true),
+    rot: dv.getUint16(12, true),
+    roll: dv.getInt16(14, true) / 100,
+    pitch: dv.getInt16(16, true) / 100,
+    throws: dv.getUint16(18, true),
+  };
+}
+
+function parseSummary(dv) {
+  return {
+    battery: dv.getUint8(1),
+    seq: dv.getUint16(2, true),
+    t: dv.getUint32(4, true),
+    speed: dv.getFloat32(8, true),
+    spin: dv.getFloat32(12, true),
+    hyzer: dv.getFloat32(16, true),
+    nose: dv.getFloat32(20, true),
+    launch: dv.getFloat32(24, true),
+    wobble: dv.getFloat32(28, true),
+    peak: dv.getFloat32(32, true),
+    flags: dv.getUint16(36, true),
+    n: dv.getUint16(38, true),
+  };
+}
+
+// ---- rendering ----
+const fmt = (v, d = 0) => Number.isFinite(v) ? v.toFixed(d) : "–";
+const signed = (v, d = 1) => Number.isFinite(v) ? (v > 0 ? "+" : "") + v.toFixed(d) : "–";
+
+function showLive(s) {
+  $("spin").textContent = fmt(s.spin);
+  $("g").innerHTML = fmt(s.g, 2) + "<small> g</small>";
+  $("rot").innerHTML = fmt(s.rot) + "<small> °/s</small>";
+  $("roll").innerHTML = signed(s.roll) + "<small>°</small>";
+  $("pitch").innerHTML = signed(s.pitch) + "<small>°</small>";
+  const st = $("state");
+  if (s.flags & LIVE_CAPTURING)      { st.textContent = "Capturing throw…"; st.className = "pill capturing"; }
+  else if (s.flags & LIVE_GYRO_SAT)  { st.textContent = "Gyro clipped (>333 rpm)"; st.className = "pill clipped"; }
+  else if (s.flags & LIVE_STILL)     { st.textContent = "Still · armed"; st.className = "pill still"; }
+  else                               { st.textContent = "Moving"; st.className = "pill moving"; }
+  // Disc attitude: pitch tips the nose toward/away, roll tips the edge.
+  const r = Math.max(-80, Math.min(80, s.roll)), p = Math.max(-80, Math.min(80, s.pitch));
+  $("disc").style.transform = `rotateX(${60 + p}deg) rotateY(${r}deg)`;
+
+  const now = performance.now();
+  series.push({ t: now, spin: s.spin, g: s.g });
+  while (series.length && now - series[0].t > WINDOW_MS) series.shift();
+}
+
+function drawChart() {
+  const c = $("chart"), ctx = c.getContext("2d");
+  const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight;
+  if (c.width !== w * dpr || c.height !== h * dpr) { c.width = w * dpr; c.height = h * dpr; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const css = getComputedStyle(document.documentElement);
+  ctx.strokeStyle = css.getPropertyValue("--line"); ctx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, h * i / 4); ctx.lineTo(w, h * i / 4); ctx.stroke(); }
+  if (series.length < 2) return;
+  const now = performance.now();
+  const maxSpin = Math.max(100, ...series.map(p => p.spin)) * 1.1;
+  const maxG = Math.max(2, ...series.map(p => p.g)) * 1.1;
+  const line = (key, max, color) => {
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = "round";
+    series.forEach((p, i) => {
+      const x = w - (now - p.t) / WINDOW_MS * w, y = h - (p[key] / max) * (h - 4) - 2;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.stroke();
+  };
+  line("g", maxG, css.getPropertyValue("--accent2"));
+  line("spin", maxSpin, css.getPropertyValue("--accent"));
+}
+(function loop() { drawChart(); requestAnimationFrame(loop); })();
+
+// ---- throws ----
+const HKEY = "disctracker.history.v1";
+function loadHistory() { try { return JSON.parse(localStorage.getItem(HKEY)) || []; } catch { return []; } }
+function saveHistory(h) { try { localStorage.setItem(HKEY, JSON.stringify(h.slice(-200))); } catch {} }
+let history = loadHistory();
+
+function chipsFor(flags) {
+  const out = [];
+  if (flags & F.SPIN_FROM_ACC) out.push("Spin estimated from accelerometer (gyro maxed)");
+  else if (flags & F.GYRO_Z_SAT) out.push("Gyro maxed – spin is a minimum");
+  if (flags & F.ACCEL_SAT) out.push("Accelerometer maxed – speed unreliable");
+  if (flags & F.NO_STATIC) out.push("Disc wasn't still before throw – angles less certain");
+  if (flags & F.NO_RELEASE) out.push("Release not detected cleanly");
+  if (flags & F.SHORT_FLIGHT) out.push("Short flight window");
+  return out;
+}
+
+function showResult(t, isNew) {
+  $("resultEmpty").classList.add("hidden");
+  $("resultBody").classList.remove("hidden");
+  $("rSpeed").textContent = fmt(t.speed, 1);
+  $("rSpin").innerHTML = fmt(t.spin) + "<small> rpm</small>";
+  $("rHyzer").innerHTML = signed(t.hyzer) + "<small>°</small>";
+  $("rNose").innerHTML = signed(t.nose) + "<small>°</small>";
+  $("rLaunch").innerHTML = signed(t.launch) + "<small>°</small>";
+  $("rWobble").innerHTML = fmt(t.wobble, 1) + "<small>°</small>";
+  $("rPeak").innerHTML = fmt(t.peak, 1) + "<small> g</small>";
+  $("resultMeta").textContent = `#${t.seq} · ${new Date(t.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+  $("rChips").innerHTML = chipsFor(t.flags).map(c => `<span class="chip">${c}</span>`).join("");
+  if (isNew) {
+    const card = $("resultCard");
+    card.classList.remove("flash"); void card.offsetWidth; card.classList.add("flash");
+    if (navigator.vibrate) navigator.vibrate([60, 40, 60]);
+  }
+}
+
+function renderHistory() {
+  const body = $("histBody");
+  body.innerHTML = history.slice().reverse().map(t =>
+    `<tr><td>${t.seq}</td><td>${fmt(t.speed, 1)}</td><td>${fmt(t.spin)}</td><td>${signed(t.hyzer)}</td><td>${signed(t.nose)}</td><td>${signed(t.launch)}</td></tr>`
+  ).join("");
+  $("histEmpty").classList.toggle("hidden", history.length > 0);
+  $("histTable").classList.toggle("hidden", history.length === 0);
+}
+
+function addThrow(s) {
+  if (s.battery <= 100) $("batt").textContent = s.battery + "%";
+  if (!(s.flags & F.VALID)) return;
+  // The board resends stored throws after a reconnect; the board's clock plus
+  // its sequence number identifies a throw uniquely until it reboots.
+  const key = `${s.seq}-${s.t}`;
+  if (history.some(h => h.key === key)) return;
+  const t = { ...s, key, at: Date.now() };
+  history.push(t); saveHistory(history);
+  renderHistory(); showResult(t, true);
+}
+
+// ---- Bluetooth ----
+async function connect() {
+  stopDemo();
+  try {
+    if (!device) {
+      device = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [SVC] }, { name: "DiscTracker" }],
+        optionalServices: [SVC],
+      });
+      device.addEventListener("gattserverdisconnected", onDisconnected);
+    }
+    userDisconnect = false;
+    setStatus("Connecting…", "busy");
+    const server = await device.gatt.connect();
+    const svc = await server.getPrimaryService(SVC);
+
+    const live = await svc.getCharacteristic(LIVE);
+    live.addEventListener("characteristicvaluechanged", e => showLive(parseLive(e.target.value)));
+    await live.startNotifications();
+
+    const summary = await svc.getCharacteristic(SUMMARY);
+    summary.addEventListener("characteristicvaluechanged", e => {
+      if (e.target.value.byteLength >= 40) addThrow(parseSummary(e.target.value));
+    });
+    await summary.startNotifications();
+
+    cmdChar = await svc.getCharacteristic(CMD);
+    $("calBtn").disabled = $("clearBoard").disabled = false;
+    $("connectBtn").textContent = "Disconnect";
+    setStatus("Connected", "on");
+    keepAwake();
+  } catch (err) {
+    if (err && err.name === "NotFoundError") { setStatus("Not connected"); return; }  // user cancelled the picker
+    console.error(err);
+    setStatus("Connect failed – tap to retry", "");
+  }
+}
+
+function onDisconnected() {
+  cmdChar = null;
+  $("calBtn").disabled = $("clearBoard").disabled = true;
+  $("connectBtn").textContent = "Connect to disc";
+  if (userDisconnect) { setStatus("Not connected"); return; }
+  // Out of range or the disc landed far away: keep retrying quietly.
+  setStatus("Reconnecting…", "busy");
+  setTimeout(() => { if (device && !userDisconnect) connect(); }, 1500);
+}
+
+async function sendCmd(text) {
+  if (!cmdChar) return;
+  const data = new TextEncoder().encode(text);
+  try { await (cmdChar.writeValueWithoutResponse ? cmdChar.writeValueWithoutResponse(data) : cmdChar.writeValue(data)); }
+  catch (e) { console.error(e); }
+}
+
+async function keepAwake() {
+  try { if ("wakeLock" in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => wakeLock = null); } } catch {}
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && device?.gatt?.connected) keepAwake(); });
+
+// ---- demo mode: fake data so the page can be tried away from the disc ----
+function stopDemo() { if (demoTimer) { clearInterval(demoTimer); demoTimer = null; $("demoBtn").textContent = "Demo"; if (!device?.gatt?.connected) setStatus("Not connected"); } }
+function startDemo() {
+  let t = 0, phase = "still", phaseT = 0, seq = history.length;
+  setStatus("Demo mode", "busy"); $("demoBtn").textContent = "Stop demo";
+  demoTimer = setInterval(() => {
+    t += 40; phaseT += 40;
+    let s;
+    if (phase === "still") {
+      s = { flags: LIVE_STILL, g: 1 + (Math.random() - .5) * .01, spin: 0, rot: 1, roll: 2 + Math.random() * .3, pitch: -3 + Math.random() * .3 };
+      if (phaseT > 4000) { phase = "throw"; phaseT = 0; }
+    } else if (phase === "throw") {
+      const k = phaseT / 3000, spin = 900 * Math.exp(-k * .3);
+      s = { flags: LIVE_CAPTURING | LIVE_GYRO_SAT, g: phaseT < 300 ? 9 : .3 + Math.random() * .2, spin: Math.min(spin, 333), rot: 2000,
+            roll: Math.sin(t / 50) * 40, pitch: Math.cos(t / 50) * 40 };
+      if (phaseT > 3000) {
+        phase = "still"; phaseT = 0;
+        addThrow({ battery: 87, seq: ++seq, t: Date.now(), speed: 42 + Math.random() * 18, spin: 750 + Math.random() * 400,
+                   hyzer: (Math.random() - .3) * 20, nose: (Math.random() - .5) * 8, launch: 2 + Math.random() * 10,
+                   wobble: Math.random() * 6, peak: 12 + Math.random() * 6, flags: F.VALID | F.GYRO_Z_SAT | F.SPIN_FROM_ACC, n: 1248 });
+      }
+    }
+    showLive(s);
+  }, 40);
+}
+
+// ---- wiring ----
+$("connectBtn").onclick = () => {
+  if (device?.gatt?.connected) { userDisconnect = true; device.gatt.disconnect(); return; }
+  if (!navigator.bluetooth) { $("unsupported").classList.remove("hidden"); return; }
+  connect();
+};
+$("demoBtn").onclick = () => demoTimer ? stopDemo() : startDemo();
+$("calBtn").onclick = () => sendCmd("cal");
+$("clearBoard").onclick = () => { if (confirm("Erase the throws stored on the disc?")) sendCmd("clear"); };
+$("clearLocal").onclick = () => { if (confirm("Clear the throw history on this phone?")) { history = []; saveHistory(history); renderHistory(); } };
+
+if (!navigator.bluetooth) { $("unsupported").classList.remove("hidden"); $("connectBtn").disabled = true; }
+renderHistory();
+if (history.length) showResult(history[history.length - 1], false);
+if (new URLSearchParams(location.search).has("demo")) startDemo();
+</script>
+</body>
+</html>
