@@ -322,9 +322,10 @@ function renderHistory() {
   $("histTable").classList.toggle("hidden", history.length === 0);
 }
 
-function addThrow(s) {
+function addThrow(s, demo = false) {
   if (s.battery <= 100) $("batt").textContent = s.battery + "%";
   if (!(s.flags & F.VALID)) return;
+  if (demo) { showResult({ ...s, at: Date.now() }, true); return; }   // never pollute real history
   // The board resends stored throws after a reconnect; the board's clock plus
   // its sequence number identifies a throw uniquely until it reboots.
   const key = `${s.seq}-${s.t}`;
@@ -423,7 +424,7 @@ function startDemo() {
         phase = "still"; phaseT = 0;
         addThrow({ battery: 87, seq: ++seq, t: Date.now(), speed: 42 + Math.random() * 18, spin: 750 + Math.random() * 400,
                    hyzer: (Math.random() - .3) * 20, nose: (Math.random() - .5) * 8, launch: 2 + Math.random() * 10,
-                   wobble: Math.random() * 6, peak: 12 + Math.random() * 6, flags: F.VALID | F.GYRO_Z_SAT | F.SPIN_FROM_ACC, n: 1248 });
+                   wobble: Math.random() * 6, peak: 12 + Math.random() * 6, flags: F.VALID | F.GYRO_Z_SAT | F.SPIN_FROM_ACC, n: 1248 }, true);
       }
     }
     showLive(s);
