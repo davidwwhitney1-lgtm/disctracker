@@ -217,11 +217,30 @@
       the disc, so turning it off doesn't lose it.</p>
   </section>
 
+  <section class="card">
+    <div class="result-head">
+      <div class="label">Power</div>
+      <div class="note" id="powerMode">–</div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button id="standbyBtn" disabled>Standby</button>
+      <button id="wakeBtn" disabled>Wake up</button>
+      <button id="offBtn" disabled>Turn off</button>
+    </div>
+    <ul class="steps" style="margin-bottom:0">
+      <li><b>Standby</b> – saves most of the battery. Tap <b>Wake up</b>, or just pick up the disc.
+        Happens on its own after 5 min without motion.</li>
+      <li><b>Turn off</b> – saves the most. While off the disc can't hear Bluetooth, so turn it back on with a
+        <b>firm flick or shake</b>. It also turns itself off after 2 h in standby with no phone, or when the
+        battery is low. (Never while plugged into USB – it uses standby then.)</li>
+    </ul>
+  </section>
+
   <div class="row">
     <button id="clearBoard" disabled>Erase throws stored on disc</button>
   </div>
 
-  <p class="note">Version 2026-10-05c. Roll/pitch are only accurate while the disc is still.
+  <p class="note">Version 2026-10-05d. Roll/pitch are only accurate while the disc is still.
     Spin above ~333 rpm exceeds the gyro's range; the board then estimates it from the accelerometer.</p>
 </main>
 
@@ -479,6 +498,7 @@ function parseStatus(dv) {
     endReason: dv.byteLength >= 20 ? dv.getUint8(16) : 0,
     flight10: dv.byteLength >= 20 ? dv.getUint8(17) : 0,
     rejectFlags: dv.byteLength >= 20 ? dv.getUint8(18) : 0,
+    mode: dv.byteLength >= 20 ? dv.getUint8(19) : 0,
     calState: dv.getUint8(1), calResult: dv.getUint8(2), battery: dv.getUint8(3),
     tilt: dv.getInt16(4, true) / 100, saved: !!(dv.getUint8(6) & 1),
     lastCapture: dv.getUint8(7), throws: dv.getUint16(8, true),
@@ -486,8 +506,25 @@ function parseStatus(dv) {
   };
 }
 
+const MODE = { AWAKE: 0, STANDBY: 1, OFF: 2 };
+let discMode = MODE.AWAKE;
+function showPower(mode) {
+  discMode = mode;
+  const txt = { 0: "Awake", 1: "Standby – tap Wake up or pick up the disc", 2: "Turning off…" };
+  $("powerMode").textContent = txt[mode] ?? "–";
+  const on = !!cmdChar;
+  $("standbyBtn").disabled = !on || mode !== MODE.AWAKE;
+  $("wakeBtn").disabled = !on || mode !== MODE.STANDBY;
+  $("offBtn").disabled = !on || mode === MODE.OFF;
+  if (mode === MODE.STANDBY) {
+    $("state").textContent = "Standby"; $("state").className = "pill";
+    $("stage").classList.add("unsure"); $("stageLabel").textContent = "standby";
+  }
+}
+
 function onStatus(st) {
   lastStatus = st;
+  showPower(st.mode);
   $("captureInfo").textContent = captureInfo(st);
   noteThrowCount(st.throws);
   const b = $("batt");
@@ -617,6 +654,7 @@ async function setupGatt() {
 
   cmdChar = await svc.getCharacteristic(CMD);
   $("calBtn").disabled = $("clearBoard").disabled = false;
+  showPower(discMode === MODE.OFF ? MODE.AWAKE : discMode);   // it answered, so it is not off
   if (!calPending && $("calMsg").textContent.startsWith("Connect")) setCalMsg("");
   $("connectBtn").textContent = "Disconnect";
   setStatus(hasLive ? (attempts > 1 ? "Reconnected" : "Connected") : "Connected (no live data)", "on");
@@ -627,9 +665,16 @@ async function setupGatt() {
 function onDisconnected() {
   cmdChar = null;
   $("calBtn").disabled = $("clearBoard").disabled = true;
+  $("standbyBtn").disabled = $("wakeBtn").disabled = $("offBtn").disabled = true;
   if (calPending) { clearTimeout(calPending); calPending = null; setCalMsg("Disconnected during calibration – try again.", "bad"); }
   $("stage").classList.add("unsure");
   if (userDisconnect) { $("connectBtn").textContent = "Connect to disc"; setStatus("Not connected"); return; }
+  if (discMode === MODE.OFF) {
+    $("powerMode").textContent = "Off – flick the disc to turn it on";
+    showBanner("The disc is off. Give it a firm flick or shake to turn it on – this page reconnects by itself.", "");
+    connectLoop();
+    return;
+  }
   if (lastLiveFlags & LIVE_CAPTURING)
     showBanner("Disc out of range mid-throw – that's normal. Walk toward it; the result appears as soon as it reconnects.", "");
   else
@@ -690,6 +735,14 @@ $("connectBtn").onclick = () => {
 $("demoBtn").onclick = () => demoTimer ? stopDemo() : startDemo();
 $("calBtn").onclick = startCalibration;
 $("copyBtn").onclick = copyResult;
+$("standbyBtn").onclick = () => sendCmd("standby");
+$("wakeBtn").onclick = () => sendCmd("wake");
+$("offBtn").onclick = () => {
+  if (confirm("Turn the disc off?\n\nIt can't hear Bluetooth while off. To turn it back on, give it a firm flick or shake.")) {
+    discMode = MODE.OFF;
+    sendCmd("off");
+  }
+};
 $("clearBoard").onclick = () => { if (confirm("Erase the throws stored on the disc?")) sendCmd("clear"); };
 $("clearLocal").onclick = () => { if (confirm("Clear the throw history on this phone?")) { history = []; saveHistory(history); renderHistory(); } };
 
