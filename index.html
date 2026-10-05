@@ -55,12 +55,21 @@
   .pill.clipped { color: var(--bad); }
 
   /* disc attitude */
-  .stage { width: 120px; height: 120px; perspective: 360px; display: grid; place-items: center; }
-  .disc { width: 96px; height: 96px; border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, var(--panel) 0 22%, var(--accent2) 23% 27%, var(--panel2) 28% 100%);
-    border: 3px solid var(--accent2); transition: transform .12s linear; position: relative; }
-  .disc::after { content: ""; position: absolute; top: 4px; left: 50%; width: 4px; height: 14px;
-    margin-left: -2px; background: var(--warn); border-radius: 2px; }
+  /* 3D disc: the scene is the ground seen from ~35 deg above; the disc tilts in it. */
+  .stage { width: 130px; height: 130px; perspective: 420px; display: grid; place-items: center;
+    transition: opacity .3s; text-align: center; }
+  .stage.unsure { opacity: .35; }
+  .scene { transform: rotateX(55deg); transform-style: preserve-3d; }
+  .disc { width: 100px; height: 100px; position: relative; transform-style: preserve-3d;
+    transition: transform .15s linear; }
+  .face { position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+  .face.top { border: 3px solid var(--accent2);
+    background: radial-gradient(circle, var(--panel) 0 20%, var(--accent2) 21% 25%, var(--panel2) 26% 100%); }
+  .face.top::after { content: ""; position: absolute; top: 5px; left: 50%; width: 5px; height: 16px;
+    margin-left: -2.5px; background: var(--warn); border-radius: 2px; }
+  .face.bottom { transform: rotateY(180deg); border: 3px solid var(--bad);
+    background: repeating-radial-gradient(circle, var(--panel2) 0 6px, var(--panel) 6px 12px); }
+  .stage-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
   .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
   @media (max-width: 480px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
@@ -118,7 +127,14 @@
         <div><span class="big" id="spin">–</span><span class="unit">rpm</span></div>
         <span class="pill" id="state">waiting</span>
       </div>
-      <div class="stage" title="Disc tilt (valid while still)"><div class="disc" id="disc"></div></div>
+      <div>
+        <div class="stage" id="stage" title="Disc tilt (accurate while still)">
+          <div class="scene"><div class="disc" id="disc">
+            <div class="face top" id="discTop"></div><div class="face bottom"></div>
+          </div></div>
+        </div>
+        <div class="stage-label" id="stageLabel">tilt</div>
+      </div>
     </div>
     <div class="tiles" style="margin-top:14px">
       <div class="tile"><div class="label">G-force</div><div class="v" id="g">–<small> g</small></div></div>
@@ -186,6 +202,7 @@ const F = { VALID: 1, GYRO_Z_SAT: 2, ACCEL_SAT: 4, NO_RELEASE: 8, NO_STATIC: 16,
 
 const $ = id => document.getElementById(id);
 let device = null, cmdChar = null, demoTimer = null, userDisconnect = false, wakeLock = null;
+let spinAngle = 0;
 
 // ---- live history for the chart ----
 const series = [];                 // {t, spin, g}
@@ -242,9 +259,23 @@ function showLive(s) {
   else if (s.flags & LIVE_GYRO_SAT)  { st.textContent = "Gyro clipped (>333 rpm)"; st.className = "pill clipped"; }
   else if (s.flags & LIVE_STILL)     { st.textContent = "Still · armed"; st.className = "pill still"; }
   else                               { st.textContent = "Moving"; st.className = "pill moving"; }
-  // Disc attitude: pitch tips the nose toward/away, roll tips the edge.
-  const r = Math.max(-80, Math.min(80, s.roll)), p = Math.max(-80, Math.min(80, s.pitch));
-  $("disc").style.transform = `rotateX(${60 + p}deg) rotateY(${r}deg)`;
+  // Disc attitude from gravity. No clamping: an upside-down disc shows its
+  // striped underside. Tilt only means something while the disc is still, so
+  // freeze it and dim the view while moving instead of showing noise.
+  const still = !!(s.flags & LIVE_STILL);
+  $("stage").classList.toggle("unsure", !still);
+  if (still) {
+    // Roll tips the disc left/right (screen-vertical axis) so it stays visible;
+    // tipping toward the camera would stack with the 55 deg view and go edge-on.
+    $("disc").style.transform = `rotateY(${s.roll}deg) rotateX(${-s.pitch}deg)`;
+    const flipped = Math.abs(s.roll) > 90;
+    $("stageLabel").textContent = flipped ? "upside down" : "tilt " + Math.round(Math.hypot(s.roll, s.pitch)) + "°";
+  } else {
+    $("stageLabel").textContent = s.spin > 30 ? "spinning" : "moving";
+  }
+  // Show spin as rotation of the top face, slowed way down so it is visible.
+  spinAngle = (spinAngle + s.spin * 0.04 * 6 * 0.04) % 360;
+  $("discTop").style.transform = `rotateZ(${spinAngle}deg)`;
 
   const now = performance.now();
   series.push({ t: now, spin: s.spin, g: s.g });
