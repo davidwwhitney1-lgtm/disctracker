@@ -82,6 +82,10 @@
   .legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
 
   /* throw result */
+  .six { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
+  .six .tile .v { font-size: 28px; }
+  .six .tile.main .v { font-size: clamp(34px, 11vw, 46px); font-weight: 800; }
+  .six .tile.main { background: var(--panel2); border: 1px solid var(--accent); }
   .result-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
   .speed { font-size: clamp(48px, 15vw, 80px); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
   .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
@@ -139,23 +143,22 @@
   <section class="card" id="resultCard">
     <div class="result-head">
       <div class="label">Last throw</div>
-      <div class="note" id="resultMeta"></div>
+      <div class="note" id="resultMeta">no throw yet</div>
     </div>
-    <div id="resultEmpty" class="empty">Hold the disc still for a moment, then throw. The result is ready about
-      0.3 s after release (it needs ~¼ s of clean flight – stand 3–5 m from a net). If the disc flies out of range,
-      the phone reconnects automatically and the result appears then.</div>
-    <div id="resultBody" class="hidden">
-      <div><span class="speed" id="rSpeed">–</span><span class="unit">mph</span></div>
-      <div class="grid3">
-        <div class="tile"><div class="label">Spin</div><div class="v" id="rSpin">–</div></div>
-        <div class="tile"><div class="label">Hyzer</div><div class="v" id="rHyzer">–</div></div>
-        <div class="tile"><div class="label">Nose</div><div class="v" id="rNose">–</div></div>
-        <div class="tile"><div class="label">Launch</div><div class="v" id="rLaunch">–</div></div>
-        <div class="tile"><div class="label">Wobble</div><div class="v" id="rWobble">–</div></div>
-        <div class="tile"><div class="label">Peak</div><div class="v" id="rPeak">–</div></div>
-      </div>
-      <div class="chips" id="rChips"></div>
+    <div class="six">
+      <div class="tile main"><div class="label">Speed</div><div class="v"><span id="rSpeed">–</span><small> mph</small></div></div>
+      <div class="tile main"><div class="label">Spin</div><div class="v"><span id="rSpin">–</span><small> rpm</small></div></div>
+      <div class="tile"><div class="label">Hyzer</div><div class="v"><span id="rHyzer">–</span><small>°</small></div></div>
+      <div class="tile"><div class="label">Nose</div><div class="v"><span id="rNose">–</span><small>°</small></div></div>
+      <div class="tile"><div class="label">Launch</div><div class="v"><span id="rLaunch">–</span><small>°</small></div></div>
+      <div class="tile"><div class="label">Wobble</div><div class="v"><span id="rWobble">–</span><small>°</small></div></div>
     </div>
+    <button id="copyBtn" class="wide" style="margin-top:12px" disabled>Copy numbers for the simulator</button>
+    <div class="chips" id="rChips"></div>
+    <p class="note" id="resultEmpty">Hold the disc still for a moment, then throw with snap. Results are ready ~0.3 s
+      after release (needs ~¼ s of clean flight – stand 3–5 m from a net). Out of range? It reconnects and the
+      result arrives then.</p>
+    <p class="note" id="captureInfo" style="margin-bottom:0"></p>
   </section>
 
   <section class="card">
@@ -193,7 +196,7 @@
     </div>
     <div id="histEmpty" class="empty">No throws yet.</div>
     <table id="histTable" class="hidden">
-      <thead><tr><th>#</th><th>mph</th><th>rpm</th><th>hyzer</th><th>nose</th><th>launch</th></tr></thead>
+      <thead><tr><th>#</th><th>mph</th><th>rpm</th><th>hyz</th><th>nose</th><th>lau</th><th>wob</th></tr></thead>
       <tbody id="histBody"></tbody>
     </table>
   </section>
@@ -218,7 +221,7 @@
     <button id="clearBoard" disabled>Erase throws stored on disc</button>
   </div>
 
-  <p class="note">Roll/pitch are only accurate while the disc is still.
+  <p class="note">Version 2026-10-05c. Roll/pitch are only accurate while the disc is still.
     Spin above ~333 rpm exceeds the gyro's range; the board then estimates it from the accelerometer.</p>
 </main>
 
@@ -262,20 +265,24 @@ function parseLive(dv) {
 }
 
 function parseSummary(dv) {
-  return {
-    battery: dv.getUint8(1),
-    seq: dv.getUint16(2, true),
-    t: dv.getUint32(4, true),
-    speed: dv.getFloat32(8, true),
-    spin: dv.getFloat32(12, true),
-    hyzer: dv.getFloat32(16, true),
-    nose: dv.getFloat32(20, true),
-    launch: dv.getFloat32(24, true),
-    wobble: dv.getFloat32(28, true),
-    peak: dv.getFloat32(32, true),
-    flags: dv.getUint16(36, true),
-    n: dv.getUint16(38, true),
-  };
+  if (dv.getUint8(0) === 3 && dv.byteLength >= 20) {        // v3: 20-byte fixed point
+    return {
+      v: 3, flags: dv.getUint8(1), seq: dv.getUint16(2, true), boot: dv.getUint16(4, true),
+      speed: dv.getUint16(6, true) / 10, spin: dv.getUint16(8, true),
+      hyzer: dv.getInt16(10, true) / 10, nose: dv.getInt16(12, true) / 10,
+      launch: dv.getInt16(14, true) / 10, wobble: dv.getUint16(16, true) / 10,
+      peak: dv.getUint8(18) / 4,
+    };
+  }
+  if (dv.byteLength >= 40) {                                 // v2: 40-byte floats (old firmware)
+    return {
+      v: 2, battery: dv.getUint8(1), seq: dv.getUint16(2, true), t: dv.getUint32(4, true),
+      speed: dv.getFloat32(8, true), spin: dv.getFloat32(12, true), hyzer: dv.getFloat32(16, true),
+      nose: dv.getFloat32(20, true), launch: dv.getFloat32(24, true), wobble: dv.getFloat32(28, true),
+      peak: dv.getFloat32(32, true), flags: dv.getUint16(36, true),
+    };
+  }
+  return null;                                               // truncated: never silently drop - say so
 }
 
 // ---- rendering ----
@@ -359,18 +366,20 @@ function chipsFor(flags) {
   return out;
 }
 
+let lastShown = null;
 function showResult(t, isNew) {
+  lastShown = t;
   $("resultEmpty").classList.add("hidden");
-  $("resultBody").classList.remove("hidden");
   $("rSpeed").textContent = fmt(t.speed, 1);
-  $("rSpin").innerHTML = fmt(t.spin) + "<small> rpm</small>";
-  $("rHyzer").innerHTML = signed(t.hyzer) + "<small>°</small>";
-  $("rNose").innerHTML = signed(t.nose) + "<small>°</small>";
-  $("rLaunch").innerHTML = signed(t.launch) + "<small>°</small>";
-  $("rWobble").innerHTML = fmt(t.wobble, 1) + "<small>°</small>";
-  $("rPeak").innerHTML = fmt(t.peak, 1) + "<small> g</small>";
-  $("resultMeta").textContent = `#${t.seq} · ${new Date(t.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+  $("rSpin").textContent = fmt(t.spin);
+  $("rHyzer").textContent = signed(t.hyzer);
+  $("rNose").textContent = signed(t.nose);
+  $("rLaunch").textContent = signed(t.launch);
+  $("rWobble").textContent = fmt(t.wobble, 1);
+  $("resultMeta").textContent = `#${t.seq} · ${new Date(t.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` +
+    (Number.isFinite(t.peak) ? ` · peak ${t.peak.toFixed(1)} g` : "");
   $("rChips").innerHTML = chipsFor(t.flags).map(c => `<span class="chip">${c}</span>`).join("");
+  $("copyBtn").disabled = false;
   if (isNew) {
     const card = $("resultCard");
     card.classList.remove("flash"); void card.offsetWidth; card.classList.add("flash");
@@ -378,10 +387,31 @@ function showResult(t, isNew) {
   }
 }
 
+function simulatorText(t) {
+  return `Speed ${fmt(t.speed, 1)} mph, Spin ${fmt(t.spin)} rpm, Hyzer ${signed(t.hyzer)}°, ` +
+         `Nose ${signed(t.nose)}°, Launch ${signed(t.launch)}°, Wobble ${fmt(t.wobble, 1)}°`;
+}
+
+async function copyResult() {
+  if (!lastShown) return;
+  const text = simulatorText(lastShown);
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch {}
+  if (!ok) {                                  // older/embedded browsers: textarea fallback
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { ok = document.execCommand("copy"); } catch {}
+    ta.remove();
+  }
+  $("copyBtn").textContent = ok ? "Copied ✓" : text;
+  setTimeout(() => { $("copyBtn").textContent = "Copy numbers for the simulator"; }, 2500);
+}
+
 function renderHistory() {
   const body = $("histBody");
   body.innerHTML = history.slice().reverse().map(t =>
-    `<tr><td>${t.seq}</td><td>${fmt(t.speed, 1)}</td><td>${fmt(t.spin)}</td><td>${signed(t.hyzer)}</td><td>${signed(t.nose)}</td><td>${signed(t.launch)}</td></tr>`
+    `<tr><td>${t.seq}</td><td>${fmt(t.speed, 1)}</td><td>${fmt(t.spin)}</td><td>${signed(t.hyzer)}</td><td>${signed(t.nose)}</td><td>${signed(t.launch)}</td><td>${fmt(t.wobble, 1)}</td></tr>`
   ).join("");
   $("histEmpty").classList.toggle("hidden", history.length > 0);
   $("histTable").classList.toggle("hidden", history.length === 0);
@@ -390,9 +420,10 @@ function renderHistory() {
 function addThrow(s, demo = false) {
   if (!(s.flags & F.VALID)) return;
   if (demo) { showResult({ ...s, at: Date.now() }, true); return; }   // never pollute real history
-  // The board resends stored throws after a reconnect; the board's clock plus
-  // its sequence number identifies a throw uniquely until it reboots.
-  const key = `${s.seq}-${s.t}`;
+  noteResultArrived(s.seq);
+  // The board resends stored throws after a reconnect. Its throw number
+  // restarts at 1 on every power-up, so pair it with the per-boot id.
+  const key = s.v === 3 ? `b${s.boot}-${s.seq}` : `${s.seq}-${s.t}`;
   if (history.some(h => h.key === key)) return;
   const t = { ...s, key, at: Date.now() };
   history.push(t); saveHistory(history);
@@ -411,8 +442,43 @@ function showBanner(text, kind) {
 const CAL = { NONE: 0, OK: 1, MOVING: 2, NOT_FLAT: 3, NO_DATA: 4 };
 let calPending = null, lastRejectKey = null, lastStatus = null;
 
+// The disc says how many throws it has counted. If that number goes up and no
+// result follows, say so - this exact failure once lost six throws silently.
+let resultsSeen = 0, watchdog = null;
+function noteResultArrived(seq) { resultsSeen = Math.max(resultsSeen, seq); clearTimeout(watchdog); watchdog = null; }
+function noteThrowCount(n) {
+  if (n < resultsSeen) resultsSeen = 0;                  // disc rebooted, numbering restarted
+  if (n > resultsSeen && !watchdog) {
+    watchdog = setTimeout(() => {
+      watchdog = null;
+      if (n > resultsSeen) showBanner(`The disc counted throw #${n} but its result hasn't arrived. Tap Disconnect, then Connect.`, "warn");
+    }, 4000);
+  }
+}
+
+const END = { 1: "hit something (net/catch)", 2: "full flight window", 3: "3 s limit – release never detected" };
+function captureInfo(st) {
+  if (!st.captures) return "No throw detected yet since the disc powered on.";
+  let txt = `Recordings since power-on: ${st.captures} · counted throws: ${st.throws}.`;
+  if (st.endReason) txt += ` Last recording ended at ${END[st.endReason] || "?"}` +
+    (st.flight10 ? ` after ${st.flight10 * 10} ms of flight` : "") + ".";
+  if (st.flight10 && st.flight10 < 15 && st.endReason === 1) txt += " That's short – stand further from the net for spin/wobble.";
+  return txt;
+}
+function rejectReason(st) {
+  if (st.rejectFlags & F.NO_RELEASE)
+    return "no clean release – the force never dropped below 3 g after the pull (a board far off-center does this)";
+  if (st.rejectPeak < 3.5) return `too gentle – peak ${st.rejectPeak.toFixed(1)} g, needs 3.5 g`;
+  if (st.rejectSpin <= 60) return `not enough spin – ${st.rejectSpin} rpm, needs over 60`;
+  return `peak ${st.rejectPeak.toFixed(1)} g, spin ${st.rejectSpin} rpm`;
+}
+
 function parseStatus(dv) {
   return {
+    captures: dv.byteLength >= 20 ? dv.getUint16(14, true) : 0,
+    endReason: dv.byteLength >= 20 ? dv.getUint8(16) : 0,
+    flight10: dv.byteLength >= 20 ? dv.getUint8(17) : 0,
+    rejectFlags: dv.byteLength >= 20 ? dv.getUint8(18) : 0,
     calState: dv.getUint8(1), calResult: dv.getUint8(2), battery: dv.getUint8(3),
     tilt: dv.getInt16(4, true) / 100, saved: !!(dv.getUint8(6) & 1),
     lastCapture: dv.getUint8(7), throws: dv.getUint16(8, true),
@@ -422,6 +488,8 @@ function parseStatus(dv) {
 
 function onStatus(st) {
   lastStatus = st;
+  $("captureInfo").textContent = captureInfo(st);
+  noteThrowCount(st.throws);
   const b = $("batt");
   if (st.battery <= 100) {
     b.textContent = "🔋 " + st.battery + "%";
@@ -448,8 +516,7 @@ function onStatus(st) {
   if (st.lastCapture === 2) {
     const key = `${st.throws}-${st.rejectPeak}-${st.rejectSpin}`;
     if (key !== lastRejectKey) {
-      showBanner(`Throw detected but not counted (peak ${st.rejectPeak.toFixed(1)} g, spin ${st.rejectSpin} rpm). ` +
-                 `It needs a real throw: over 5 g and over 60 rpm, then a clean release.`, "warn");
+      showBanner(`Throw detected but not counted: ${rejectReason(st)}.`, "warn");
       lastRejectKey = key;
     }
   }
@@ -542,7 +609,9 @@ async function setupGatt() {
   // Subscribe to results last: the disc then sends any throws it stored while we were away.
   const summary = await svc.getCharacteristic(SUMMARY);
   summary.addEventListener("characteristicvaluechanged", e => {
-    if (e.target.value.byteLength >= 40) addThrow(parseSummary(e.target.value));
+    const t = parseSummary(e.target.value);
+    if (t) addThrow(t);
+    else showBanner(`A throw result arrived cut short (${e.target.value.byteLength} bytes). The disc needs a firmware update.`, "warn");
   });
   await summary.startNotifications();
 
@@ -620,6 +689,7 @@ $("connectBtn").onclick = () => {
 };
 $("demoBtn").onclick = () => demoTimer ? stopDemo() : startDemo();
 $("calBtn").onclick = startCalibration;
+$("copyBtn").onclick = copyResult;
 $("clearBoard").onclick = () => { if (confirm("Erase the throws stored on the disc?")) sendCmd("clear"); };
 $("clearLocal").onclick = () => { if (confirm("Clear the throw history on this phone?")) { history = []; saveHistory(history); renderHistory(); } };
 
