@@ -97,6 +97,19 @@
   th { color: var(--muted); font-weight: 600; font-size: 12px; }
 
   .note { font-size: 14px; color: var(--muted); }
+  .batt { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .batt.low { color: var(--bad); font-weight: 700; }
+  .banner { border-radius: 12px; padding: 12px 14px; font-size: 15px; background: var(--panel2);
+    border-left: 4px solid var(--accent2); }
+  .banner.warn { border-left-color: var(--warn); }
+  .banner.good { border-left-color: var(--accent); }
+  .steps { margin: 10px 0 12px; padding-left: 20px; font-size: 15px; }
+  .steps li { margin: 4px 0; }
+  button.wide { width: 100%; font-size: 17px; padding: 14px; }
+  .calmsg { margin-top: 10px; font-size: 15px; min-height: 1.4em; color: var(--muted); }
+  .calmsg.ok { color: var(--accent); font-weight: 600; }
+  .calmsg.bad { color: var(--bad); font-weight: 600; }
+  .calmsg.busy { color: var(--warn); font-weight: 600; }
   .note b { color: var(--text); }
   #unsupported { border-color: var(--warn); }
   .hidden { display: none !important; }
@@ -106,6 +119,7 @@
 <main>
   <header>
     <h1>🥏 DiscTracker</h1>
+    <span id="batt" class="batt hidden"></span>
     <span id="status"><span class="dot" id="dot"></span><span id="statusText">Not connected</span></span>
   </header>
 
@@ -119,6 +133,29 @@
     <button class="primary" id="connectBtn">Connect to disc</button>
     <button id="demoBtn">Demo</button>
   </div>
+
+  <div class="banner hidden" id="banner"></div>
+
+  <section class="card" id="resultCard">
+    <div class="result-head">
+      <div class="label">Last throw</div>
+      <div class="note" id="resultMeta"></div>
+    </div>
+    <div id="resultEmpty" class="empty">Throw the disc. Speed and angles appear here a few seconds after it lands
+      – the phone reconnects automatically once the disc is back in range.</div>
+    <div id="resultBody" class="hidden">
+      <div><span class="speed" id="rSpeed">–</span><span class="unit">mph</span></div>
+      <div class="grid3">
+        <div class="tile"><div class="label">Spin</div><div class="v" id="rSpin">–</div></div>
+        <div class="tile"><div class="label">Hyzer</div><div class="v" id="rHyzer">–</div></div>
+        <div class="tile"><div class="label">Nose</div><div class="v" id="rNose">–</div></div>
+        <div class="tile"><div class="label">Launch</div><div class="v" id="rLaunch">–</div></div>
+        <div class="tile"><div class="label">Wobble</div><div class="v" id="rWobble">–</div></div>
+        <div class="tile"><div class="label">Peak</div><div class="v" id="rPeak">–</div></div>
+      </div>
+      <div class="chips" id="rChips"></div>
+    </div>
+  </section>
 
   <section class="card">
     <div class="hero">
@@ -148,26 +185,6 @@
     </div>
   </section>
 
-  <section class="card" id="resultCard">
-    <div class="result-head">
-      <div class="label">Last throw</div>
-      <div class="note" id="resultMeta"></div>
-    </div>
-    <div id="resultEmpty" class="empty">Throw the disc. Results appear here about 3 seconds after release.</div>
-    <div id="resultBody" class="hidden">
-      <div><span class="speed" id="rSpeed">–</span><span class="unit">mph</span></div>
-      <div class="grid3">
-        <div class="tile"><div class="label">Spin</div><div class="v" id="rSpin">–</div></div>
-        <div class="tile"><div class="label">Hyzer</div><div class="v" id="rHyzer">–</div></div>
-        <div class="tile"><div class="label">Nose</div><div class="v" id="rNose">–</div></div>
-        <div class="tile"><div class="label">Launch</div><div class="v" id="rLaunch">–</div></div>
-        <div class="tile"><div class="label">Wobble</div><div class="v" id="rWobble">–</div></div>
-        <div class="tile"><div class="label">Peak</div><div class="v" id="rPeak">–</div></div>
-      </div>
-      <div class="chips" id="rChips"></div>
-    </div>
-  </section>
-
   <section class="card">
     <div class="result-head">
       <div class="label">History</div>
@@ -180,12 +197,27 @@
     </table>
   </section>
 
+  <section class="card">
+    <div class="result-head">
+      <div class="label">Calibrate</div>
+      <div class="note" id="calSaved"></div>
+    </div>
+    <ol class="steps">
+      <li>Mount the board in the <b>center</b> of the disc, under the flight plate, lying flat.</li>
+      <li>Lay the disc <b>flat, top side up</b>, on a table or the floor.</li>
+      <li>Tap <b>Calibrate</b> and don't touch the disc for 3 seconds.</li>
+    </ol>
+    <button class="primary wide" id="calBtn" disabled>Calibrate</button>
+    <div class="calmsg" id="calMsg">Connect to the disc first.</div>
+    <p class="note" style="margin-bottom:0">Do this once after mounting (and again if the board moves). It's saved on
+      the disc, so turning it off doesn't lose it.</p>
+  </section>
+
   <div class="row">
-    <button id="calBtn" disabled>Recalibrate (hold still)</button>
-    <button id="clearBoard" disabled>Clear board memory</button>
+    <button id="clearBoard" disabled>Erase throws stored on disc</button>
   </div>
 
-  <p class="note">Battery: <b id="batt">–</b> · Roll/pitch are only accurate while the disc is still.
+  <p class="note">Roll/pitch are only accurate while the disc is still.
     Spin above ~333 rpm exceeds the gyro's range; the board then estimates it from the accelerometer.</p>
 </main>
 
@@ -196,6 +228,7 @@ const SVC     = "19b10000-e8f2-537e-4f6c-d104768a1214";
 const SUMMARY = "19b10001-e8f2-537e-4f6c-d104768a1214";
 const CMD     = "19b10002-e8f2-537e-4f6c-d104768a1214";
 const LIVE    = "19b10004-e8f2-537e-4f6c-d104768a1214";
+const STATUS  = "19b10005-e8f2-537e-4f6c-d104768a1214";
 
 const LIVE_STILL = 1, LIVE_CAPTURING = 2, LIVE_GYRO_SAT = 4;
 const F = { VALID: 1, GYRO_Z_SAT: 2, ACCEL_SAT: 4, NO_RELEASE: 8, NO_STATIC: 16, SPIN_FROM_ACC: 32, SHORT_FLIGHT: 64 };
@@ -354,7 +387,6 @@ function renderHistory() {
 }
 
 function addThrow(s, demo = false) {
-  if (s.battery <= 100) $("batt").textContent = s.battery + "%";
   if (!(s.flags & F.VALID)) return;
   if (demo) { showResult({ ...s, at: Date.now() }, true); return; }   // never pollute real history
   // The board resends stored throws after a reconnect; the board's clock plus
@@ -364,9 +396,87 @@ function addThrow(s, demo = false) {
   const t = { ...s, key, at: Date.now() };
   history.push(t); saveHistory(history);
   renderHistory(); showResult(t, true);
+  showBanner("", "");                      // clear "result on its way"
+}
+
+// ---- banner: reconnecting / result pending / rejected throw ----
+function showBanner(text, kind) {
+  const b = $("banner");
+  b.textContent = text;
+  b.className = "banner" + (kind ? " " + kind : "") + (text ? "" : " hidden");
+}
+
+// ---- status channel (calibration, battery, rejected captures) ----
+const CAL = { NONE: 0, OK: 1, MOVING: 2, NOT_FLAT: 3, NO_DATA: 4 };
+let calPending = null, lastRejectKey = null, lastStatus = null;
+
+function parseStatus(dv) {
+  return {
+    calState: dv.getUint8(1), calResult: dv.getUint8(2), battery: dv.getUint8(3),
+    tilt: dv.getInt16(4, true) / 100, saved: !!(dv.getUint8(6) & 1),
+    lastCapture: dv.getUint8(7), throws: dv.getUint16(8, true),
+    rejectPeak: dv.getUint16(10, true) / 10, rejectSpin: dv.getUint16(12, true),
+  };
+}
+
+function onStatus(st) {
+  lastStatus = st;
+  const b = $("batt");
+  if (st.battery <= 100) {
+    b.textContent = "🔋 " + st.battery + "%";
+    b.classList.toggle("low", st.battery < 20);
+    b.classList.remove("hidden");
+  }
+  const off = st.tilt > 90 ? 180 - st.tilt : st.tilt;
+  $("calSaved").textContent = st.saved ? `saved · chip ${st.tilt > 90 ? "down" : "up"}, ${off.toFixed(1)}° off flat` : "not calibrated yet";
+
+  if (st.calState === 1) { setCalMsg("Measuring… don't touch the disc", "busy"); return; }
+  if (calPending) {                          // the answer to our Calibrate tap
+    clearTimeout(calPending); calPending = null;
+    $("calBtn").disabled = false;
+    if (st.calResult === CAL.OK)
+      setCalMsg(`✓ Calibrated and saved. Board is chip-side ${st.tilt > 90 ? "down" : "up"}, ${off.toFixed(1)}° off flat.`, "ok");
+    else if (st.calResult === CAL.MOVING)
+      setCalMsg("✗ The disc moved. Set it down, step back, and try again.", "bad");
+    else if (st.calResult === CAL.NOT_FLAT)
+      setCalMsg(`✗ Board is ${st.tilt.toFixed(0)}° from flat. Lay the disc flat, top up – or the board is glued crooked.`, "bad");
+    else setCalMsg("✗ Calibration failed – no sensor data.", "bad");
+  }
+
+  // A capture that was not counted as a throw: say so instead of silence.
+  if (st.lastCapture === 2) {
+    const key = `${st.throws}-${st.rejectPeak}-${st.rejectSpin}`;
+    if (key !== lastRejectKey) {
+      showBanner(`Throw detected but not counted (peak ${st.rejectPeak.toFixed(1)} g, spin ${st.rejectSpin} rpm). ` +
+                 `It needs a real throw: over 5 g and over 60 rpm, then a clean release.`, "warn");
+      lastRejectKey = key;
+    }
+  }
+}
+
+function setCalMsg(text, kind) { const m = $("calMsg"); m.textContent = text; m.className = "calmsg" + (kind ? " " + kind : ""); }
+
+async function startCalibration() {
+  if (!cmdChar) return;
+  $("calBtn").disabled = true;
+  for (let i = 3; i > 0; i--) { setCalMsg(`Hands off the disc… ${i}`, "busy"); await sleep(1000); }
+  if (!cmdChar) { setCalMsg("Disconnected – reconnect and try again.", "bad"); $("calBtn").disabled = false; return; }
+  setCalMsg("Measuring… don't touch the disc", "busy");
+  calPending = setTimeout(() => {
+    calPending = null; $("calBtn").disabled = false;
+    setCalMsg("No answer from the disc. Its firmware may be out of date – update it, then try again.", "bad");
+  }, 10000);
+  await sendCmd("cal");
 }
 
 // ---- Bluetooth ----
+// The disc WILL fly out of range on every real throw. The firmware keeps
+// measuring and stores the result; this page just keeps trying to reconnect
+// until the disc is back, then the stored throw arrives on its own.
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timed out")), ms))]);
+let reconnecting = false, lastLiveFlags = 0, attempts = 0;
+
 async function connect() {
   stopDemo();
   try {
@@ -377,51 +487,84 @@ async function connect() {
       });
       device.addEventListener("gattserverdisconnected", onDisconnected);
     }
-    userDisconnect = false;
-    setStatus("Connecting…", "busy");
-    const server = await device.gatt.connect();
-    const svc = await server.getPrimaryService(SVC);
-
-    // Older firmware has no live channel. Connect anyway so throw results still
-    // arrive, and say what is missing instead of failing the whole connection.
-    let hasLive = true;
-    try {
-      const live = await svc.getCharacteristic(LIVE);
-      live.addEventListener("characteristicvaluechanged", e => showLive(parseLive(e.target.value)));
-      await live.startNotifications();
-    } catch (e) {
-      hasLive = false;
-      $("state").textContent = "Board firmware has no live stream – update it";
-      $("state").className = "pill clipped";
-    }
-
-    const summary = await svc.getCharacteristic(SUMMARY);
-    summary.addEventListener("characteristicvaluechanged", e => {
-      if (e.target.value.byteLength >= 40) addThrow(parseSummary(e.target.value));
-    });
-    await summary.startNotifications();
-
-    cmdChar = await svc.getCharacteristic(CMD);
-    $("calBtn").disabled = $("clearBoard").disabled = false;
-    $("connectBtn").textContent = "Disconnect";
-    setStatus(hasLive ? "Connected" : "Connected (no live data)", "on");
-    keepAwake();
   } catch (err) {
-    if (err && err.name === "NotFoundError" && /cancel/i.test(err.message)) { setStatus("Not connected"); return; }
-    console.error(err);
-    // Show the real reason; "tap to retry" alone made failures impossible to diagnose.
-    setStatus("Failed: " + (err && err.message ? err.message : err), "");
+    if (err && err.name === "NotFoundError") { setStatus("Not connected"); return; }   // picker cancelled
+    setStatus("Failed: " + (err && err.message ? err.message : err)); return;
   }
+  userDisconnect = false;
+  connectLoop();
+}
+
+async function connectLoop() {
+  if (reconnecting) return;
+  reconnecting = true;
+  attempts = 0;
+  $("connectBtn").textContent = "Stop";
+  while (device && !userDisconnect && !device.gatt.connected) {
+    attempts++;
+    setStatus(attempts === 1 ? "Connecting…" : `Out of range – retrying (${attempts})`, "busy");
+    try {
+      await withTimeout(setupGatt(), 12000);
+    } catch (err) {
+      console.warn("connect attempt failed:", err);
+      try { device.gatt.disconnect(); } catch {}
+      await sleep(Math.min(1000 * attempts, 3000));
+    }
+  }
+  reconnecting = false;
+  if (userDisconnect) { $("connectBtn").textContent = "Connect to disc"; setStatus("Not connected"); }
+}
+
+async function setupGatt() {
+  const server = await device.gatt.connect();
+  const svc = await server.getPrimaryService(SVC);
+
+  // Status first, so calibration/battery show up immediately. Optional: older firmware lacks it.
+  try {
+    const status = await svc.getCharacteristic(STATUS);
+    status.addEventListener("characteristicvaluechanged", e => onStatus(parseStatus(e.target.value)));
+    await status.startNotifications();
+    onStatus(parseStatus(await status.readValue()));
+  } catch (e) { console.warn("no status channel", e); }
+
+  let hasLive = true;
+  try {
+    const live = await svc.getCharacteristic(LIVE);
+    live.addEventListener("characteristicvaluechanged", e => { const s = parseLive(e.target.value); lastLiveFlags = s.flags; showLive(s); });
+    await live.startNotifications();
+  } catch (e) {
+    hasLive = false;
+    $("state").textContent = "Board firmware has no live stream – update it";
+    $("state").className = "pill clipped";
+  }
+
+  // Subscribe to results last: the disc then sends any throws it stored while we were away.
+  const summary = await svc.getCharacteristic(SUMMARY);
+  summary.addEventListener("characteristicvaluechanged", e => {
+    if (e.target.value.byteLength >= 40) addThrow(parseSummary(e.target.value));
+  });
+  await summary.startNotifications();
+
+  cmdChar = await svc.getCharacteristic(CMD);
+  $("calBtn").disabled = $("clearBoard").disabled = false;
+  if (!calPending && $("calMsg").textContent.startsWith("Connect")) setCalMsg("");
+  $("connectBtn").textContent = "Disconnect";
+  setStatus(hasLive ? (attempts > 1 ? "Reconnected" : "Connected") : "Connected (no live data)", "on");
+  if ($("banner").textContent.startsWith("Disc out of range – reconnecting")) showBanner("", "");
+  keepAwake();
 }
 
 function onDisconnected() {
   cmdChar = null;
   $("calBtn").disabled = $("clearBoard").disabled = true;
-  $("connectBtn").textContent = "Connect to disc";
-  if (userDisconnect) { setStatus("Not connected"); return; }
-  // Out of range or the disc landed far away: keep retrying quietly.
-  setStatus("Reconnecting…", "busy");
-  setTimeout(() => { if (device && !userDisconnect) connect(); }, 1500);
+  if (calPending) { clearTimeout(calPending); calPending = null; setCalMsg("Disconnected during calibration – try again.", "bad"); }
+  $("stage").classList.add("unsure");
+  if (userDisconnect) { $("connectBtn").textContent = "Connect to disc"; setStatus("Not connected"); return; }
+  if (lastLiveFlags & LIVE_CAPTURING)
+    showBanner("Disc out of range mid-throw – that's normal. Walk toward it; the result appears as soon as it reconnects.", "");
+  else
+    showBanner("Disc out of range – reconnecting automatically…", "");
+  connectLoop();
 }
 
 async function sendCmd(text) {
@@ -464,12 +607,18 @@ function startDemo() {
 
 // ---- wiring ----
 $("connectBtn").onclick = () => {
-  if (device?.gatt?.connected) { userDisconnect = true; device.gatt.disconnect(); return; }
   if (!navigator.bluetooth) { $("unsupported").classList.remove("hidden"); return; }
+  if (device && (device.gatt.connected || reconnecting)) {    // Disconnect / Stop retrying
+    userDisconnect = true;
+    showBanner("", "");
+    try { device.gatt.disconnect(); } catch {}
+    $("connectBtn").textContent = "Connect to disc"; setStatus("Not connected");
+    return;
+  }
   connect();
 };
 $("demoBtn").onclick = () => demoTimer ? stopDemo() : startDemo();
-$("calBtn").onclick = () => sendCmd("cal");
+$("calBtn").onclick = startCalibration;
 $("clearBoard").onclick = () => { if (confirm("Erase the throws stored on the disc?")) sendCmd("clear"); };
 $("clearLocal").onclick = () => { if (confirm("Clear the throw history on this phone?")) { history = []; saveHistory(history); renderHistory(); } };
 
