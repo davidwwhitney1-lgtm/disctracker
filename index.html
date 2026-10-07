@@ -61,15 +61,16 @@
   .stage.unsure { opacity: .35; }
   .scene { transform: rotateX(55deg); transform-style: preserve-3d; }
   .disc { width: 100px; height: 100px; position: relative; transform-style: preserve-3d;
-    transition: transform .15s linear; }
+    transition: transform .05s linear; }
   .face { position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
   .face.top { border: 3px solid var(--accent2);
     background: radial-gradient(circle, var(--panel) 0 20%, var(--accent2) 21% 25%, var(--panel2) 26% 100%); }
-  .face.top::after { content: ""; position: absolute; top: 5px; left: 50%; width: 5px; height: 16px;
-    margin-left: -2.5px; background: var(--warn); border-radius: 2px; }
+  .usb { position: absolute; top: 4px; left: 50%; transform: translateX(-50%); font-size: 9px; font-weight: 800;
+    letter-spacing: .04em; background: var(--warn); color: #1d1300; border-radius: 3px; padding: 1px 4px; }
   .face.bottom { transform: rotateY(180deg); border: 3px solid var(--bad);
     background: repeating-radial-gradient(circle, var(--panel2) 0 6px, var(--panel) 6px 12px); }
   .stage-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  button.tiny { padding: 5px 9px; font-size: 12px; margin-top: 6px; }
 
   .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
   @media (max-width: 480px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
@@ -296,10 +297,11 @@
       <div>
         <div class="stage" id="stage" title="Disc tilt (accurate while still)">
           <div class="scene"><div class="disc" id="disc">
-            <div class="face top" id="discTop"></div><div class="face bottom"></div>
+            <div class="face top" id="discTop"><span class="usb">USB</span></div><div class="face bottom"></div>
           </div></div>
         </div>
         <div class="stage-label" id="stageLabel">tilt</div>
+        <button id="frontBtn" class="tiny" disabled>Set front</button>
       </div>
     </div>
     <div class="tiles" style="margin-top:14px">
@@ -317,7 +319,8 @@
   <section class="card">
     <div class="result-head">
       <div class="label">History</div>
-      <button id="clearLocal" style="padding:6px 10px;font-size:13px">Clear</button>
+      <span><button id="exportBtn" style="padding:6px 10px;font-size:13px">Export CSV</button>
+      <button id="clearLocal" style="padding:6px 10px;font-size:13px">Clear</button></span>
     </div>
     <div id="histEmpty" class="empty">No throws yet.</div>
     <table id="histTable" class="hidden">
@@ -366,7 +369,7 @@
     <button id="clearBoard" disabled>Erase throws stored on disc</button>
   </div>
 
-  <p class="note">Version 2026-10-07b. Roll/pitch are only accurate while the disc is still.
+  <p class="note">Version 2026-10-07c. Roll/pitch are only accurate while the disc is still.
     Spin above ~333 rpm exceeds the gyro's range; the board then estimates it from the accelerometer.</p>
   </div>
 
@@ -471,16 +474,31 @@ function setStatus(text, cls) {
   $("dot").className = "dot" + (cls ? " " + cls : "");
 }
 
+// "Front" = the direction of the board's USB-C port, measured once with Set front.
+const FRONT_KEY = "disctracker.front.v1";
+let frontDeg = (() => { try { return parseFloat(localStorage.getItem(FRONT_KEY)) || 0; } catch { return 0; } })();
+let lastUp = null;
+const upHist = [];
+
+// Tilt relative to the front: roll + = right edge down, pitch + = front (USB) up.
+function tiltFrom(u) {
+  const a = frontDeg * Math.PI / 180, f = [Math.cos(a), Math.sin(a)], l = [-Math.sin(a), Math.cos(a)];
+  const uf = u[0] * f[0] + u[1] * f[1], ul = u[0] * l[0] + u[1] * l[1];
+  return { roll: Math.atan2(-ul, u[2]) * 180 / Math.PI, pitch: Math.atan2(-uf, Math.hypot(ul, u[2])) * 180 / Math.PI };
+}
+
 function parseLive(dv) {
-  return {
-    flags: dv.getUint8(1),
-    seq: dv.getUint16(2, true),
-    t: dv.getUint32(4, true),
-    g: dv.getUint16(8, true) / 1000,
-    spin: dv.getUint16(10, true),
-    rot: dv.getUint16(12, true),
-    roll: dv.getInt16(14, true) / 100,
-    pitch: dv.getInt16(16, true) / 100,
+  const ver = dv.getUint8(0);
+  if (ver >= 2) {                        // filtered attitude: live even while moving
+    const u = [dv.getInt16(4, true) / 1e4, dv.getInt16(6, true) / 1e4, dv.getInt16(8, true) / 1e4];
+    lastUp = u; upHist.push(u); if (upHist.length > 12) upHist.shift();
+    const spinSigned = dv.getInt16(12, true);
+    return { ver, flags: dv.getUint8(1), g: dv.getUint16(10, true) / 1000, spin: Math.abs(spinSigned), spinSigned,
+             rot: dv.getUint16(14, true), throws: dv.getUint16(16, true), up: u, ...tiltFrom(u) };
+  }
+  return {                               // v1 (old firmware): accel-only tilt, valid only when still
+    ver, flags: dv.getUint8(1), g: dv.getUint16(8, true) / 1000, spin: dv.getUint16(10, true), spinSigned: 0,
+    rot: dv.getUint16(12, true), roll: -dv.getInt16(14, true) / 100, pitch: dv.getInt16(16, true) / 100,
     throws: dv.getUint16(18, true),
   };
 }
@@ -521,23 +539,23 @@ function showLive(s) {
   else if (s.flags & LIVE_GYRO_SAT)  { st.textContent = "Gyro clipped (>333 rpm)"; st.className = "pill clipped"; }
   else if (s.flags & LIVE_STILL)     { st.textContent = "Still · armed"; st.className = "pill still"; }
   else                               { st.textContent = "Moving"; st.className = "pill moving"; }
-  // Disc attitude from gravity. No clamping: an upside-down disc shows its
-  // striped underside. Tilt only means something while the disc is still, so
-  // freeze it and dim the view while moving instead of showing noise.
-  const still = !!(s.flags & LIVE_STILL);
-  $("stage").classList.toggle("unsure", !still);
-  if (still) {
-    // Roll tips the disc left/right (screen-vertical axis) so it stays visible;
-    // tipping toward the camera would stack with the 55 deg view and go edge-on.
+  // 3D disc. With v2 firmware the tilt is gyro+gravity filtered on the disc,
+  // so it stays live while moving; only v1 data has to freeze when not still.
+  // CSS: rotateY(+) drops the RIGHT edge, rotateX(+) drops the FRONT edge.
+  // (The old view used the opposite roll sign - that was the mirrored axis.)
+  const trustTilt = s.ver >= 2 || (s.flags & LIVE_STILL);
+  $("stage").classList.toggle("unsure", !trustTilt || !!(s.flags & LIVE_GYRO_SAT));
+  if (trustTilt) {
     $("disc").style.transform = `rotateY(${s.roll}deg) rotateX(${-s.pitch}deg)`;
-    const flipped = Math.abs(s.roll) > 90;
-    $("stageLabel").textContent = flipped ? "upside down" : "tilt " + Math.round(Math.hypot(s.roll, s.pitch)) + "°";
+    const tilt = s.up ? Math.acos(Math.max(-1, Math.min(1, s.up[2]))) * 180 / Math.PI : Math.hypot(s.roll, s.pitch);
+    $("stageLabel").textContent = tilt > 90 ? "upside down" : s.spin > 30 ? `spinning · tilt ${Math.round(tilt)}°` : `tilt ${Math.round(tilt)}°`;
   } else {
     $("stageLabel").textContent = s.spin > 30 ? "spinning" : "moving";
   }
-  // Show spin as rotation of the top face, slowed way down so it is visible.
-  spinAngle = (spinAngle + s.spin * 0.04 * 6 * 0.04) % 360;
-  $("discTop").style.transform = `rotateZ(${spinAngle}deg)`;
+  // Spin: the top face turns the measured way (counter-clockwise for + spin),
+  // slowed 20x so it is visible.
+  spinAngle = (spinAngle + (s.spinSigned || 0) * 6 * 0.04 / 20) % 360;
+  $("discTop").style.transform = `rotateZ(${-spinAngle}deg)`;
 
   const now = performance.now();
   series.push({ t: now, spin: s.spin, g: s.g });
@@ -868,6 +886,7 @@ async function setupGatt() {
   cmdChar = await svc.getCharacteristic(CMD);
   $("findBtn").disabled = false;
   $("sensBar").disabled = false;
+  $("frontBtn").disabled = false;
   if (finding) {                       // the disc drops find mode on disconnect; resume it
     await sendCmd("find");
     if (ledOn) await sendCmd("ledon");
@@ -1497,6 +1516,42 @@ document.addEventListener("click", e => {
   setTimeout(() => b.classList.remove("pressed"), 500);
 }, true);
 
+// ---- set front (USB-C) ----
+// Tip the disc so the USB-C port points down: gravity's "up" then leans toward
+// the port in disc axes, and its horizontal direction IS the front.
+$("frontBtn").onclick = () => {
+  if (upHist.length < 5) { alert("No live data yet - connect first."); return; }
+  if (!confirm("Tip the disc so the USB-C port points DOWN toward the floor (about 30–60°), hold it still, then press OK.")) return;
+  const m = upHist.reduce((a, u) => [a[0] + u[0], a[1] + u[1], a[2] + u[2]], [0, 0, 0]).map(v => v / upHist.length);
+  const h = Math.hypot(m[0], m[1]);
+  if (h < 0.34) { alert("Not tipped enough - tip the USB-C side down at least 20° and try again."); return; }
+  frontDeg = Math.atan2(m[1], m[0]) * 180 / Math.PI;
+  try { localStorage.setItem(FRONT_KEY, String(frontDeg)); } catch {}
+  alert("Front set: the USB-C port is now the front of the disc in the live view.");
+};
+
+// ---- export throws for verification against reference instruments ----
+function exportCSV() {
+  const head = ["throw", "date", "time", "speed_mph", "spin_rpm", "hyzer_deg", "nose_deg", "launch_deg", "wobble_deg",
+                "peak_g", "spin_dir", "sensitivity", "flags",
+                "ref_speed_mph", "ref_spin_rpm", "ref_hyzer_deg", "ref_nose_deg", "ref_launch_deg", "ref_method", "notes"];
+  const rows = history.map(t => {
+    const d = new Date(t.at);
+    return [t.seq, d.toLocaleDateString(), d.toLocaleTimeString(), fmt(t.speed, 1), fmt(t.spin), fmt(t.hyzer, 1), fmt(t.nose, 1),
+            fmt(t.launch, 1), fmt(t.wobble, 1), fmt(t.peak, 1), t.ccw === undefined ? "" : (t.ccw ? "ccw" : "cw"),
+            t.sens ?? "", t.flags, "", "", "", "", "", "", ""].join(",");
+  });
+  const csv = head.join(",") + "\n" + rows.join("\n") + "\n";
+  const name = `disctracker-throws-${new Date().toISOString().slice(0, 10)}.csv`;
+  try {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  } catch {
+    navigator.clipboard?.writeText(csv).then(() => alert("Copied the CSV to the clipboard."), () => {});
+  }
+}
+
 // ---- wiring ----
 $("connectBtn").onclick = () => {
   if (!navigator.bluetooth) { $("unsupported").classList.remove("hidden"); return; }
@@ -1511,6 +1566,7 @@ $("connectBtn").onclick = () => {
 };
 $("calBtn").onclick = startCalibration;
 $("copyBtn").onclick = copyResult;
+$("exportBtn").onclick = exportCSV;
 $("standbyBtn").onclick = () => sendCmd("standby");
 $("wakeBtn").onclick = () => sendCmd("wake");
 $("offBtn").onclick = () => {
