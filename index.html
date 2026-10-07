@@ -117,6 +117,29 @@
   .note b { color: var(--text); }
   #unsupported { border-color: var(--warn); }
   .hidden { display: none !important; }
+  /* throw detection */
+  input[type=range] { width: 100%; margin: 14px 0 4px; accent-color: var(--accent); height: 28px; }
+  .sensScale { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  /* find my disc */
+  .meter { position: relative; height: 34px; border-radius: 17px; background: var(--panel2); overflow: hidden; margin-top: 14px; }
+  .meterFill { position: absolute; inset: 0 auto 0 0; width: 0%; border-radius: 17px;
+    background: linear-gradient(90deg, #3b82f6, #22c55e 45%, #f59e0b 70%, #ef4444); transition: width .25s; }
+  .meterPeak { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--text); }
+  .findRow { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; gap: 8px; }
+  .findWord { font-size: 26px; font-weight: 800; }
+  .trend { font-size: 17px; font-weight: 700; }
+  .trend.up { color: #ef4444; } .trend.down { color: #3b82f6; } .trend.flat { color: var(--muted); }
+  .findDist { font-size: 17px; margin-top: 4px; }
+  .dirBox { display: flex; gap: 14px; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .dirArrow { width: 110px; height: 110px; flex: none; transition: transform .2s; }
+  .dirText { flex: 1; }
+  .dirMsg { font-size: 16px; margin-top: 4px; }
+  .calib { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+  .calib summary { cursor: pointer; font-weight: 600; }
+  .calRow { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+  .calRow .d { width: 52px; font-weight: 700; }
+  .calRow .r { flex: 1; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .calRow button { padding: 8px 12px; }
 </style>
 </head>
 <body>
@@ -159,6 +182,67 @@
       after release (needs ~¼ s of clean flight – stand 3–5 m from a net). Out of range? It reconnects and the
       result arrives then.</p>
     <p class="note" id="captureInfo" style="margin-bottom:0"></p>
+  </section>
+
+  <section class="card">
+    <div class="result-head">
+      <div class="label">Throw detection</div>
+      <div class="note" id="sensNote">–</div>
+    </div>
+    <input type="range" id="sensBar" min="1" max="5" step="1" value="5" disabled>
+    <div class="sensScale"><span>Hand tests</span><span>Real throws</span></div>
+    <p class="note" id="sensDesc" style="margin-bottom:0"></p>
+  </section>
+
+  <section class="card" id="findCard">
+    <div class="result-head">
+      <div class="label">Find my disc</div>
+      <div class="note" id="findState">off</div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="primary" id="findBtn" disabled>Start finding</button>
+      <button id="ledBtn" disabled>Flash LED</button>
+      <button id="beepBtn">Beeps: off</button>
+    </div>
+
+    <div class="meter" id="meter">
+      <div class="meterFill" id="meterFill"></div>
+      <div class="meterPeak hidden" id="meterPeak"></div>
+    </div>
+    <div class="findRow">
+      <div><span class="findWord" id="findWord">–</span> <span class="trend" id="trend"></span></div>
+      <div class="note" id="rssiText"></div>
+    </div>
+    <div class="findDist" id="findDist">Distance: –</div>
+
+    <div class="dirBox">
+      <svg id="dirArrow" class="dirArrow hidden" viewBox="-50 -50 100 100" aria-hidden="true">
+        <circle r="46" fill="none" stroke="var(--line)" stroke-width="3"/>
+        <path id="arrowPath" d="M0,-38 L16,6 L5,2 L5,30 L-5,30 L-5,2 L-16,6 Z" fill="var(--accent)"/>
+      </svg>
+      <div class="dirText">
+        <div class="label">Direction</div>
+        <div id="dirMsg" class="dirMsg">Start finding, then tap <b>Find direction</b>.</div>
+        <button id="dirBtn" disabled style="margin-top:8px">Find direction</button>
+      </div>
+    </div>
+
+    <details class="calib">
+      <summary>Calibrate distance (do once, in an open area)</summary>
+      <ol class="steps">
+        <li>Lay the disc flat on the ground in an open spot.</li>
+        <li>Tap <b>Start finding</b> above.</li>
+        <li>For each distance: stand that far away (one long stride ≈ 1 m), hold the phone at chest height
+          facing the disc, tap <b>Record</b> and stay still for 5 seconds.</li>
+        <li>Record at least 3 distances, then tap <b>Save calibration</b>.</li>
+      </ol>
+      <div id="calRows"></div>
+      <div class="row" style="margin-top:10px">
+        <button id="calSave" disabled>Save calibration</button>
+        <button id="calReset">Reset</button>
+      </div>
+      <p class="note" id="calFit" style="margin-bottom:0"></p>
+    </details>
   </section>
 
   <section class="card">
@@ -240,7 +324,7 @@
     <button id="clearBoard" disabled>Erase throws stored on disc</button>
   </div>
 
-  <p class="note">Version 2026-10-05d. Roll/pitch are only accurate while the disc is still.
+  <p class="note">Version 2026-10-07a. Roll/pitch are only accurate while the disc is still.
     Spin above ~333 rpm exceeds the gyro's range; the board then estimates it from the accelerometer.</p>
 </main>
 
@@ -252,6 +336,7 @@ const SUMMARY = "19b10001-e8f2-537e-4f6c-d104768a1214";
 const CMD     = "19b10002-e8f2-537e-4f6c-d104768a1214";
 const LIVE    = "19b10004-e8f2-537e-4f6c-d104768a1214";
 const STATUS  = "19b10005-e8f2-537e-4f6c-d104768a1214";
+const FIND    = "19b10006-e8f2-537e-4f6c-d104768a1214";
 
 const LIVE_STILL = 1, LIVE_CAPTURING = 2, LIVE_GYRO_SAT = 4;
 const F = { VALID: 1, GYRO_Z_SAT: 2, ACCEL_SAT: 4, NO_RELEASE: 8, NO_STATIC: 16, SPIN_FROM_ACC: 32, SHORT_FLIGHT: 64 };
@@ -397,7 +482,9 @@ function showResult(t, isNew) {
   $("rWobble").textContent = fmt(t.wobble, 1);
   $("resultMeta").textContent = `#${t.seq} · ${new Date(t.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` +
     (Number.isFinite(t.peak) ? ` · peak ${t.peak.toFixed(1)} g` : "");
-  $("rChips").innerHTML = chipsFor(t.flags).map(c => `<span class="chip">${c}</span>`).join("");
+  const chips = chipsFor(t.flags);
+  if (t.sens && t.sens < 5) chips.unshift(`Test reading (sensitivity ${t.sens}) – not a full throw measurement`);
+  $("rChips").innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join("");
   $("copyBtn").disabled = false;
   if (isNew) {
     const card = $("resultCard");
@@ -430,7 +517,7 @@ async function copyResult() {
 function renderHistory() {
   const body = $("histBody");
   body.innerHTML = history.slice().reverse().map(t =>
-    `<tr><td>${t.seq}</td><td>${fmt(t.speed, 1)}</td><td>${fmt(t.spin)}</td><td>${signed(t.hyzer)}</td><td>${signed(t.nose)}</td><td>${signed(t.launch)}</td><td>${fmt(t.wobble, 1)}</td></tr>`
+    `<tr><td>${t.seq}${t.sens && t.sens < 5 ? "ᵗ" : ""}</td><td>${fmt(t.speed, 1)}</td><td>${fmt(t.spin)}</td><td>${signed(t.hyzer)}</td><td>${signed(t.nose)}</td><td>${signed(t.launch)}</td><td>${fmt(t.wobble, 1)}</td></tr>`
   ).join("");
   $("histEmpty").classList.toggle("hidden", history.length > 0);
   $("histTable").classList.toggle("hidden", history.length === 0);
@@ -444,7 +531,7 @@ function addThrow(s, demo = false) {
   // restarts at 1 on every power-up, so pair it with the per-boot id.
   const key = s.v === 3 ? `b${s.boot}-${s.seq}` : `${s.seq}-${s.t}`;
   if (history.some(h => h.key === key)) return;
-  const t = { ...s, key, at: Date.now() };
+  const t = { ...s, key, at: Date.now(), sens: lastStatus ? lastStatus.sens : 5 };
   history.push(t); saveHistory(history);
   renderHistory(); showResult(t, true);
   showBanner("", "");                      // clear "result on its way"
@@ -501,6 +588,7 @@ function parseStatus(dv) {
     mode: dv.byteLength >= 20 ? dv.getUint8(19) : 0,
     calState: dv.getUint8(1), calResult: dv.getUint8(2), battery: dv.getUint8(3),
     tilt: dv.getInt16(4, true) / 100, saved: !!(dv.getUint8(6) & 1),
+    charging: !!(dv.getUint8(6) & 2), sens: (dv.getUint8(6) >> 3) & 7,
     lastCapture: dv.getUint8(7), throws: dv.getUint16(8, true),
     rejectPeak: dv.getUint16(10, true) / 10, rejectSpin: dv.getUint16(12, true),
   };
@@ -524,12 +612,13 @@ function showPower(mode) {
 
 function onStatus(st) {
   lastStatus = st;
+  showSens(st.sens);
   showPower(st.mode);
   $("captureInfo").textContent = captureInfo(st);
   noteThrowCount(st.throws);
   const b = $("batt");
   if (st.battery <= 100) {
-    b.textContent = "🔋 " + st.battery + "%";
+    b.textContent = (st.charging ? "⚡ " : "🔋 ") + st.battery + "%";
     b.classList.toggle("low", st.battery < 20);
     b.classList.remove("hidden");
   }
@@ -652,7 +741,20 @@ async function setupGatt() {
   });
   await summary.startNotifications();
 
+  try {
+    const fc = await svc.getCharacteristic(FIND);
+    fc.addEventListener("characteristicvaluechanged", e => onFind(e.target.value));
+    await fc.startNotifications();
+  } catch (e) { console.warn("no find channel (old firmware)", e); }
+
   cmdChar = await svc.getCharacteristic(CMD);
+  $("findBtn").disabled = false;
+  $("sensBar").disabled = false;
+  if (finding) {                       // the disc drops find mode on disconnect; resume it
+    await sendCmd("find");
+    if (ledOn) await sendCmd("ledon");
+    setFinding(true);
+  }
   $("calBtn").disabled = $("clearBoard").disabled = false;
   showPower(discMode === MODE.OFF ? MODE.AWAKE : discMode);   // it answered, so it is not off
   if (!calPending && $("calMsg").textContent.startsWith("Connect")) setCalMsg("");
@@ -666,6 +768,9 @@ function onDisconnected() {
   cmdChar = null;
   $("calBtn").disabled = $("clearBoard").disabled = true;
   $("standbyBtn").disabled = $("wakeBtn").disabled = $("offBtn").disabled = true;
+  $("findBtn").disabled = $("ledBtn").disabled = $("dirBtn").disabled = true;
+  $("sensBar").disabled = true;
+  if (finding) $("findState").textContent = "out of range – reconnecting…";
   if (calPending) { clearTimeout(calPending); calPending = null; setCalMsg("Disconnected during calibration – try again.", "bad"); }
   $("stage").classList.add("unsure");
   if (userDisconnect) { $("connectBtn").textContent = "Connect to disc"; setStatus("Not connected"); return; }
@@ -719,6 +824,299 @@ function startDemo() {
     showLive(s);
   }, 40);
 }
+
+// ---- throw detection (sensitivity bar) ----
+const SENS_TEXT = {
+  1: "Hand tests: almost any motion gives a reading (no spin or release needed). Results are marked as test readings.",
+  2: "Very sensitive: gentle tosses count.",
+  3: "Medium: soft throws count.",
+  4: "Firm throws.",
+  5: "Real throws: needs a proper snap, spin and clean release. Best for accurate numbers.",
+};
+let sensDragging = false;
+function showSens(level) {
+  if (!level) return;
+  if (!sensDragging) $("sensBar").value = level;
+  $("sensNote").textContent = `level ${level}${level === 1 ? " · test mode" : ""}`;
+  $("sensDesc").textContent = SENS_TEXT[level] || "";
+}
+$("sensBar").addEventListener("input", () => { sensDragging = true; showSens(+$("sensBar").value); });
+$("sensBar").addEventListener("change", () => { sensDragging = false; sendCmd("sens " + $("sensBar").value); });
+showSens(5);
+
+// ---- find my disc ----
+// The disc measures the phone's signal (RSSI) ~60x/s and sends the median of
+// each quarter second, 10x/s. Here: smoothing, trend, distance from a
+// calibrated path-loss model, and direction from a body-shield turn.
+const FKEY = "disctracker.findcal.v1";
+const DEFAULT_MODEL = { A: -55, n: 2.5, calibrated: false };   // A = RSSI at 1 m, n = path-loss exponent
+let model = (() => { try { return JSON.parse(localStorage.getItem(FKEY)) || DEFAULT_MODEL; } catch { return DEFAULT_MODEL; } })();
+let finding = false, ledOn = false, beeps = false;
+let smooth = null, lastRaw = null, lastFindAt = 0;
+const fhist = [];                       // {t, v} smoothed, last ~4 s
+let peakRssi = null;
+
+function onFind(dv) {
+  const med = dv.getInt8(1);
+  lastRaw = med; lastFindAt = performance.now();
+  smooth = smooth === null ? med : smooth + 0.3 * (med - smooth);
+  const t = performance.now();
+  fhist.push({ t, v: smooth });
+  while (fhist.length && t - fhist[0].t > 4000) fhist.shift();
+  if (scan) scanSample(med);
+  renderFind();
+}
+
+function rssiPct(r) { return Math.max(0, Math.min(1, (r + 95) / 55)); }   // -95 dBm -> 0, -40 dBm -> 1
+function wordFor(p) { return p < .25 ? "Cold" : p < .5 ? "Cool" : p < .7 ? "Warm" : p < .85 ? "Hot" : "Right here!"; }
+function estDistance(r) { return Math.pow(10, (model.A - r) / (10 * model.n)); }
+function fmtM(d) { return d < 10 ? d.toFixed(1) : Math.round(d).toString(); }
+
+function trendDbPerS() {
+  const pts = fhist.filter(p => performance.now() - p.t < 2000);
+  if (pts.length < 6) return 0;
+  const n = pts.length, mt = pts.reduce((a, p) => a + p.t, 0) / n, mv = pts.reduce((a, p) => a + p.v, 0) / n;
+  let num = 0, den = 0;
+  for (const p of pts) { num += (p.t - mt) * (p.v - mv); den += (p.t - mt) ** 2; }
+  return den ? num / den * 1000 : 0;
+}
+
+function renderFind() {
+  if (smooth === null) return;
+  const p = rssiPct(smooth);
+  $("meterFill").style.width = (p * 100).toFixed(0) + "%";
+  if (peakRssi !== null) { $("meterPeak").classList.remove("hidden"); $("meterPeak").style.left = `calc(${(rssiPct(peakRssi) * 100).toFixed(1)}% - 1px)`; }
+  $("findWord").textContent = wordFor(p);
+  const s = trendDbPerS(), tr = $("trend");
+  if (s > 0.8) { tr.textContent = "↑ warmer"; tr.className = "trend up"; }
+  else if (s < -0.8) { tr.textContent = "↓ colder"; tr.className = "trend down"; }
+  else { tr.textContent = "→ steady"; tr.className = "trend flat"; }
+  $("rssiText").textContent = `${smooth.toFixed(0)} dBm`;
+  const d = estDistance(smooth);
+  // ~4 dB of typical scatter -> about x1.5 either way at n = 2.5
+  const k = Math.pow(10, 4 / (10 * model.n));
+  $("findDist").textContent = d < 1 ? "Distance: within about 1 m" :
+    `Distance: ≈ ${fmtM(d)} m (${fmtM(Math.max(0.5, d / k))}–${fmtM(d * k)} m)` + (model.calibrated ? "" : " · rough – calibrate below");
+  if (dirTarget !== null) renderArrow();
+}
+
+function setFinding(on) {
+  finding = on;
+  $("findBtn").textContent = on ? "Stop finding" : "Start finding";
+  $("findState").textContent = on ? "finding…" : "off";
+  $("ledBtn").disabled = !on || !cmdChar;
+  $("dirBtn").disabled = !on || !cmdChar;
+  if (!on) { smooth = null; fhist.length = 0; stopBeeps(); if (ledOn) toggleLed(false); }
+  else if (beeps) startBeeps();
+  updateCalButtons();
+}
+$("findBtn").onclick = () => {
+  if (!cmdChar) return;
+  if (finding) { sendCmd("findstop"); setFinding(false); }
+  else { sendCmd("find"); setFinding(true); }
+};
+function toggleLed(on) {
+  ledOn = on;
+  $("ledBtn").textContent = on ? "Stop LED" : "Flash LED";
+  sendCmd(on ? "ledon" : "ledoff");
+}
+$("ledBtn").onclick = () => toggleLed(!ledOn);
+
+// Geiger-style ticks: faster when warmer, so you can watch the grass, not the screen.
+let audioCtx = null, beepTimer = null;
+function tick() {
+  if (!audioCtx || smooth === null) return;
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.frequency.value = 600 + 900 * rssiPct(smooth);
+  g.gain.setValueAtTime(0.25, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.06);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + 0.07);
+}
+function scheduleBeep() {
+  const p = smooth === null ? 0 : rssiPct(smooth);
+  beepTimer = setTimeout(() => { tick(); scheduleBeep(); }, 1100 - 950 * p);
+}
+function startBeeps() { if (!beepTimer && finding) scheduleBeep(); }
+function stopBeeps() { clearTimeout(beepTimer); beepTimer = null; }
+$("beepBtn").onclick = () => {
+  beeps = !beeps;
+  $("beepBtn").textContent = "Beeps: " + (beeps ? "on" : "off");
+  if (beeps) { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); startBeeps(); }
+  else stopBeeps();
+};
+
+// ---- direction: body-shield turn ----
+// Your body blocks 2.4 GHz strongly. Phone flat against the chest, turn a
+// full circle: the signal peaks when you face the disc. With a compass the
+// page turns that into an arrow; without one it marks the peak on the meter.
+let heading = null, compassOk = false, scan = null, dirTarget = null;
+function onOrient(e) {
+  if (typeof e.webkitCompassHeading === "number") heading = e.webkitCompassHeading;          // iOS
+  else if (e.absolute && typeof e.alpha === "number") heading = (360 - e.alpha) % 360;      // Android
+  else return;
+  compassOk = true;
+  if (dirTarget !== null) renderArrow();
+}
+async function enableCompass() {
+  try {
+    if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function")
+      await DeviceOrientationEvent.requestPermission();
+  } catch {}
+  window.addEventListener("deviceorientation", onOrient);
+  window.addEventListener("deviceorientationabsolute", onOrient);
+  await sleep(700);
+  return compassOk;
+}
+
+$("dirBtn").onclick = async () => {
+  if (!finding) return;
+  $("dirBtn").disabled = true;
+  const hasCompass = compassOk || await enableCompass();
+  dirTarget = null; $("dirArrow").classList.add("hidden");
+  peakRssi = null; $("meterPeak").classList.add("hidden");
+  scan = { samples: [], start: performance.now(), hasCompass, bins: new Set() };
+  $("dirMsg").innerHTML = "Hold the phone <b>flat against your chest</b>, screen up. <b>Turn slowly in a full circle</b> (about 15 s).";
+  const t0 = performance.now();
+  while (scan && performance.now() - t0 < 22000) {
+    await sleep(250);
+    const secs = Math.round((performance.now() - t0) / 1000);
+    if (hasCompass) {
+      const pct = Math.round(scan.bins.size / 24 * 100);
+      $("dirMsg").innerHTML = `Keep turning slowly… <b>${Math.min(100, pct)}%</b> of the circle (${secs} s)`;
+      if (scan.bins.size >= 21 && secs >= 8) break;          // ~315 deg covered
+    } else {
+      $("dirMsg").innerHTML = `Keep turning slowly… ${secs} s of ~15`;
+      if (secs >= 15) break;
+    }
+  }
+  finishScan();
+  $("dirBtn").disabled = !finding;
+  $("dirBtn").textContent = "Scan again";
+};
+
+function scanSample(rssi) {
+  const s = { t: performance.now() - scan.start, rssi, h: heading };
+  scan.samples.push(s);
+  if (scan.hasCompass && heading !== null) scan.bins.add(Math.floor(heading / 15) % 24);
+}
+
+function finishScan() {
+  const sc = scan; scan = null;
+  if (!sc || sc.samples.length < 20) { $("dirMsg").textContent = "Not enough signal readings – stay connected and try again."; return; }
+  const all = sc.samples.map(s => s.rssi).sort((a, b) => a - b);
+  const med = all[Math.floor(all.length / 2)];
+  if (sc.hasCompass) {
+    // median per 15 deg bin, smoothed 1-2-1 around the circle, then peak
+    const bins = Array.from({ length: 24 }, () => []);
+    sc.samples.forEach(s => { if (s.h !== null) bins[Math.floor(s.h / 15) % 24].push(s.rssi); });
+    const m = bins.map(b => b.length ? b.slice().sort((a, b2) => a - b2)[Math.floor(b.length / 2)] : null);
+    const sm = m.map((v, i) => {
+      const nb = [[m[(i + 23) % 24], 1], [v, 2], [m[(i + 1) % 24], 1]].filter(x => x[0] !== null);
+      return nb.length ? nb.reduce((a, x) => a + x[0] * x[1], 0) / nb.reduce((a, x) => a + x[1], 0) : null;
+    });
+    let best = -1;
+    sm.forEach((v, i) => { if (v !== null && (best < 0 || v > sm[best])) best = i; });
+    // refine: weighted circular mean of the peak and its neighbours
+    let sx = 0, sy = 0;
+    const lo = Math.min(...sm.filter(v => v !== null));
+    for (let k = -2; k <= 2; k++) {
+      const i = (best + k + 24) % 24; if (sm[i] === null) continue;
+      const w = sm[i] - lo + 0.1, ang = (i * 15 + 7.5) * Math.PI / 180;
+      sx += w * Math.sin(ang); sy += w * Math.cos(ang);
+    }
+    dirTarget = (Math.atan2(sx, sy) * 180 / Math.PI + 360) % 360;
+    peakRssi = sm[best];
+    dirConfidence(sm[best] - med);
+    $("dirArrow").classList.remove("hidden");
+    renderArrow();
+  } else {
+    // no compass: when in the turn was it strongest? mark it on the meter
+    const sm = sc.samples.map((s, i, a) => {
+      const w = a.slice(Math.max(0, i - 3), i + 4).map(x => x.rssi).sort((x, y) => x - y);
+      return { t: s.t, v: w[Math.floor(w.length / 2)] };
+    });
+    const best = sm.reduce((a, b) => b.v > a.v ? b : a);
+    peakRssi = best.v;
+    const frac = Math.round(best.t / sc.samples[sc.samples.length - 1].t * 100);
+    $("dirMsg").innerHTML = `Strongest about <b>${frac}%</b> of the way through your turn. ` +
+      `Turn back slowly with the phone on your chest and <b>stop when the meter reaches the white line</b> – that's the way.` +
+      confidenceNote(best.v - med);
+  }
+  renderFind();
+}
+
+function confidenceNote(db) {
+  if (db >= 8) return " <i>(strong direction)</i>";
+  if (db >= 4) return " <i>(fair direction)</i>";
+  return " <i>(weak – very close, very far, or blocked. Walk ~10 m and scan again.)</i>";
+}
+function dirConfidence(db) { scanConf = confidenceNote(db); }
+let scanConf = "";
+
+function renderArrow() {
+  if (dirTarget === null || heading === null) return;
+  const rel = ((dirTarget - heading + 540) % 360) - 180;          // -180..180, + = to the right
+  $("dirArrow").style.transform = `rotate(${rel}deg)`;
+  const a = Math.abs(rel);
+  $("dirMsg").innerHTML = (a < 20 ? "<b>Straight ahead</b> – walk this way."
+    : `Turn <b>${rel > 0 ? "right" : "left"} ${Math.round(a / 5) * 5}°</b>`) +
+    (smooth !== null ? ` · ${$("findDist").textContent.replace("Distance: ", "")}` : "") + scanConf +
+    "<br><span class='note'>Re-scan every 10–20 m – it gets sharper as you close in.</span>";
+}
+
+// ---- distance calibration ----
+const CAL_DISTS = [1, 2, 4, 8, 15];
+const calPts = {};                     // d -> median rssi
+function updateCalButtons() {
+  document.querySelectorAll(".calRec").forEach(b => b.disabled = !finding);
+  $("calSave").disabled = Object.keys(calPts).length < 3;
+}
+function renderCalRows() {
+  $("calRows").innerHTML = CAL_DISTS.map(d =>
+    `<div class="calRow"><span class="d">${d} m</span><span class="r" id="calr${d}">${calPts[d] !== undefined ? calPts[d].toFixed(0) + " dBm" : "–"}</span>` +
+    `<button class="calRec" data-d="${d}" ${finding ? "" : "disabled"}>Record</button></div>`).join("");
+  document.querySelectorAll(".calRec").forEach(b => b.onclick = () => recordCal(+b.dataset.d, b));
+  updateCalButtons();
+  $("calFit").textContent = model.calibrated
+    ? `Calibrated: ${model.A.toFixed(0)} dBm at 1 m, falloff ${model.n.toFixed(2)} (fit ±${(model.rms ?? 0).toFixed(1)} dB).`
+    : "Not calibrated – distances use a rough default.";
+}
+async function recordCal(d, btn) {
+  btn.disabled = true;
+  const vals = [];
+  for (let i = 5; i > 0; i--) {
+    $("calr" + d).textContent = `hold still… ${i}`;
+    const t = performance.now();
+    while (performance.now() - t < 1000) { await sleep(100); if (lastRaw !== null && performance.now() - lastFindAt < 300) vals.push(lastRaw); }
+  }
+  if (vals.length < 10) { $("calr" + d).textContent = "no signal – is finding on?"; btn.disabled = false; return; }
+  vals.sort((a, b) => a - b);
+  calPts[d] = vals[Math.floor(vals.length / 2)];
+  renderCalRows();
+}
+$("calSave").onclick = () => {
+  // least squares: rssi = A - 10 n log10(d)
+  const pts = Object.entries(calPts).map(([d, r]) => ({ x: Math.log10(+d), y: r }));
+  const n = pts.length, mx = pts.reduce((a, p) => a + p.x, 0) / n, my = pts.reduce((a, p) => a + p.y, 0) / n;
+  let sxy = 0, sxx = 0; pts.forEach(p => { sxy += (p.x - mx) * (p.y - my); sxx += (p.x - mx) ** 2; });
+  const slope = sxy / sxx;
+  let pn = -slope / 10, A = my - slope * mx, note = "";
+  if (!(pn >= 1.4 && pn <= 5)) { note = " Readings didn't fall off with distance as expected – clamped. Re-record in an open area."; pn = Math.max(1.4, Math.min(5, pn || 2.5)); A = my + 10 * pn * mx; }
+  const rms = Math.sqrt(pts.reduce((a, p) => a + (p.y - (A - 10 * pn * p.x)) ** 2, 0) / n);
+  model = { A, n: pn, rms, calibrated: true };
+  try { localStorage.setItem(FKEY, JSON.stringify(model)); } catch {}
+  renderCalRows();
+  $("calFit").textContent += note;
+  renderFind();
+};
+$("calReset").onclick = () => {
+  Object.keys(calPts).forEach(k => delete calPts[k]);
+  model = DEFAULT_MODEL;
+  try { localStorage.removeItem(FKEY); } catch {}
+  renderCalRows();
+};
+renderCalRows();
 
 // ---- wiring ----
 $("connectBtn").onclick = () => {
