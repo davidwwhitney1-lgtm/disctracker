@@ -140,6 +140,42 @@
   .calRow .d { width: 52px; font-weight: 700; }
   .calRow .r { flex: 1; color: var(--muted); font-variant-numeric: tabular-nums; }
   .calRow button { padding: 8px 12px; }
+  /* tabs */
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 5px; }
+  .tabs button { padding: 10px; background: transparent; color: var(--muted); }
+  .tabs button.on { background: var(--accent2); color: #fff; }
+  .tab { display: grid; gap: 14px; }
+  /* buttons feel pressed */
+  button { transition: transform .08s, background-color .15s, color .15s, box-shadow .2s; }
+  button:not(:disabled):active { transform: scale(.96); }
+  button.pressed { background: var(--accent2) !important; color: #fff !important; box-shadow: 0 0 0 3px rgba(74,168,255,.35); }
+  button.on { background: var(--accent2); color: #fff; }
+  button.primary.on { background: var(--warn); color: #1d1300; }
+  /* simulate form */
+  .field { width: 100%; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--panel2); color: var(--text); margin-top: 8px; }
+  .lbl { display: block; margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .inputs6, .inputs4, .inputs2 { display: grid; gap: 8px; margin-top: 10px; }
+  .inputs6 { grid-template-columns: repeat(3, 1fr); }
+  .inputs4 { grid-template-columns: repeat(4, 1fr); }
+  .inputs2 { grid-template-columns: repeat(2, 1fr); }
+  .inputs6 label, .inputs4 label, .inputs2 label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .inputs6 label span, .inputs2 label span { text-transform: none; }
+  .inputs6 input, .inputs4 input, .inputs2 input { width: 100%; font: inherit; font-size: 18px; font-weight: 700; padding: 8px 10px;
+    border-radius: 10px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); margin-top: 4px; }
+  .windRow { margin-top: 6px; }
+  .windRow button { min-width: 60px; padding: 10px 6px; }
+  .simStats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+  @media (max-width: 480px) { .simStats { grid-template-columns: repeat(2, 1fr); } }
+  .simStats .tile .v { font-size: 22px; }
+  .simStats .tile.main .v { font-size: 30px; font-weight: 800; }
+  .simTop { width: 100%; height: 420px; display: block; margin-top: 12px; background: var(--panel2); border-radius: 12px; }
+  .simSide { width: 100%; height: 140px; display: block; margin-top: 8px; background: var(--panel2); border-radius: 12px; }
+  .chip.info { color: var(--accent2); }
+  .hrow { cursor: pointer; }
+  .hrow:active td { background: var(--panel2); }
+  .battLine { font-size: 18px; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -153,16 +189,21 @@
   <div class="card hidden" id="unsupported">
     <b>This browser can't use Bluetooth.</b>
     <p class="note">On <b>Android</b>, open this page in <b>Chrome</b>. On <b>iPhone</b>, Safari can't do it, so install the free
-      <b>Bluefy</b> browser from the App Store and open this page there. You can still try the demo below.</p>
+      <b>Bluefy</b> browser from the App Store and open this page there.</p>
   </div>
 
   <div class="row">
     <button class="primary" id="connectBtn">Connect to disc</button>
-    <button id="demoBtn">Demo</button>
   </div>
+
+  <nav class="tabs">
+    <button data-tab="throw" class="on">Throw data</button>
+    <button data-tab="sim">Simulate</button>
+  </nav>
 
   <div class="banner hidden" id="banner"></div>
 
+  <div id="tab-throw" class="tab">
   <section class="card" id="resultCard">
     <div class="result-head">
       <div class="label">Last throw</div>
@@ -306,6 +347,7 @@
       <div class="label">Power</div>
       <div class="note" id="powerMode">–</div>
     </div>
+    <div class="battLine" id="battLine">Battery: –</div>
     <div class="row" style="margin-top:10px">
       <button id="standbyBtn" disabled>Standby</button>
       <button id="wakeBtn" disabled>Wake up</button>
@@ -315,7 +357,7 @@
       <li><b>Standby</b> – saves most of the battery. Tap <b>Wake up</b>, or just pick up the disc.
         Happens on its own after 5 min without motion.</li>
       <li><b>Turn off</b> – saves the most. While off the disc can't hear Bluetooth, so turn it back on with a
-        <b>firm flick or shake</b>. It also turns itself off after 2 h in standby with no phone, or when the
+        <b>firm flick or shake</b>. It also turns itself off after 4 h in standby with no phone, or when the
         battery is low. (Never while plugged into USB – it uses standby then.)</li>
     </ul>
   </section>
@@ -324,8 +366,83 @@
     <button id="clearBoard" disabled>Erase throws stored on disc</button>
   </div>
 
-  <p class="note">Version 2026-10-07a. Roll/pitch are only accurate while the disc is still.
+  <p class="note">Version 2026-10-07b. Roll/pitch are only accurate while the disc is still.
     Spin above ~333 rpm exceeds the gyro's range; the board then estimates it from the accelerometer.</p>
+  </div>
+
+  <div id="tab-sim" class="tab hidden">
+    <section class="card">
+      <div class="result-head"><div class="label">Throw</div></div>
+      <select id="simSource" class="field"></select>
+      <div class="inputs6">
+        <label>Speed <span>mph</span><input id="sSpeed" type="number" inputmode="decimal" step="0.1"></label>
+        <label>Spin <span>rpm</span><input id="sSpin" type="number" inputmode="decimal" step="10"></label>
+        <label>Hyzer <span>°</span><input id="sHyzer" type="number" inputmode="decimal" step="0.5"></label>
+        <label>Nose <span>°</span><input id="sNose" type="number" inputmode="decimal" step="0.5"></label>
+        <label>Launch <span>°</span><input id="sLaunch" type="number" inputmode="decimal" step="0.5"></label>
+        <label>Wobble <span>°</span><input id="sWobble" type="number" inputmode="decimal" step="0.5"></label>
+      </div>
+      <label class="lbl">Throw style
+        <select id="simStyle" class="field">
+          <option value="rhbh">Right-hand backhand</option>
+          <option value="rhfh">Right-hand forehand</option>
+          <option value="lhbh">Left-hand backhand</option>
+          <option value="lhfh">Left-hand forehand</option>
+        </select>
+      </label>
+      <p class="note" id="spinNote" style="margin:6px 0 0"></p>
+    </section>
+
+    <section class="card">
+      <div class="result-head"><div class="label">Disc</div></div>
+      <select id="bagSel" class="field"></select>
+      <label class="lbl">Name<input id="dName" class="field" type="text" maxlength="40"></label>
+      <div class="inputs4">
+        <label>Speed<input id="dSpeed" type="number" inputmode="decimal" step="0.5" min="1" max="15"></label>
+        <label>Glide<input id="dGlide" type="number" inputmode="decimal" step="0.5" min="1" max="7"></label>
+        <label>Turn<input id="dTurn" type="number" inputmode="decimal" step="0.5" min="-5" max="2"></label>
+        <label>Fade<input id="dFade" type="number" inputmode="decimal" step="0.5" min="0" max="6"></label>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button id="bagSave">Save to bag</button>
+        <button id="bagDel">Remove</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="result-head"><div class="label">Conditions</div></div>
+      <div class="inputs2">
+        <label>Wind <span>mph</span><input id="windMph" type="number" inputmode="decimal" step="1" min="0" value="0"></label>
+        <label>Release height <span>ft</span><input id="relHeight" type="number" inputmode="decimal" step="0.5" min="0" value="4"></label>
+      </div>
+      <div class="label" style="margin-top:12px">Wind from</div>
+      <div class="row windRow">
+        <button class="windBtn on" data-from="0">Head</button>
+        <button class="windBtn" data-from="180">Tail</button>
+        <button class="windBtn" data-from="270">Left</button>
+        <button class="windBtn" data-from="90">Right</button>
+      </div>
+      <label class="lbl">Exact direction <span class="note">(0 = straight at you, 90 = from your right)</span>
+        <input id="windFrom" class="field" type="number" inputmode="numeric" step="5" min="0" max="359" value="0"></label>
+    </section>
+
+    <button class="primary wide" id="simBtn">Simulate flight</button>
+
+    <section class="card hidden" id="simResult">
+      <div class="result-head"><div class="label">Flight</div><button id="simReplay" style="padding:6px 12px;font-size:13px">Replay</button></div>
+      <div class="simStats">
+        <div class="tile main"><div class="label">Distance</div><div class="v"><span id="simDist">–</span><small> ft</small></div></div>
+        <div class="tile"><div class="label">Finish</div><div class="v"><span id="simLat">–</span><small> ft</small></div></div>
+        <div class="tile"><div class="label">Max height</div><div class="v"><span id="simHigh">–</span><small> ft</small></div></div>
+        <div class="tile"><div class="label">Hang time</div><div class="v"><span id="simTime">–</span><small> s</small></div></div>
+      </div>
+      <canvas id="simTop" class="simTop"></canvas>
+      <canvas id="simSide" class="simSide"></canvas>
+      <p class="note" id="simLegend" style="margin-bottom:0"></p>
+      <p class="note" style="margin-bottom:0">Physics model built from scratch: flight shape (turn, fade, wind effects) is the
+        goal; absolute distance is approximate until it's tuned against your real throws.</p>
+    </section>
+  </div>
 </main>
 
 <script>
@@ -339,10 +456,10 @@ const STATUS  = "19b10005-e8f2-537e-4f6c-d104768a1214";
 const FIND    = "19b10006-e8f2-537e-4f6c-d104768a1214";
 
 const LIVE_STILL = 1, LIVE_CAPTURING = 2, LIVE_GYRO_SAT = 4;
-const F = { VALID: 1, GYRO_Z_SAT: 2, ACCEL_SAT: 4, NO_RELEASE: 8, NO_STATIC: 16, SPIN_FROM_ACC: 32, SHORT_FLIGHT: 64 };
+const F = { VALID: 1, GYRO_Z_SAT: 2, ACCEL_SAT: 4, NO_RELEASE: 8, NO_STATIC: 16, SPIN_FROM_ACC: 32, SHORT_FLIGHT: 64, SPIN_CCW: 128 };
 
 const $ = id => document.getElementById(id);
-let device = null, cmdChar = null, demoTimer = null, userDisconnect = false, wakeLock = null;
+let device = null, cmdChar = null, userDisconnect = false, wakeLock = null;
 let spinAngle = 0;
 
 // ---- live history for the chart ----
@@ -375,7 +492,7 @@ function parseSummary(dv) {
       speed: dv.getUint16(6, true) / 10, spin: dv.getUint16(8, true),
       hyzer: dv.getInt16(10, true) / 10, nose: dv.getInt16(12, true) / 10,
       launch: dv.getInt16(14, true) / 10, wobble: dv.getUint16(16, true) / 10,
-      peak: dv.getUint8(18) / 4,
+      peak: dv.getUint8(18) / 4, ccw: !!(dv.getUint8(1) & 128),
     };
   }
   if (dv.byteLength >= 40) {                                 // v2: 40-byte floats (old firmware)
@@ -483,6 +600,7 @@ function showResult(t, isNew) {
   $("resultMeta").textContent = `#${t.seq} · ${new Date(t.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` +
     (Number.isFinite(t.peak) ? ` · peak ${t.peak.toFixed(1)} g` : "");
   const chips = chipsFor(t.flags);
+  if (t.ccw !== undefined) chips.unshift(t.ccw ? "Spin: counter-clockwise (RH forehand / LH backhand)" : "Spin: clockwise (RH backhand / LH forehand)");
   if (t.sens && t.sens < 5) chips.unshift(`Test reading (sensitivity ${t.sens}) – not a full throw measurement`);
   $("rChips").innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join("");
   $("copyBtn").disabled = false;
@@ -517,15 +635,15 @@ async function copyResult() {
 function renderHistory() {
   const body = $("histBody");
   body.innerHTML = history.slice().reverse().map(t =>
-    `<tr><td>${t.seq}${t.sens && t.sens < 5 ? "ᵗ" : ""}</td><td>${fmt(t.speed, 1)}</td><td>${fmt(t.spin)}</td><td>${signed(t.hyzer)}</td><td>${signed(t.nose)}</td><td>${signed(t.launch)}</td><td>${fmt(t.wobble, 1)}</td></tr>`
+    `<tr class="hrow" data-key="${t.key}"><td>${t.seq}${t.sens && t.sens < 5 ? "ᵗ" : ""}</td><td>${fmt(t.speed, 1)}</td><td>${fmt(t.spin)}</td><td>${signed(t.hyzer)}</td><td>${signed(t.nose)}</td><td>${signed(t.launch)}</td><td>${fmt(t.wobble, 1)}</td></tr>`
   ).join("");
+  body.querySelectorAll(".hrow").forEach(r => r.onclick = () => { simThrowKey = r.dataset.key; showTab("sim"); });
   $("histEmpty").classList.toggle("hidden", history.length > 0);
   $("histTable").classList.toggle("hidden", history.length === 0);
 }
 
-function addThrow(s, demo = false) {
+function addThrow(s) {
   if (!(s.flags & F.VALID)) return;
-  if (demo) { showResult({ ...s, at: Date.now() }, true); return; }   // never pollute real history
   noteResultArrived(s.seq);
   // The board resends stored throws after a reconnect. Its throw number
   // restarts at 1 on every power-up, so pair it with the per-boot id.
@@ -619,6 +737,7 @@ function onStatus(st) {
   const b = $("batt");
   if (st.battery <= 100) {
     b.textContent = (st.charging ? "⚡ " : "🔋 ") + st.battery + "%";
+    $("battLine").innerHTML = `Battery: <b>${st.battery}%</b>${st.charging ? " · charging" : ""}`;
     b.classList.toggle("low", st.battery < 20);
     b.classList.remove("hidden");
   }
@@ -672,7 +791,6 @@ const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeo
 let reconnecting = false, lastLiveFlags = 0, attempts = 0;
 
 async function connect() {
-  stopDemo();
   try {
     if (!device) {
       device = await navigator.bluetooth.requestDevice({
@@ -799,32 +917,6 @@ async function keepAwake() {
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && device?.gatt?.connected) keepAwake(); });
 
-// ---- demo mode: fake data so the page can be tried away from the disc ----
-function stopDemo() { if (demoTimer) { clearInterval(demoTimer); demoTimer = null; $("demoBtn").textContent = "Demo"; if (!device?.gatt?.connected) setStatus("Not connected"); } }
-function startDemo() {
-  let t = 0, phase = "still", phaseT = 0, seq = history.length;
-  setStatus("Demo mode", "busy"); $("demoBtn").textContent = "Stop demo";
-  demoTimer = setInterval(() => {
-    t += 40; phaseT += 40;
-    let s;
-    if (phase === "still") {
-      s = { flags: LIVE_STILL, g: 1 + (Math.random() - .5) * .01, spin: 0, rot: 1, roll: 2 + Math.random() * .3, pitch: -3 + Math.random() * .3 };
-      if (phaseT > 4000) { phase = "throw"; phaseT = 0; }
-    } else if (phase === "throw") {
-      const k = phaseT / 3000, spin = 900 * Math.exp(-k * .3);
-      s = { flags: LIVE_CAPTURING | LIVE_GYRO_SAT, g: phaseT < 300 ? 9 : .3 + Math.random() * .2, spin: Math.min(spin, 333), rot: 2000,
-            roll: Math.sin(t / 50) * 40, pitch: Math.cos(t / 50) * 40 };
-      if (phaseT > 3000) {
-        phase = "still"; phaseT = 0;
-        addThrow({ battery: 87, seq: ++seq, t: Date.now(), speed: 42 + Math.random() * 18, spin: 750 + Math.random() * 400,
-                   hyzer: (Math.random() - .3) * 20, nose: (Math.random() - .5) * 8, launch: 2 + Math.random() * 10,
-                   wobble: Math.random() * 6, peak: 12 + Math.random() * 6, flags: F.VALID | F.GYRO_Z_SAT | F.SPIN_FROM_ACC, n: 1248 }, true);
-      }
-    }
-    showLive(s);
-  }, 40);
-}
-
 // ---- throw detection (sensitivity bar) ----
 const SENS_TEXT = {
   1: "Hand tests: almost any motion gives a reading (no spin or release needed). Results are marked as test readings.",
@@ -903,6 +995,7 @@ function renderFind() {
 function setFinding(on) {
   finding = on;
   $("findBtn").textContent = on ? "Stop finding" : "Start finding";
+  $("findBtn").classList.toggle("on", on);
   $("findState").textContent = on ? "finding…" : "off";
   $("ledBtn").disabled = !on || !cmdChar;
   $("dirBtn").disabled = !on || !cmdChar;
@@ -918,6 +1011,7 @@ $("findBtn").onclick = () => {
 function toggleLed(on) {
   ledOn = on;
   $("ledBtn").textContent = on ? "Stop LED" : "Flash LED";
+  $("ledBtn").classList.toggle("on", on);
   sendCmd(on ? "ledon" : "ledoff");
 }
 $("ledBtn").onclick = () => toggleLed(!ledOn);
@@ -942,6 +1036,7 @@ function stopBeeps() { clearTimeout(beepTimer); beepTimer = null; }
 $("beepBtn").onclick = () => {
   beeps = !beeps;
   $("beepBtn").textContent = "Beeps: " + (beeps ? "on" : "off");
+  $("beepBtn").classList.toggle("on", beeps);
   if (beeps) { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); startBeeps(); }
   else stopBeeps();
 };
@@ -1118,6 +1213,290 @@ $("calReset").onclick = () => {
 };
 renderCalRows();
 
+// ====================================================================
+// Flight simulator (built from scratch - TechDisc's model is closed)
+// ====================================================================
+// Physics, per 4 ms step:
+//   * lift and drag from the angle of attack between the disc plane and
+//     the air (relative to wind), as in published frisbee flight models
+//   * a pitching moment that depends on airspeed vs the disc's rated speed:
+//     nose-down at high speed (TURN rating) and nose-up at low speed (FADE)
+//   * gyroscopic precession: the spin turns that pitching moment into a slow
+//     roll of the disc (dn/dt = spin_sign * torque / (I * omega)), which is
+//     what bends the flight - turn early, fade late
+// Flight numbers set the coefficients (speed -> drag and rated airspeed,
+// glide -> lift, turn/fade -> pitching moment). Absolute distance is
+// approximate; flight SHAPE is the goal. TUNE holds every knob in one place.
+const TUNE = {
+  // tuned 2026-10-07 against typical amateur flights (driver 60 mph ~320-350 ft with
+  // an S-curve, putter, midrange, under/overstable shapes). Re-tune with real landings.
+  mass: 0.175, radius: 0.1055, rho: 1.225, inertiaK: 0.6,
+  ratedBase: 8, ratedPerSpeed: 1.4,           // rated airspeed m/s = base + per * speed
+  cd0Base: 0.095, cd0PerSpeed: 0.003, cdAlpha: 0.8, alpha0Deg: -2, cdWobble: 0.0015,
+  cl0Base: 0.06, cl0PerGlide: 0.01, clAlpha: 2.2,
+  cmAlpha: 0, kTurn: 0.003, kFade: 0.02, switchAt: 0.5, switchWidth: 0.08,
+  spinDecayS: 12,
+};
+
+const v3 = {
+  add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+  sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+  mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
+  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  len: a => Math.hypot(a[0], a[1], a[2]),
+  norm: a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; },
+};
+
+// Axes: x = down the throw line, y = LEFT, z = up. Units SI inside, feet out.
+function simulateFlight(p) {
+  const T = TUNE, D2R = Math.PI / 180, MPH = 0.44704, FT = 3.28084;
+  const A = Math.PI * T.radius ** 2, d = 2 * T.radius, I = T.inertiaK * T.mass * T.radius ** 2;
+  const S = p.disc.speed, G = p.disc.glide, TU = p.disc.turn, FA = p.disc.fade;
+  const vRated = T.ratedBase + T.ratedPerSpeed * S;
+  const CD0 = T.cd0Base - T.cd0PerSpeed * S + T.cdWobble * Math.abs(p.wobble || 0);
+  const CL0 = T.cl0Base + T.cl0PerGlide * G;
+  const s = p.ccw ? 1 : -1;                       // +1 counter-clockwise from above
+
+  const L = p.launch * D2R;
+  const f = [Math.cos(L), 0, Math.sin(L)];
+  let pos = [0, 0, p.heightFt / FT];
+  let vel = v3.mul(f, p.speedMph * MPH);
+  // disc normal: perpendicular to the flight, tipped back by NOSE, then rolled
+  // toward the fade side by HYZER (fade side: left for clockwise, right for ccw)
+  const nPerp = [-Math.sin(L), 0, Math.cos(L)];
+  const nNose = v3.norm(v3.sub(v3.mul(nPerp, Math.cos(p.nose * D2R)), v3.mul(f, Math.sin(p.nose * D2R))));
+  const left = v3.norm(v3.cross(nNose, f));
+  const fadeSide = s < 0 ? left : v3.mul(left, -1);
+  let n = v3.norm(v3.add(v3.mul(nNose, Math.cos(p.hyzer * D2R)), v3.mul(fadeSide, Math.sin(p.hyzer * D2R))));
+  let omega = Math.max(p.spinRpm, 50) * 2 * Math.PI / 60;
+
+  const w = (p.windMph || 0) * MPH, th = (p.windFrom || 0) * D2R;   // from: 0 head, 90 right, 180 tail, 270 left
+  const windVel = v3.mul([Math.cos(th), -Math.sin(th), 0], -w);
+
+  const dt = 0.004, path = [];
+  let t = 0, maxH = pos[2], nextRec = 0;
+  while (t < 15) {
+    const va = v3.sub(vel, windVel), V = v3.len(va);
+    if (V < 0.1) break;
+    const vh = v3.mul(va, 1 / V);
+    const alpha = -Math.asin(Math.max(-1, Math.min(1, v3.dot(vh, n))));
+    const q = 0.5 * T.rho * V * V;
+    const CL = CL0 + T.clAlpha * alpha;
+    const CD = CD0 + T.cdAlpha * (alpha - T.alpha0Deg * D2R) ** 2;
+    let liftDir = v3.sub(n, v3.mul(vh, v3.dot(n, vh)));
+    liftDir = v3.len(liftDir) > 1e-6 ? v3.norm(liftDir) : [0, 0, 1];
+    const force = v3.add(v3.mul(v3.sub(v3.mul(liftDir, CL), v3.mul(vh, CD)), q * A), [0, 0, -9.81 * T.mass]);
+    vel = v3.add(vel, v3.mul(force, dt / T.mass));
+    pos = v3.add(pos, v3.mul(vel, dt));
+
+    const hi = 1 / (1 + Math.exp(-((V / vRated) - T.switchAt) / T.switchWidth));   // 1 = fast
+    const CM = T.cmAlpha * alpha + T.kTurn * TU * hi + T.kFade * FA * (1 - hi);
+    const axis = v3.cross(vh, n);                    // nose-up torque points to the right of the airflow
+    if (v3.len(axis) > 1e-6) {
+      const tau = v3.mul(v3.norm(axis), q * A * d * CM);
+      let dn = v3.mul(tau, s / (I * omega));
+      dn = v3.sub(dn, v3.mul(n, v3.dot(dn, n)));
+      n = v3.norm(v3.add(n, v3.mul(dn, dt)));
+    }
+    omega *= 1 - dt / T.spinDecayS;
+
+    t += dt;
+    if (pos[2] > maxH) maxH = pos[2];
+    if (t >= nextRec) { path.push({ t, x: pos[0] * FT, y: pos[1] * FT, z: pos[2] * FT }); nextRec += 0.02; }
+    if (pos[2] <= 0) break;
+  }
+  path.push({ t, x: pos[0] * FT, y: pos[1] * FT, z: Math.max(0, pos[2] * FT) });
+  return { path, distFt: Math.hypot(pos[0], pos[1]) * FT, lateralFt: pos[1] * FT, maxHFt: maxH * FT, timeS: t };
+}
+
+// ---- simulate tab UI ----
+const BKEY = "disctracker.bag.v1", SKEY = "disctracker.simdefaults.v1";
+const DEFAULT_BAG = [
+  { name: "Distance driver", speed: 12, glide: 5, turn: -1, fade: 3 },
+  { name: "Fairway driver", speed: 7, glide: 5, turn: 0, fade: 2 },
+  { name: "Midrange", speed: 5, glide: 5, turn: 0, fade: 1 },
+  { name: "Putter", speed: 2, glide: 3, turn: 0, fade: 1 },
+  { name: "Understable driver", speed: 9, glide: 5, turn: -3, fade: 1 },
+];
+const loadJSON = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const saveJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+let bag = loadJSON(BKEY, DEFAULT_BAG);
+let simThrowKey = null, lastFlight = null, ghostFlight = null, animId = null;
+
+const STYLES = { rhbh: ["Right-hand backhand", false], lhfh: ["Left-hand forehand", false],
+                 rhfh: ["Right-hand forehand", true], lhbh: ["Left-hand backhand", true] };   // [label, ccw]
+
+function renderBag(selectName) {
+  $("bagSel").innerHTML = bag.map((b, i) => `<option value="${i}">${b.name} (${b.speed}/${b.glide}/${b.turn}/${b.fade})</option>`).join("") +
+    `<option value="new">+ New disc…</option>`;
+  const i = bag.findIndex(b => b.name === selectName);
+  $("bagSel").value = i >= 0 ? i : 0;
+  fillDisc(bag[+$("bagSel").value] || bag[0]);
+}
+function fillDisc(b) { if (!b) return; $("dName").value = b.name; $("dSpeed").value = b.speed; $("dGlide").value = b.glide; $("dTurn").value = b.turn; $("dFade").value = b.fade; }
+function readDisc() {
+  const num = (id, lo, hi) => Math.max(lo, Math.min(hi, parseFloat($(id).value) || 0));
+  return { name: $("dName").value.trim() || "Disc", speed: num("dSpeed", 1, 15), glide: num("dGlide", 1, 7), turn: num("dTurn", -5, 2), fade: num("dFade", 0, 6) };
+}
+$("bagSel").onchange = () => { const v = $("bagSel").value; if (v === "new") { fillDisc({ name: "", speed: 9, glide: 5, turn: -1, fade: 2 }); $("dName").focus(); } else fillDisc(bag[+v]); };
+$("bagSave").onclick = () => {
+  const d = readDisc(); const i = bag.findIndex(b => b.name.toLowerCase() === d.name.toLowerCase());
+  if (i >= 0) bag[i] = d; else bag.push(d);
+  saveJSON(BKEY, bag); renderBag(d.name);
+};
+$("bagDel").onclick = () => {
+  const v = $("bagSel").value; if (v === "new" || bag.length <= 1) return;
+  if (!confirm(`Remove ${bag[+v].name} from your bag?`)) return;
+  bag.splice(+v, 1); saveJSON(BKEY, bag); renderBag();
+};
+
+function renderSimSources() {
+  const opts = history.slice().reverse().map(t =>
+    `<option value="${t.key}">#${t.seq}${t.sens && t.sens < 5 ? " (test)" : ""} · ${fmt(t.speed, 1)} mph · ${new Date(t.at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</option>`);
+  $("simSource").innerHTML = opts.join("") + `<option value="custom">Custom numbers</option>`;
+  $("simSource").value = simThrowKey && history.some(h => h.key === simThrowKey) ? simThrowKey : (history.length ? history[history.length - 1].key : "custom");
+  loadSimThrow();
+}
+function loadSimThrow() {
+  const key = $("simSource").value, t = history.find(h => h.key === key);
+  simThrowKey = t ? key : null;
+  const defs = loadJSON(SKEY, {});
+  const src = t || defs.custom || { speed: 55, spin: 900, hyzer: 0, nose: 0, launch: 10, wobble: 2 };
+  [["sSpeed", "speed"], ["sSpin", "spin"], ["sHyzer", "hyzer"], ["sNose", "nose"], ["sLaunch", "launch"], ["sWobble", "wobble"]]
+    .forEach(([id, k]) => { $(id).value = Number.isFinite(src[k]) ? Math.round(src[k] * 10) / 10 : ""; });
+  const sim = (t && t.sim) || defs;
+  // throw style: saved choice for this throw, else match the measured spin direction to the usual hand
+  let style = sim.style || defs.style || "rhbh";
+  if (t && t.ccw !== undefined && STYLES[style][1] !== t.ccw) style = t.ccw ? (style[0] === "r" ? "rhfh" : "lhbh") : (style[0] === "r" ? "rhbh" : "lhfh");
+  $("simStyle").value = style;
+  $("spinNote").textContent = t && t.ccw !== undefined
+    ? `Disc measured: ${t.ccw ? "counter-clockwise" : "clockwise"} spin (from above).` : "";
+  renderBag(sim.disc ? sim.disc.name : (defs.disc && defs.disc.name));
+  if (sim.disc) fillDisc(sim.disc);
+  $("windMph").value = sim.windMph ?? 0; $("windFrom").value = sim.windFrom ?? 0; $("relHeight").value = sim.heightFt ?? 4;
+  [...document.querySelectorAll(".windBtn")].forEach(b => b.classList.toggle("on", +b.dataset.from === +$("windFrom").value));
+}
+$("simSource").onchange = loadSimThrow;
+document.querySelectorAll(".windBtn").forEach(b => b.onclick = () => {
+  $("windFrom").value = b.dataset.from;
+  document.querySelectorAll(".windBtn").forEach(x => x.classList.toggle("on", x === b));
+});
+
+function readSim() {
+  const n = id => parseFloat($(id).value);
+  return {
+    speedMph: Math.max(5, n("sSpeed") || 0), spinRpm: Math.max(0, n("sSpin") || 0), hyzer: n("sHyzer") || 0,
+    nose: n("sNose") || 0, launch: n("sLaunch") || 0, wobble: n("sWobble") || 0,
+    style: $("simStyle").value, ccw: STYLES[$("simStyle").value][1], disc: readDisc(),
+    windMph: Math.max(0, n("windMph") || 0), windFrom: ((n("windFrom") || 0) % 360 + 360) % 360,
+    heightFt: Math.max(0, n("relHeight") || 4),
+  };
+}
+
+$("simBtn").onclick = () => {
+  const p = readSim();
+  const saved = { style: p.style, disc: p.disc, windMph: p.windMph, windFrom: p.windFrom, heightFt: p.heightFt };
+  if (simThrowKey) {                              // remember these inputs with this throw
+    const t = history.find(h => h.key === simThrowKey);
+    if (t) { t.sim = saved; saveHistory(history); }
+  }
+  saveJSON(SKEY, { ...saved, custom: simThrowKey ? undefined : { speed: p.speedMph, spin: p.spinRpm, hyzer: p.hyzer, nose: p.nose, launch: p.launch, wobble: p.wobble } });
+  if (lastFlight) ghostFlight = lastFlight;
+  lastFlight = { ...simulateFlight(p), label: `${p.disc.name}, ${fmt(p.speedMph)} mph` };
+  const r = lastFlight;
+  $("simDist").textContent = Math.round(r.distFt);
+  $("simLat").textContent = Math.abs(r.lateralFt) < 1 ? "0" : `${Math.round(Math.abs(r.lateralFt))} ${r.lateralFt > 0 ? "L" : "R"}`;
+  $("simHigh").textContent = Math.round(r.maxHFt);
+  $("simTime").textContent = r.timeS.toFixed(1);
+  $("simResult").classList.remove("hidden");
+  animateFlight();
+  $("simResult").scrollIntoView({ behavior: "smooth", block: "start" });
+};
+$("simReplay").onclick = () => lastFlight && animateFlight();
+
+function animateFlight() {
+  cancelAnimationFrame(animId);
+  const start = performance.now(), speedUp = 1.5, total = lastFlight.timeS;
+  const step = () => {
+    const tt = Math.min(total, (performance.now() - start) / 1000 * speedUp);
+    drawFlight(tt);
+    if (tt < total) animId = requestAnimationFrame(step);
+  };
+  step();
+}
+
+function drawFlight(tt) {
+  const fl = lastFlight, gh = ghostFlight;
+  const flights = [fl, gh].filter(Boolean);
+  const maxX = Math.max(100, ...flights.flatMap(f => f.path.map(p => p.x))) * 1.08;
+  const maxY = Math.max(40, ...flights.flatMap(f => f.path.map(p => Math.abs(p.y)))) * 1.2;
+  const maxZ = Math.max(20, ...flights.flatMap(f => f.path.map(p => p.z))) * 1.2;
+  const css = getComputedStyle(document.documentElement);
+  const col = { line: css.getPropertyValue("--line"), muted: css.getPropertyValue("--muted"), acc: css.getPropertyValue("--accent"), acc2: css.getPropertyValue("--accent2") };
+
+  // top view: throw line runs bottom -> top, left of the line is screen-left
+  {
+    const c = $("simTop"), ctx = c.getContext("2d"), dpr = window.devicePixelRatio || 1;
+    const W = c.clientWidth, H = c.clientHeight;
+    c.width = W * dpr; c.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const pad = 22, sx = (W / 2 - pad) / maxY, sy = (H - 2 * pad) / maxX, k = Math.min(sx, sy);
+    const X = y => W / 2 - y * k, Y = x => H - pad - x * k;
+    ctx.font = "11px system-ui"; ctx.fillStyle = col.muted; ctx.strokeStyle = col.line; ctx.lineWidth = 1;
+    const stepFt = maxX > 400 ? 100 : 50;
+    for (let ft = stepFt; ft < maxX; ft += stepFt) { ctx.beginPath(); ctx.moveTo(0, Y(ft)); ctx.lineTo(W, Y(ft)); ctx.stroke(); ctx.fillText(ft + " ft", 4, Y(ft) - 3); }
+    ctx.setLineDash([4, 5]); ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(0), Y(maxX)); ctx.stroke(); ctx.setLineDash([]);
+    const trace = (f, color, upto, width) => {
+      ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath();
+      f.path.forEach((p, i) => { if (p.t > upto) return; i ? ctx.lineTo(X(p.y), Y(p.x)) : ctx.moveTo(X(p.y), Y(p.x)); });
+      ctx.stroke();
+    };
+    if (gh) trace(gh, col.muted, Infinity, 2);
+    trace(fl, col.acc, tt, 3);
+    const cur = fl.path.filter(p => p.t <= tt).pop() || fl.path[0];
+    ctx.fillStyle = col.acc2; ctx.beginPath(); ctx.arc(X(cur.y), Y(cur.x), 6, 0, 7); ctx.fill();
+    ctx.fillStyle = col.muted; ctx.fillText("top view", W - 58, H - 6);
+  }
+  // side view: distance left -> right, height up
+  {
+    const c = $("simSide"), ctx = c.getContext("2d"), dpr = window.devicePixelRatio || 1;
+    const W = c.clientWidth, H = c.clientHeight;
+    c.width = W * dpr; c.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const pad = 18, kx = (W - 2 * pad) / maxX, kz = (H - 2 * pad) / maxZ;
+    const X = x => pad + x * kx, Z = z => H - pad - z * kz;
+    ctx.strokeStyle = col.line; ctx.beginPath(); ctx.moveTo(0, Z(0)); ctx.lineTo(W, Z(0)); ctx.stroke();
+    ctx.font = "11px system-ui"; ctx.fillStyle = col.muted; ctx.fillText(Math.round(maxZ / 1.2) + " ft high", 4, 12);
+    const trace = (f, color, upto, width) => {
+      ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath();
+      f.path.forEach((p, i) => { if (p.t > upto) return; i ? ctx.lineTo(X(p.x), Z(p.z)) : ctx.moveTo(X(p.x), Z(p.z)); });
+      ctx.stroke();
+    };
+    if (gh) trace(gh, col.muted, Infinity, 2);
+    trace(fl, col.acc, tt, 3);
+    const cur = fl.path.filter(p => p.t <= tt).pop() || fl.path[0];
+    ctx.fillStyle = col.acc2; ctx.beginPath(); ctx.arc(X(cur.x), Z(cur.z), 5, 0, 7); ctx.fill();
+    ctx.fillStyle = col.muted; ctx.fillText("side view", W - 60, H - 4);
+  }
+  $("simLegend").textContent = ghostFlight ? `green: ${fl.label} · grey: previous (${ghostFlight.label})` : fl.label;
+}
+
+// ---- tabs ----
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("hidden", t.id !== "tab-" + name));
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.tab === name));
+  try { localStorage.setItem("disctracker.tab", name); } catch {}
+  if (name === "sim") { renderSimSources(); if (lastFlight) drawFlight(lastFlight.timeS); }
+}
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+
+// ---- buttons light up when pressed ----
+document.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b || b.disabled) return;
+  b.classList.remove("pressed"); void b.offsetWidth; b.classList.add("pressed");
+  setTimeout(() => b.classList.remove("pressed"), 500);
+}, true);
+
 // ---- wiring ----
 $("connectBtn").onclick = () => {
   if (!navigator.bluetooth) { $("unsupported").classList.remove("hidden"); return; }
@@ -1130,7 +1509,6 @@ $("connectBtn").onclick = () => {
   }
   connect();
 };
-$("demoBtn").onclick = () => demoTimer ? stopDemo() : startDemo();
 $("calBtn").onclick = startCalibration;
 $("copyBtn").onclick = copyResult;
 $("standbyBtn").onclick = () => sendCmd("standby");
@@ -1147,7 +1525,7 @@ $("clearLocal").onclick = () => { if (confirm("Clear the throw history on this p
 if (!navigator.bluetooth) { $("unsupported").classList.remove("hidden"); $("connectBtn").disabled = true; }
 renderHistory();
 if (history.length) showResult(history[history.length - 1], false);
-if (new URLSearchParams(location.search).has("demo")) startDemo();
+showTab((() => { try { return localStorage.getItem("disctracker.tab") || "throw"; } catch { return "throw"; } })());
 </script>
 </body>
 </html>
