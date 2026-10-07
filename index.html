@@ -176,6 +176,7 @@
   .chip.info { color: var(--accent2); }
   .hrow { cursor: pointer; }
   .hrow:active td { background: var(--panel2); }
+  .spinCal { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
   .battLine { font-size: 18px; margin-top: 8px; }
 </style>
 </head>
@@ -341,8 +342,19 @@
     </ol>
     <button class="primary wide" id="calBtn" disabled>Calibrate</button>
     <div class="calmsg" id="calMsg">Connect to the disc first.</div>
-    <p class="note" style="margin-bottom:0">Do this once after mounting (and again if the board moves). It's saved on
+    <p class="note">Do this once after mounting (and again if the board moves). It's saved on
       the disc, so turning it off doesn't lose it.</p>
+    <div class="spinCal">
+      <div class="result-head"><div class="label">Spin above 333 rpm</div><div class="note" id="spinCalState">–</div></div>
+      <p class="note">The gyro tops out at 333 rpm. Above that the disc estimates spin two ways: the drag "wave" in
+        flight, and centripetal force – which needs to know how far the sensor sits from the spin axis.
+        It <b>learns that by itself from gentle spinning throws (under ~330 rpm)</b>, or calibrate it here:</p>
+      <ol class="steps">
+        <li>Lay the disc <b>flat</b> on a lazy Susan, turntable or a fixture on a drill press (low speed).</li>
+        <li>Tap <b>Calibrate spin</b>, then spin it steadily at <b>120–320 rpm</b> (2–5 turns a second) for about 10 seconds.</li>
+      </ol>
+      <button id="spinCalBtn" class="wide" disabled>Calibrate spin</button>
+    </div>
   </section>
 
   <section class="card">
@@ -369,7 +381,7 @@
     <button id="clearBoard" disabled>Erase throws stored on disc</button>
   </div>
 
-  <p class="note">Version 2026-10-07c. Roll/pitch are only accurate while the disc is still.
+  <p class="note">Version 2026-10-07d. Roll/pitch are only accurate while the disc is still.
     Spin above ~333 rpm exceeds the gyro's range; the board then estimates it from the accelerometer.</p>
   </div>
 
@@ -494,7 +506,8 @@ function parseLive(dv) {
     lastUp = u; upHist.push(u); if (upHist.length > 12) upHist.shift();
     const spinSigned = dv.getInt16(12, true);
     return { ver, flags: dv.getUint8(1), g: dv.getUint16(10, true) / 1000, spin: Math.abs(spinSigned), spinSigned,
-             rot: dv.getUint16(14, true), throws: dv.getUint16(16, true), up: u, ...tiltFrom(u) };
+             rot: dv.getUint16(14, true), throws: dv.getUint16(16, true), spinAlt: dv.getUint16(18, true),
+             up: u, ...tiltFrom(u) };
   }
   return {                               // v1 (old firmware): accel-only tilt, valid only when still
     ver, flags: dv.getUint8(1), g: dv.getUint16(8, true) / 1000, spin: dv.getUint16(10, true), spinSigned: 0,
@@ -510,7 +523,7 @@ function parseSummary(dv) {
       speed: dv.getUint16(6, true) / 10, spin: dv.getUint16(8, true),
       hyzer: dv.getInt16(10, true) / 10, nose: dv.getInt16(12, true) / 10,
       launch: dv.getInt16(14, true) / 10, wobble: dv.getUint16(16, true) / 10,
-      peak: dv.getUint8(18) / 4, ccw: !!(dv.getUint8(1) & 128),
+      peak: dv.getUint8(18) / 4, ccw: !!(dv.getUint8(1) & 128), spinSrc: dv.getUint8(19),
     };
   }
   if (dv.byteLength >= 40) {                                 // v2: 40-byte floats (old firmware)
@@ -529,14 +542,17 @@ const fmt = (v, d = 0) => Number.isFinite(v) ? v.toFixed(d) : "–";
 const signed = (v, d = 1) => Number.isFinite(v) ? (v > 0 ? "+" : "") + v.toFixed(d) : "–";
 
 function showLive(s) {
-  $("spin").textContent = fmt(s.spin);
+  // above 333 rpm the gyro is maxed; show the centripetal estimate instead
+  const est = (s.flags & LIVE_GYRO_SAT) && s.spinAlt > 0;
+  $("spin").textContent = est ? "~" + fmt(s.spinAlt) : fmt(s.spin);
   $("g").innerHTML = fmt(s.g, 2) + "<small> g</small>";
   $("rot").innerHTML = fmt(s.rot) + "<small> °/s</small>";
   $("roll").innerHTML = signed(s.roll) + "<small>°</small>";
   $("pitch").innerHTML = signed(s.pitch) + "<small>°</small>";
   const st = $("state");
   if (s.flags & LIVE_CAPTURING)      { st.textContent = "Capturing throw…"; st.className = "pill capturing"; }
-  else if (s.flags & LIVE_GYRO_SAT)  { st.textContent = "Gyro clipped (>333 rpm)"; st.className = "pill clipped"; }
+  else if (s.flags & LIVE_GYRO_SAT)  { st.textContent = est ? "Above gyro range – centripetal estimate" : "Gyro maxed (>333 rpm) – calibrate spin for an estimate";
+                                        st.className = "pill clipped"; }
   else if (s.flags & LIVE_STILL)     { st.textContent = "Still · armed"; st.className = "pill still"; }
   else                               { st.textContent = "Moving"; st.className = "pill moving"; }
   // 3D disc. With v2 firmware the tilt is gyro+gravity filtered on the disc,
@@ -596,8 +612,7 @@ let history = loadHistory();
 
 function chipsFor(flags) {
   const out = [];
-  if (flags & F.SPIN_FROM_ACC) out.push("Spin estimated from accelerometer (gyro maxed)");
-  else if (flags & F.GYRO_Z_SAT) out.push("Gyro maxed – spin is a minimum");
+  if (flags & F.GYRO_Z_SAT && !(flags & F.SPIN_FROM_ACC)) out.push("Gyro maxed – spin is a minimum");
   if (flags & F.ACCEL_SAT) out.push("Accelerometer maxed – speed unreliable");
   if (flags & F.NO_STATIC) out.push("Disc wasn't still before throw – angles less certain");
   if (flags & F.NO_RELEASE) out.push("Release not detected cleanly");
@@ -618,6 +633,9 @@ function showResult(t, isNew) {
   $("resultMeta").textContent = `#${t.seq} · ${new Date(t.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` +
     (Number.isFinite(t.peak) ? ` · peak ${t.peak.toFixed(1)} g` : "");
   const chips = chipsFor(t.flags);
+  const SRC = { 1: "Spin from the drag-wave method (gyro maxed)", 2: "Spin from the centripetal method (gyro maxed)",
+                3: "Spin: drag-wave and centripetal methods agree (gyro maxed)" };
+  if (SRC[t.spinSrc]) chips.unshift(SRC[t.spinSrc]);
   if (t.ccw !== undefined) chips.unshift(t.ccw ? "Spin: counter-clockwise (RH forehand / LH backhand)" : "Spin: clockwise (RH backhand / LH forehand)");
   if (t.sens && t.sens < 5) chips.unshift(`Test reading (sensitivity ${t.sens}) – not a full throw measurement`);
   $("rChips").innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join("");
@@ -725,6 +743,7 @@ function parseStatus(dv) {
     calState: dv.getUint8(1), calResult: dv.getUint8(2), battery: dv.getUint8(3),
     tilt: dv.getInt16(4, true) / 100, saved: !!(dv.getUint8(6) & 1),
     charging: !!(dv.getUint8(6) & 2), sens: (dv.getUint8(6) >> 3) & 7,
+    spinRadiusKnown: !!(dv.getUint8(6) & 64), spinCalRunning: !!(dv.getUint8(6) & 128),
     lastCapture: dv.getUint8(7), throws: dv.getUint16(8, true),
     rejectPeak: dv.getUint16(10, true) / 10, rejectSpin: dv.getUint16(12, true),
   };
@@ -746,7 +765,16 @@ function showPower(mode) {
   }
 }
 
+let spinCalWasRunning = false;
 function onStatus(st) {
+  const sc = $("spinCalState");
+  if (st.spinCalRunning) { sc.textContent = "measuring… keep it spinning"; $("spinCalBtn").disabled = true; }
+  else {
+    if (spinCalWasRunning) sc.textContent = st.spinRadiusKnown ? "✓ calibrated" : "✗ not enough steady spin – try again";
+    else sc.textContent = st.spinRadiusKnown ? "calibrated ✓" : "not learned yet";
+    $("spinCalBtn").disabled = !cmdChar;
+  }
+  spinCalWasRunning = st.spinCalRunning;
   lastStatus = st;
   showSens(st.sens);
   showPower(st.mode);
@@ -887,6 +915,7 @@ async function setupGatt() {
   $("findBtn").disabled = false;
   $("sensBar").disabled = false;
   $("frontBtn").disabled = false;
+  $("spinCalBtn").disabled = false;
   if (finding) {                       // the disc drops find mode on disconnect; resume it
     await sendCmd("find");
     if (ledOn) await sendCmd("ledon");
@@ -1566,6 +1595,7 @@ $("connectBtn").onclick = () => {
 };
 $("calBtn").onclick = startCalibration;
 $("copyBtn").onclick = copyResult;
+$("spinCalBtn").onclick = () => { sendCmd("spincal"); $("spinCalState").textContent = "starting… spin it now"; };
 $("exportBtn").onclick = exportCSV;
 $("standbyBtn").onclick = () => sendCmd("standby");
 $("wakeBtn").onclick = () => sendCmd("wake");
