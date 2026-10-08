@@ -33,10 +33,10 @@ The XIAO nRF52840 Sense is soldered flat on top and keeps BLE, charging and firm
 - XIAO nRF52840: charger BQ25101, 50 mA default (100 mA option) -> battery >= 50 mAh.
 
 ## Before KiCad
-1. Measure XIAO height (incl. USB-C) and weight. (you)
+1. ~~Measure XIAO~~ done: 2.027 g, ~4.0 mm tall (incl. USB-C). Pod height now ~7.9 mm.
 2. Measure rim depth / inside rim diameter of your shallowest driver; disc weights. (you)
-3. Choose battery: ~3 mm thick, >= 50 mAh, protected, <= 15x20 mm. (you; I can shortlist)
-4. Confirm: 56 mm board, XIAO at +15 mm with edge USB-C, dock + twist-lock pod. (you)
+3. Choose battery from `batteries.md`. (you)
+4. ~~Confirm layout~~ done: 56 mm board, XIAO at +15 mm with edge USB-C; balance via battery position + trim pads.
 5. Seeed XIAO SMD footprint; LGA-14 footprint vs TN0018; JLCPCB footprints for MMC5603NJ / CPT-9019S; LSM6DSV320X stock. (me, part of KiCad work)
 
 See `overview.html` for diagrams with confidence tags.
