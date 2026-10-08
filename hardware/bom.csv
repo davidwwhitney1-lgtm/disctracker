@@ -1,17 +1,20 @@
-Ref,Part,Value,Package,Qty,Populate,Notes
-U1,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.86,1,Yes,Center IMU: gyro +/-4000 dps; accel +/-16 g plus high-g channel
-U2,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.86,1,Yes,Spin pair A at (+20.00; 0) mm
-U3,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.86,1,Yes,Spin pair A at (-20.00; 0) mm
-U4,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.86,1,DNP,Spin pair B at (0; +20.00) mm - fit later
-U5,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.86,1,DNP,Spin pair B at (0; -20.00) mm - fit later
-U6,MEMSIC MMC5603NJ,,WLCSP 0.8x0.8,1,Yes,Magnetometer; JLCPCB C404328; I2C 0x30; position TBD (away from XIAO charger/battery traces)
-C1-C10,Capacitor,100 nF,0402,10,Yes (6 of 10),2 per LSM6DSV320X (VDD and VDDIO); C7-C10 DNP with U4/U5
-C11,Capacitor,2.2 uF,0402,1,Yes,Magnetometer decoupling (datasheet: min 2.2 uF close to VDD)
-C12,Capacitor,10 uF,0603,1,Yes,Bulk at the XIAO 3V3 connection
-R1 R2,Resistor,4.7 k,0402,2,Yes,I2C pull-ups for the magnetometer
-R3,Resistor,33 R,0402,1,Yes,Series resistor on SPI clock (20 mm runs)
-M1,Seeed XIAO nRF52840 Sense,,castellated SMD,1,Yes,Soldered flat on top; centered over U1
-BZ1,Piezo buzzer (non-magnetic),,small SMD,1,Yes,On D6 via JP1 (B side); part TBD
-JP1,3-pad solder jumper,,SMD,1,Yes,D6 -> A: U5 CS / B: buzzer; ship bridged to B
-Q1,Small NPN/MOSFET buzzer driver,,SOT-23,1,TBD,Only if a bare piezo on GPIO is too quiet
-J1 J2,Battery pads BAT+ BAT-,,pads,2,Yes,To the XIAO underside battery pads
+Ref,Part,Value,Package,Qty,Populate,Face,Notes
+U1,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.83,1,Yes,Sensor,Center IMU
+U2,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.83,1,Yes,Sensor,Spin pair A (+20.00; 0)
+U3,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.83,1,Yes,Sensor,Spin pair A (-20.00; 0)
+U4,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.83,1,DNP,Sensor,Spin pair B (0; +20.00)
+U5,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.83,1,DNP,Sensor,Spin pair B (0; -20.00)
+U6,MEMSIC MMC5603NJ,,WLCSP 0.8x0.8,1,Yes,Sensor,Magnetometer at (0; -24); JLCPCB C404328; I2C 0x30
+C1-C10,Capacitor,100 nF,0402,10,6 of 10,Sensor,VDD (pin 8) + VDDIO (pin 5) per IMU; C7-C10 DNP with U4/U5
+C11,Capacitor,2.2 uF,0402,1,Yes,Sensor,Magnetometer VDD (datasheet minimum 2.2 uF)
+C12,Capacitor,10 uF,0603,1,Yes,XIAO,Bulk at XIAO 3V3
+R1 R2,Resistor,4.7 k,0402,2,Yes,Sensor,I2C pull-ups (magnetometer)
+R3,Resistor,33 R,0402,1,Yes,Sensor,Series on SPI clock
+R4-R8,Resistor,100 k,0402,5,Yes,Sensor,CS pull-ups to 3V3 (firmware disables chips' internal pull-up with I2C_I3C_disable)
+M1,Seeed XIAO nRF52840 Sense,,castellated SMD,1,Yes,XIAO,Center at about (+15; 0) so USB-C reaches the pod edge; hand-soldered
+BZ1,CUI CPT-9019S-SMT-TR,,9x9x1.9 SMD,1,Yes,XIAO,Piezo 3 V / 5 mA / 65 dB @10 cm / 4 kHz; JLCPCB C95163; at (0; +21.5)
+JP1,3-pad solder jumper,,SMD,1,Yes,XIAO,D6 -> A: U5 CS / B: BZ1; ship bridged to B
+Q1,Small NPN/MOSFET,,SOT-23,1,DNP,XIAO,Optional buzzer driver if too quiet
+BT1,LiPo 3.7 V with protection,>=50 mAh,~3x15x20 mm,1,Yes,XIAO,Part TBD; at about (-18; 0); bonded down
+J1 J2,Battery pads,,pads,2,Yes,XIAO,To XIAO BAT pads
+TP1,Balance trim pad,,copper pad,1,Yes,XIAO,At (0; -21.5) opposite the buzzer; add solder to trim

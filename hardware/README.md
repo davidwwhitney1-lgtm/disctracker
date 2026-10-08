@@ -14,28 +14,29 @@ The XIAO nRF52840 Sense is soldered flat on top and keeps BLE, charging and firm
 | `pinmap.csv` | XIAO pin to net to part |
 | `kicad/README.md` | KiCad project setup, sheet plan, layout rules, pre-fab checklist |
 
-## Decided
-- Spin to 2,500 rpm; keep the Bluetooth RSSI finder (UWB, GPS, Channel Sounding dropped).
-- **48 mm round board**, 4 layers, 0.8 mm, solid ground plane.
-- 5 LSM6DSV320X footprints (center + 2 pairs at 20.00 mm), **build with 3** (center + pair A); U4/U5 DNP.
-- SPI, one CS per IMU; MMC5603NJ magnetometer on I2C.
-- **Buzzer on D6** through 3-pad jumper JP1 (A = U5 CS, B = buzzer); non-magnetic piezo.
-- **No extra flash on step 1** - at the new board's ~113 KB/s, 16 MB holds only ~48 throw windows; revisit on step 2.
-- **Sensors on one face, XIAO hand-soldered on the other** (a flat-soldered XIAO leaves no room for U1 under it).
-  Center alignment hole replaced by 3 holes on a 22 mm circle.
+## Decided / recommended (revision 2)
+- **Dock + pod housing**: a light dock glued under every disc; one pod twists in/out (keyed quarter turn). See `housing.md`.
+- **56 mm round board** (was 48), 4 layers, 0.8 mm (0.6 mm or cutouts to save weight). Pod ~8 mm tall vs ~11 mm shallowest rim.
+- Sensors on one face (factory assembled), XIAO + battery + buzzer on the other (hand-soldered).
+  U1 stays at the exact center; the XIAO only computes, so its position doesn't affect the measurements.
+- **XIAO shifted to ~+15 mm** so USB-C reaches the pod edge (charge/flash in place); battery opposite at ~-18 mm for balance.
+- Spin pairs at 20.00 mm; U4/U5 DNP. Magnetometer at (0, -24).
+- Buzzer CUI CPT-9019S on D6 via JP1. 100 k CS pull-ups R4-R8.
+- No extra flash on step 1.
 
-## Datasheet check
-- MMC5603NJ (Rev. B datasheet, confirmed): A1 GND, A2 SCL, B1 VDD, B2 SDA; 1.62-3.6 V; **>= 2.2 uF** bypass
-  (C11 changed from 1 uF); I2C 0x30; 1 kHz only with hpower=1; keep away from current traces on either face and from the battery.
-- LSM6DSV320X (from Zephyr bindings; ST PDF blocked from the build container - re-verify): accel 2-320 g incl. 256 g,
-  high-g ODR 480-7680 Hz, gyro up to 4000 dps (667 rpm).
-- Still needed from the ST PDF: LGA-14 pin numbers + land pattern, SDx/SCx/OCS_Aux tie-offs in SPI mode, SPI max clock.
+## Datasheets (checked)
+- LSM6DSV320X (ST DS14623 Rev 1): pins 1 SDO, 2 SDx, 3 SCx, 4 INT1, 5 VDDIO, 6-7 GND, 8 VDD, 9 INT2, 10 OCS_aux,
+  11 SDO_aux, 12 CS, 13 SCL/SPC, 14 SDA/SDI. SDx/SCx -> GND; INT2/OCS_aux/SDO_aux unconnected. VDD 1.71-3.6 V,
+  SPI <= 10 MHz, high-g +/-32..320 g at 480-7680 Hz, gyro <= 4000 dps, 2.5x3.0x0.83 mm, ~0.9 mA. Land pattern: TN0018.
+  Firmware: set I2C_I3C_disable (IF_CFG 03h) on every chip first.
+- MMC5603NJ: A1 GND, A2 SCL, B1 VDD, B2 SDA; >= 2.2 uF; I2C 0x30; keep away from current traces on both faces and the battery.
+- XIAO nRF52840: charger BQ25101, 50 mA default (100 mA option) -> battery >= 50 mAh.
 
-## Open
-1. LSM6DSV320X pinout/footprint (above).
-2. Magnetometer position vs XIAO charger / battery traces (needs XIAO footprint details).
-3. Piezo part and whether Q1 driver is needed.
-4. Balance trim-pad sizes (needs a mass map), battery size/runtime.
-5. Housing: weight (closed 1 mm shell ~6-9 g; target 3-5 g), rim clearance (~15.6 mm stack), USB-C/LED/sound openings.
+## Before KiCad
+1. Measure XIAO height (incl. USB-C) and weight. (you)
+2. Measure rim depth / inside rim diameter of your shallowest driver; disc weights. (you)
+3. Choose battery: ~3 mm thick, >= 50 mAh, protected, <= 15x20 mm. (you; I can shortlist)
+4. Confirm: 56 mm board, XIAO at +15 mm with edge USB-C, dock + twist-lock pod. (you)
+5. Seeed XIAO SMD footprint; LGA-14 footprint vs TN0018; JLCPCB footprints for MMC5603NJ / CPT-9019S; LSM6DSV320X stock. (me, part of KiCad work)
 
-See `overview.html` for wiring, board layout and housing diagrams with confidence tags.
+See `overview.html` for diagrams with confidence tags.

@@ -1,15 +1,16 @@
-XIAO_pin,Net,Goes_to,Notes
-3V3,+3V3,VDD+VDDIO of U1-U5; VDD of U6; R1 R2; C12,
-GND,GND,All GND + ground plane,
-D8 (SCK),SPI_SCK,U1-U5 SCL/SPC via R3 (33 R),
-D10 (MOSI),SPI_MOSI,U1-U5 SDA/SDI,
-D9 (MISO),SPI_MISO,U1-U5 SDO/SA0,
-D0,CS1,U1 CS,Idle high (pull-up)
-D1,CS2,U2 CS,Idle high (pull-up)
-D2,CS3,U3 CS,Idle high (pull-up)
-D3,CS4,U4 CS,DNP at first; idle high
-D6,CS5 / BUZZER,JP1 common -> A: U5 CS / B: BZ1,Ships bridged to buzzer while U5 is DNP
-D7,INT1,U1 INT1,Data-ready: read all sensors together
-D4 (SDA),I2C_SDA,U6 SDA + R1,
-D5 (SCL),I2C_SCL,U6 SCL + R2,
-BAT+/BAT-,VBAT,Pads to XIAO underside battery pads,
+XIAO_pin,nRF_pin,Net,Goes_to,Notes
+3V3,,+3V3,IMU pin 8 VDD + pin 5 VDDIO; U6 B1; R1 R2 R4-R8; C12,
+GND,,GND,IMU pins 6 7 + pins 2 SDx 3 SCx; U6 A1; plane,
+D8,P1.13,SPI_SCK,IMU pin 13 (SCL/SPC) via R3,
+D10,P1.15,SPI_MOSI,IMU pin 14 (SDA/SDI),
+D9,P1.14,SPI_MISO,IMU pin 1 (SDO/TA0),
+D0,P0.02,CS1,U1 pin 12,R4 100k pull-up
+D1,P0.03,CS2,U2 pin 12,R5 100k pull-up
+D2,P0.28,CS3,U3 pin 12,R6 100k pull-up
+D3,P0.29,CS4,U4 pin 12,R7 100k pull-up; U4 DNP
+D6,P1.11,CS5 / BUZZER,JP1: A -> U5 pin 12 / B -> BZ1,R8 on U5 side; ship bridged to B
+D7,P1.12,INT1,U1 pin 4,Data-ready
+D4,P0.04,I2C_SDA,U6 B2 + R1,
+D5,P0.05,I2C_SCL,U6 A2 + R2,
+BAT+/BAT-,,VBAT,XIAO underside BAT pads -> J1 J2 -> BT1,
+-,,NC,IMU pins 9 INT2 / 10 OCS_aux / 11 SDO_aux,Soldered to pad; no connection (datasheet)

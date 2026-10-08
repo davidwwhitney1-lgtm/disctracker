@@ -1,7 +1,11 @@
-Ref,X_mm,Y_mm,Rotation,Populate,Role
-U1,0.00,0.00,0,Yes,Center IMU
-U2,20.00,0.00,0,Yes,Pair A (+X)
-U3,-20.00,0.00,0,Yes,Pair A (-X)
-U4,0.00,20.00,0,DNP,Pair B (+Y)
-U5,0.00,-20.00,0,DNP,Pair B (-Y)
-U6,8.00,8.00,0,Yes,Magnetometer (8-10 mm off center; check >=10 mm from battery leads/charger/USB/buzzer)
+Ref,X_mm,Y_mm,Rotation,Face,Populate,Role
+U1,0.00,0.00,0,Sensor,Yes,Center IMU
+U2,20.00,0.00,0,Sensor,Yes,Pair A (+X)
+U3,-20.00,0.00,0,Sensor,Yes,Pair A (-X)
+U4,0.00,20.00,0,Sensor,DNP,Pair B (+Y)
+U5,0.00,-20.00,0,Sensor,DNP,Pair B (-Y)
+U6,0.00,-24.20,0,Sensor,Yes,Magnetometer (>=10 mm from XIAO and battery)
+M1,15.00,0.00,0,XIAO,Yes,XIAO (offset TBD by USB-C notch and balance)
+BT1,-18.00,0.00,90,XIAO,Yes,Battery (position tuned for balance)
+BZ1,0.00,21.50,0,XIAO,Yes,Buzzer
+TP1,0.00,-21.50,0,XIAO,Yes,Balance trim
