@@ -20,3 +20,18 @@ Leftover = imbalance a solder trim pad must make up (1 g*mm ~ 0.04 g of solder a
 Notes: listed weights vary by seller and include leads/plugs; cut leads short and solder to J1/J2.
 EEMB specs from the EEMB Li-polymer overview table. Runtime estimate ~8 mA active -> 70 mAh ~ 8 h, 100 mAh ~ 12 h.
 Final balance: weigh-and-trim the assembled pod on a center pin; trim pads on +/-X and +/-Y.
+
+## Runtime estimate (new board, 3 IMUs fitted; 80% of capacity usable)
+Current budget (estimate): 3x LSM6DSV320X 2.7 mA (datasheet ~0.9 mA each) + MMC5603 at 100 Hz 1.3 mA (datasheet)
++ nRF52840 reading 1,920 Hz + processing ~3 mA + Bluetooth ~1 mA = ~8 mA active (6-12 mA range).
+
+| Mode | 70 mAh | 85 | 100 | 110 | 150 |
+|---|---|---|---|---|---|
+| Active, ~8 mA | 7 h | 8.5 h | 10 h | 11 h | 15 h |
+| Active, worst case 12 mA | 4.7 h | 5.7 h | 6.7 h | 7.3 h | 10 h |
+| Standby (wake on motion), ~0.1 mA | 23 days | 28 days | 33 days | 37 days | 50 days |
+| Off, ~15 uA | months (self-discharge limits) | | | | |
+| Charge time at 50 mA (100 mA) | 1.6 h (0.8) | 2.0 (1.0) | 2.3 (1.2) | 2.5 (1.3) | 3.4 (1.8) |
+
+Magnetometer at 1 kHz would add ~10+ mA: run it at 100 Hz and only go to 1 kHz around a throw.
+Verify by measuring the current prototype with a USB power meter or Nordic PPK2.
