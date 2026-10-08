@@ -6,6 +6,8 @@ U4,0.00,20.00,0,Sensor,DNP,Pair B (+Y)
 U5,0.00,-20.00,0,Sensor,DNP,Pair B (-Y)
 U6,0.00,-24.20,0,Sensor,Yes,Magnetometer (>=10 mm from XIAO and battery)
 M1,15.00,0.00,0,XIAO,Yes,XIAO (offset TBD by USB-C notch and balance)
-BT1,-18.00,0.00,90,XIAO,Yes,Battery (position tuned for balance)
+BT1,-6.54,0.00,0,XIAO,Yes,Adafruit 1317 (19.75 in X x 26.02 in Y); balances XIAO 2.027 g at +15
+J1,-18.40,3.00,0,XIAO,Yes,BAT+ pad
+J2,-18.40,-3.00,0,XIAO,Yes,BAT- pad
 BZ1,0.00,21.50,0,XIAO,Yes,Buzzer
 TP1,0.00,-21.50,0,XIAO,Yes,Balance trim

@@ -1,4 +1,10 @@
-# Battery options (pick one)
+# Battery options
+
+**Chosen: H, Adafruit 1317 (150 mAh, 19.75 x 26.02 x 3.8 mm, 4.65 g).** Center at (-6.54, 0) balances the XIAO
+(2.027 g x 15 mm = 30.4 g*mm); 1.2 mm gap to the XIAO; nearest corner 11.7 mm from the magnetometer.
+Runtime ~15 h awake / ~50 days standby; charge at 100 mA (~1.8 h).
+https://www.adafruit.com/product/1317
+
 
 Constraints: protected LiPo, >= 50 mAh (XIAO charges at 50 mA), <= ~4 mm thick (XIAO is ~4.0 mm tall, measured),
 fits the -X half of the 56 mm board, and balances the XIAO (2.027 g measured, centered at +15 mm = 30.4 g*mm).

@@ -11,10 +11,10 @@ C12,Capacitor,10 uF,0603,1,Yes,XIAO,Bulk at XIAO 3V3
 R1 R2,Resistor,4.7 k,0402,2,Yes,Sensor,I2C pull-ups (magnetometer)
 R3,Resistor,33 R,0402,1,Yes,Sensor,Series on SPI clock
 R4-R8,Resistor,100 k,0402,5,Yes,Sensor,CS pull-ups to 3V3 (firmware disables chips' internal pull-up with I2C_I3C_disable)
-M1,Seeed XIAO nRF52840 Sense,,castellated SMD,1,Yes,XIAO,Center at about (+15; 0) so USB-C reaches the pod edge; hand-soldered
+M1,Seeed XIAO nRF52840 Sense,,castellated SMD,1,Yes,XIAO,2.027 g / 4.0 mm (measured); center (+15; 0) so USB-C reaches the pod edge; hand-soldered
 BZ1,CUI CPT-9019S-SMT-TR,,9x9x1.9 SMD,1,Yes,XIAO,Piezo 3 V / 5 mA / 65 dB @10 cm / 4 kHz; JLCPCB C95163; at (0; +21.5)
 JP1,3-pad solder jumper,,SMD,1,Yes,XIAO,D6 -> A: U5 CS / B: BZ1; ship bridged to B
 Q1,Small NPN/MOSFET,,SOT-23,1,DNP,XIAO,Optional buzzer driver if too quiet
-BT1,LiPo 3.7 V with protection,>=50 mAh,~3x15x20 mm,1,Yes,XIAO,Part TBD; at about (-18; 0); bonded down
-J1 J2,Battery pads,,pads,2,Yes,XIAO,To XIAO BAT pads
+BT1,Adafruit 1317 LiPo 3.7 V (protected),150 mAh,19.75x26.02x3.8 mm,1,Yes,XIAO,4.65 g; center (-6.54; 0); bonded down; leads cut short to J1/J2; charge at 100 mA
+J1 J2,Battery pads,,pads,2,Yes,XIAO,At (-18.4; +/-3); routed to XIAO BAT pads
 TP1,Balance trim pad,,copper pad,1,Yes,XIAO,At (0; -21.5) opposite the buzzer; add solder to trim
