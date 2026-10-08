@@ -1,0 +1,7 @@
+{
+  "meta": { "filename": "disctracker_sensor.kicad_pro", "version": 3 },
+  "schematic": { "legacy_lib_dir": "", "legacy_lib_list": [] },
+  "sheets": [ [ "ed8d3162-2461-588e-942b-e23f59aa8ac7", "Root" ] ],
+  "boards": [],
+  "libraries": { "pinned_footprint_libs": [], "pinned_symbol_libs": [] }
+}

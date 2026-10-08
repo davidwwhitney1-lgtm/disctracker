@@ -1,0 +1,2150 @@
+(kicad_sch (version 20250114) (generator "eeschema") (generator_version "9.0")
+  (uuid "ed8d3162-2461-588e-942b-e23f59aa8ac7")
+  (paper "A3")
+  (title_block (title "DiscTracker sensor board") (date "2026-10-08") (rev "0.1")
+    (company "Messiah University · David Whitney")
+    (comment 1 "Step 1: sensor board with XIAO nRF52840 Sense soldered on")
+    (comment 2 "56 mm round · spin pair r = 20.00 mm · build: U1 + U2 + U3")
+    (comment 3 "Generated from hardware/kicad/gen - edit freely in KiCad 9"))
+  (lib_symbols
+    (symbol "disctracker:XIAO_nRF52840_Sense_SMD" (exclude_from_sim no) (in_bom yes) (on_board yes)
+  (property "Reference" "M" (at -19.05 29.21 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "XIAO nRF52840 Sense" (at -19.05 -14.605 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "disctracker:XIAO-nRF52840-SMD" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "https://wiki.seeedstudio.com/XIAO_BLE/" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "Seeed Studio XIAO nRF52840 (Sense), surface-mount on castellated + underside pads" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "MPN" "102010469" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "ki_keywords" "nRF52840 BLE XIAO Seeed" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (symbol "XIAO_nRF52840_Sense_SMD_0_1" (rectangle (start -19.05 24.13) (end 13.97 -7.62) (stroke (width 0.254) (type default)) (fill (type background))))
+  (symbol "XIAO_nRF52840_Sense_SMD_1_1"
+    (pin bidirectional line (at -21.59 19.05 0) (length 2.54) (name "D0" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+    (pin bidirectional line (at -21.59 15.24 0) (length 2.54) (name "D1" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+    (pin bidirectional line (at -21.59 11.43 0) (length 2.54) (name "D2" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27)))))
+    (pin bidirectional line (at -21.59 7.62 0) (length 2.54) (name "D3" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27)))))
+    (pin bidirectional line (at -21.59 3.81 0) (length 2.54) (name "D4/SDA" (effects (font (size 1.27 1.27)))) (number "5" (effects (font (size 1.27 1.27)))))
+    (pin bidirectional line (at -21.59 0 0) (length 2.54) (name "D5/SCL" (effects (font (size 1.27 1.27)))) (number "6" (effects (font (size 1.27 1.27)))))
+    (pin bidirectional line (at -21.59 -3.81 0) (length 2.54) (name "D6/TX" (effects (font (size 1.27 1.27)))) (number "7" (effects (font (size 1.27 1.27)))))
+    (pin bidirectional line (at 16.51 -3.81 180) (length 2.54) (name "D7/RX" (effects (font (size 1.27 1.27)))) (number "8" (effects (font (size 1.27 1.27)))))
+    (pin bidirectional line (at 16.51 0 180) (length 2.54) (name "D8/SCK" (effects (font (size 1.27 1.27)))) (number "9" (effects (font (size 1.27 1.27)))))
+    (pin bidirectional line (at 16.51 3.81 180) (length 2.54) (name "D9/MISO" (effects (font (size 1.27 1.27)))) (number "10" (effects (font (size 1.27 1.27)))))
+    (pin bidirectional line (at 16.51 7.62 180) (length 2.54) (name "D10/MOSI" (effects (font (size 1.27 1.27)))) (number "11" (effects (font (size 1.27 1.27)))))
+    (pin power_out line (at 16.51 11.43 180) (length 2.54) (name "3V3" (effects (font (size 1.27 1.27)))) (number "12" (effects (font (size 1.27 1.27)))))
+    (pin power_in line (at 16.51 15.24 180) (length 2.54) (name "GND" (effects (font (size 1.27 1.27)))) (number "13" (effects (font (size 1.27 1.27)))))
+    (pin passive line (at 16.51 19.05 180) (length 2.54) (name "VBUS" (effects (font (size 1.27 1.27)))) (number "14" (effects (font (size 1.27 1.27)))))
+    (pin bidirectional line (at -7.62 26.67 270) (length 2.54) (name "SWDIO" (effects (font (size 1.27 1.27)))) (number "15" (effects (font (size 1.27 1.27)))))
+    (pin input line (at -3.81 26.67 270) (length 2.54) (name "SWCLK" (effects (font (size 1.27 1.27)))) (number "16" (effects (font (size 1.27 1.27)))))
+    (pin passive line (at 0 26.67 270) (length 2.54) (name "EN" (effects (font (size 1.27 1.27)))) (number "17" (effects (font (size 1.27 1.27)))))
+    (pin power_in line (at 3.81 26.67 270) (length 2.54) (name "GND" (effects (font (size 1.27 1.27)))) (number "18" (effects (font (size 1.27 1.27)))))
+    (pin passive line (at -7.62 -10.16 90) (length 2.54) (name "VBAT" (effects (font (size 1.27 1.27)))) (number "19" (effects (font (size 1.27 1.27)))))
+    (pin power_in line (at -3.81 -10.16 90) (length 2.54) (name "GND" (effects (font (size 1.27 1.27)))) (number "20" (effects (font (size 1.27 1.27)))))
+    (pin passive line (at 0 -10.16 90) (length 2.54) (name "NFC1" (effects (font (size 1.27 1.27)))) (number "21" (effects (font (size 1.27 1.27)))))
+    (pin passive line (at 3.81 -10.16 90) (length 2.54) (name "NFC2" (effects (font (size 1.27 1.27)))) (number "22" (effects (font (size 1.27 1.27)))))))
+    (symbol "Device:R"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "R"
+			(at 2.032 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "R"
+			(at 0 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at -1.778 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "R_0_1"
+			(rectangle
+				(start -1.016 -2.54)
+				(end 1.016 2.54)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "R_1_1"
+			(pin passive line
+				(at 0 3.81 270)
+				(length 1.27)
+				(name "~"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 1.27)
+				(name "~"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+    (symbol "Device:C"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0.254)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "C"
+			(at 0.635 2.54 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "C"
+			(at 0.635 -2.54 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 0.9652 -3.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Unpolarized capacitor"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "cap capacitor"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_fp_filters" "C_*"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "C_0_1"
+			(polyline
+				(pts
+					(xy -2.032 0.762) (xy 2.032 0.762)
+				)
+				(stroke
+					(width 0.508)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -2.032 -0.762) (xy 2.032 -0.762)
+				)
+				(stroke
+					(width 0.508)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "C_1_1"
+			(pin passive line
+				(at 0 3.81 270)
+				(length 2.794)
+				(name "~"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 2.794)
+				(name "~"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+    (symbol "disctracker:LSM6DSV320X" (exclude_from_sim no) (in_bom yes) (on_board yes)
+  (property "Reference" "U" (at 5.08 13.97 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "LSM6DSV320X" (at 5.08 -13.97 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Package_LGA:LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "https://www.st.com/resource/en/datasheet/lsm6dsv320x.pdf" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "6-axis IMU, gyro +/-4000 dps, accel +/-16 g plus high-g +/-32..320 g, SPI/I2C/I3C, LGA-14 2.5x3.0x0.83 mm" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "MPN" "LSM6DSV320XTR" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "ki_keywords" "IMU accelerometer gyroscope high-g ST" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (symbol "LSM6DSV320X_0_1" (rectangle (start -12.7 10.16) (end 12.7 -12.7) (stroke (width 0.254) (type default)) (fill (type background))))
+  (symbol "LSM6DSV320X_1_1"
+    (pin input line (at -15.24 7.62 0) (length 2.54) (name "SCL/SPC" (effects (font (size 1.27 1.27)))) (number "13" (effects (font (size 1.27 1.27)))))
+    (pin bidirectional line (at -15.24 5.08 0) (length 2.54) (name "SDA/SDI" (effects (font (size 1.27 1.27)))) (number "14" (effects (font (size 1.27 1.27)))))
+    (pin tri_state line (at -15.24 2.54 0) (length 2.54) (name "SDO/TA0" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+    (pin input line (at -15.24 0 0) (length 2.54) (name "~{CS}" (effects (font (size 1.27 1.27)))) (number "12" (effects (font (size 1.27 1.27)))))
+    (pin passive line (at -15.24 -5.08 0) (length 2.54) (name "SDx" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+    (pin passive line (at -15.24 -7.62 0) (length 2.54) (name "SCx" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27)))))
+    (pin output line (at 15.24 5.08 180) (length 2.54) (name "INT1" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27)))))
+    (pin output line (at 15.24 2.54 180) (length 2.54) (name "INT2" (effects (font (size 1.27 1.27)))) (number "9" (effects (font (size 1.27 1.27)))))
+    (pin input line (at 15.24 -2.54 180) (length 2.54) (name "OCS_Aux" (effects (font (size 1.27 1.27)))) (number "10" (effects (font (size 1.27 1.27)))))
+    (pin output line (at 15.24 -5.08 180) (length 2.54) (name "SDO_Aux" (effects (font (size 1.27 1.27)))) (number "11" (effects (font (size 1.27 1.27)))))
+    (pin power_in line (at -2.54 12.7 270) (length 2.54) (name "VDD" (effects (font (size 1.27 1.27)))) (number "8" (effects (font (size 1.27 1.27)))))
+    (pin power_in line (at 2.54 12.7 270) (length 2.54) (name "VDDIO" (effects (font (size 1.27 1.27)))) (number "5" (effects (font (size 1.27 1.27)))))
+    (pin power_in line (at -2.54 -15.24 90) (length 2.54) (name "GND" (effects (font (size 1.27 1.27)))) (number "6" (effects (font (size 1.27 1.27)))))
+    (pin power_in line (at 2.54 -15.24 90) (length 2.54) (name "GND" (effects (font (size 1.27 1.27)))) (number "7" (effects (font (size 1.27 1.27)))))))
+    (symbol "disctracker:MMC5603NJ"
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "U"
+			(at -2.54 8.255 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right top)
+			)
+		)
+		(property "Value" "MMC5603NJ"
+			(at -2.54 6.35 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right top)
+			)
+		)
+		(property "Footprint" "Package_BGA:WLP-4_0.86x0.86mm_P0.4mm"
+			(at 1.27 -6.35 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.espruino.com/files/MMC5603NJ.pdf"
+			(at -2.54 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "3-axis AMR magnetometer, +/-30 G, I2C 0x30, up to 1 kHz, WLCSP-4 0.8x0.8 mm"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "I2C I3C magnetic 3-axis sensor magnetometer AMR magnetoresistance"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_fp_filters" "WLP*0.86x0.86mm?P0.4mm*"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "MMC5603NJ_0_1"
+			(rectangle
+				(start -7.62 -5.08)
+				(end 7.62 5.08)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+		)
+		(symbol "MMC5603NJ_1_1"
+			(pin input line
+				(at -10.16 2.54 0)
+				(length 2.54)
+				(name "SCL"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "A2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at -10.16 0 0)
+				(length 2.54)
+				(name "SDA"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "B2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 0 7.62 270)
+				(length 2.54)
+				(name "VDD"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "B1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 0 -7.62 90)
+				(length 2.54)
+				(name "VSA"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "A1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+    (symbol "Jumper:SolderJumper_3_Open"
+		(pin_names
+			(offset 0)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(property "Reference" "JP"
+			(at -2.54 -2.54 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "SolderJumper_3_Open"
+			(at 0 2.794 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Solder Jumper, 3-pole, open"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "Solder Jumper SPDT"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_fp_filters" "SolderJumper*Open*"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "SolderJumper_3_Open_0_1"
+			(polyline
+				(pts
+					(xy -2.54 0) (xy -2.032 0)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -1.016 1.016) (xy -1.016 -1.016)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -1.016 -1.016)
+				(mid -2.0276 0)
+				(end -1.016 1.016)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start -1.016 -1.016)
+				(mid -2.0276 0)
+				(end -1.016 1.016)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(rectangle
+				(start -0.508 1.016)
+				(end 0.508 -1.016)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(polyline
+				(pts
+					(xy 0 -1.27) (xy 0 -1.016)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start 1.016 1.016)
+				(mid 2.0276 0)
+				(end 1.016 -1.016)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start 1.016 1.016)
+				(mid 2.0276 0)
+				(end 1.016 -1.016)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(polyline
+				(pts
+					(xy 1.016 1.016) (xy 1.016 -1.016)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 2.54 0) (xy 2.032 0)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "SolderJumper_3_Open_1_1"
+			(pin passive line
+				(at -5.08 0 0)
+				(length 2.54)
+				(name "A"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 2.54)
+				(name "C"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 5.08 0 180)
+				(length 2.54)
+				(name "B"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+    (symbol "Device:Buzzer"
+		(pin_names
+			(offset 0.0254)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "BZ"
+			(at 3.81 1.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "Buzzer"
+			(at 3.81 -1.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at -0.635 2.54 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at -0.635 2.54 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Buzzer, polarized"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "quartz resonator ceramic"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_fp_filters" "*Buzzer*"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "Buzzer_0_1"
+			(polyline
+				(pts
+					(xy -1.651 1.905) (xy -1.143 1.905)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -1.397 2.159) (xy -1.397 1.651)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(arc
+				(start 0 3.175)
+				(mid 3.1612 0)
+				(end 0 -3.175)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 0 3.175) (xy 0 -3.175)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "Buzzer_1_1"
+			(pin passive line
+				(at -2.54 2.54 0)
+				(length 2.54)
+				(name "+"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -2.54 -2.54 0)
+				(length 2.54)
+				(name "-"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+    (symbol "Device:Battery_Cell"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "BT"
+			(at 2.54 2.54 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "Battery_Cell"
+			(at 2.54 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 1.524 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 0 1.524 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Single-cell battery"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Device" "V"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Type" "DC"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Sim.Pins" "1=+ 2=-"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "battery cell"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "Battery_Cell_0_1"
+			(rectangle
+				(start -2.286 1.778)
+				(end 2.286 1.524)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(rectangle
+				(start -1.524 1.016)
+				(end 1.524 0.508)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type outline)
+				)
+			)
+			(polyline
+				(pts
+					(xy 0 1.778) (xy 0 2.54)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 0 0.762) (xy 0 0)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 0.762 3.048) (xy 1.778 3.048)
+				)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 1.27 3.556) (xy 1.27 2.54)
+				)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "Battery_Cell_1_1"
+			(pin passive line
+				(at 0 5.08 270)
+				(length 2.54)
+				(name "+"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -2.54 90)
+				(length 2.54)
+				(name "-"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+    (symbol "Connector_Generic:Conn_01x01"
+		(pin_names
+			(offset 1.016)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "J"
+			(at 0 2.54 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "Conn_01x01"
+			(at 0 -2.54 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Generic connector, single row, 01x01, script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "connector"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_fp_filters" "Connector*:*_1x??_*"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "Conn_01x01_1_1"
+			(rectangle
+				(start -1.27 1.27)
+				(end 1.27 -1.27)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+			(rectangle
+				(start -1.27 0.127)
+				(end 0 -0.127)
+				(stroke
+					(width 0.1524)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(pin passive line
+				(at -5.08 0 0)
+				(length 3.81)
+				(name "Pin_1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+    (symbol "power:PWR_FLAG"
+		(power)
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "#FLG"
+			(at 0 1.905 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "PWR_FLAG"
+			(at 0 3.81 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Special symbol for telling ERC where power comes from"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "flag power"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "PWR_FLAG_0_0"
+			(pin power_out line
+				(at 0 0 90)
+				(length 0)
+				(name "~"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(symbol "PWR_FLAG_0_1"
+			(polyline
+				(pts
+					(xy 0 0) (xy 0 1.27) (xy -1.016 1.905) (xy 0 2.54) (xy 1.016 1.905) (xy 0 1.27)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+    (symbol "Connector:TestPoint"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0.762)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "TP"
+			(at 0 6.858 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "TestPoint"
+			(at 0 5.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 5.08 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 5.08 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "test point"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "test point tp"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_fp_filters" "Pin* Test*"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "TestPoint_0_1"
+			(circle
+				(center 0 3.302)
+				(radius 0.762)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "TestPoint_1_1"
+			(pin passive line
+				(at 0 0 90)
+				(length 2.54)
+				(name "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+    (symbol "Mechanical:MountingHole"
+		(pin_names
+			(offset 1.016)
+		)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(property "Reference" "H"
+			(at 0 5.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "MountingHole"
+			(at 0 3.175 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Mounting Hole without connection"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "mounting hole"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_fp_filters" "MountingHole*"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "MountingHole_0_1"
+			(circle
+				(center 0 0)
+				(radius 1.27)
+				(stroke
+					(width 1.27)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(embedded_fonts no)
+	))
+    (rectangle (start 12.7 20.32) (end 107.95 109.22) (stroke (width 0.15) (type dash)) (fill (type none)) (uuid "7511e13e-7fdb-57f2-86a3-8be94358fa97"))
+  (text "MCU + radio · XIAO nRF52840 Sense" (exclude_from_sim no) (at 13.97 21.59 0) (effects (font (size 2 2) (bold yes)) (justify left top)) (uuid "e9b5af60-b846-5608-990b-4ee09597178f"))
+  (symbol (lib_id "disctracker:XIAO_nRF52840_Sense_SMD") (at 55.88 60.96 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "763fcced-1643-58bb-b226-9be0382fe62b")
+  (property "Reference" "M1" (at 63.5 29.21 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "XIAO nRF52840 Sense" (at 63.5 31.75 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "disctracker:XIAO-nRF52840-SMD" (at 55.88 60.96 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "https://wiki.seeedstudio.com/XIAO_BLE/" (at 55.88 60.96 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "" (at 55.88 60.96 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "MPN" "Seeed 102010469" (at 55.88 60.96 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Placement" "XIAO face, center (+15, 0) mm, USB-C at pod edge" (at 55.88 60.96 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "dd9eada6-9444-5734-bac8-44d5bcb2410c")) (pin "2" (uuid "26a1b352-afaa-5696-9218-4e182850cf5c")) (pin "3" (uuid "07520f09-6d1c-5a1d-877e-34bb05f1f695")) (pin "4" (uuid "2e0647ed-f1a8-594a-a920-a39a20c84eed")) (pin "5" (uuid "6a2d20b1-1171-599c-b73d-8d6b083952e0")) (pin "6" (uuid "bdf3c4f4-7ee3-5ab6-a4e2-1895c347d9a5")) (pin "7" (uuid "b67eb736-71fc-5a27-a1cd-b2163e6ac2a6")) (pin "8" (uuid "0cae666e-86cc-530d-b747-04b3f9f0903a")) (pin "9" (uuid "d5b8a8ed-bcf2-57b3-bd39-afa08c0c7698")) (pin "10" (uuid "37f361cc-3f36-5dd4-ba9f-e6737b14480d")) (pin "11" (uuid "aa63e287-455d-5608-972d-4546aee63d49")) (pin "12" (uuid "51092c34-1e3b-5f52-8c8d-25c519f580c9")) (pin "13" (uuid "765af710-3578-5632-bf84-1a4d9dc982ce")) (pin "14" (uuid "101a834a-345e-5d82-b572-ee203b25422b")) (pin "15" (uuid "7815b384-304b-545b-bfc1-271788a67bab")) (pin "16" (uuid "f43503b8-de27-5872-a184-0e775826703b")) (pin "17" (uuid "07650341-bf67-597e-80c1-b9e472ac193e")) (pin "18" (uuid "16a6ca8b-b3b7-5841-a437-ac971e31d05c")) (pin "19" (uuid "97563273-5e5b-5302-8633-a885c6e8c87d")) (pin "20" (uuid "8650522e-5e50-5268-b3d6-d0f47d8372c3")) (pin "21" (uuid "3fef7d5a-529a-59b7-89e5-89cc25dbb1b8")) (pin "22" (uuid "6b247d59-df71-57ec-9d88-f10d28182fe5"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "M1") (unit 1)))))
+  (wire (pts (xy 34.29 41.91) (xy 31.75 41.91)) (stroke (width 0) (type default)) (uuid "8681be93-ac8a-58ee-99e3-e8f9dac74725"))
+  (label "CS1" (at 31.75 41.91 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "13457709-d8e5-5ece-b36d-3ef879f469b5"))
+  (wire (pts (xy 34.29 45.72) (xy 31.75 45.72)) (stroke (width 0) (type default)) (uuid "66bdb728-6111-5a8d-ab36-c903183f3039"))
+  (label "CS2" (at 31.75 45.72 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "26ed341d-cdeb-5f9d-bdf0-8465fb592181"))
+  (wire (pts (xy 34.29 49.53) (xy 31.75 49.53)) (stroke (width 0) (type default)) (uuid "72deca11-596c-547d-b1ea-948a9787d6c8"))
+  (label "CS3" (at 31.75 49.53 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "8ed43787-2ce2-501a-a22f-44478ece4431"))
+  (wire (pts (xy 34.29 53.34) (xy 31.75 53.34)) (stroke (width 0) (type default)) (uuid "985a665e-ea64-59ce-a752-de74c1de7e18"))
+  (label "CS4" (at 31.75 53.34 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "1c82c02f-f956-5133-8522-fadce825bde1"))
+  (wire (pts (xy 34.29 57.15) (xy 31.75 57.15)) (stroke (width 0) (type default)) (uuid "8f79b77c-65df-5308-9888-7b8fce44e82a"))
+  (label "I2C_SDA" (at 31.75 57.15 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "3be31f5d-bf5d-529f-961a-bc5b0f721aba"))
+  (wire (pts (xy 34.29 60.96) (xy 31.75 60.96)) (stroke (width 0) (type default)) (uuid "e2700175-a4e3-5fff-9a12-19eb8849325b"))
+  (label "I2C_SCL" (at 31.75 60.96 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "e0c64c3b-54cf-5323-9129-77e4920583bf"))
+  (wire (pts (xy 34.29 64.77) (xy 31.75 64.77)) (stroke (width 0) (type default)) (uuid "83027564-8b3c-5bb5-afd5-ca89b88a16c9"))
+  (label "D6_CS5_BZ" (at 31.75 64.77 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "22cccf5a-d501-5fbd-a298-103f1ab3480d"))
+  (wire (pts (xy 72.39 64.77) (xy 74.93 64.77)) (stroke (width 0) (type default)) (uuid "58ebc5b7-e6d3-581f-a6a4-c8e7d030cf8a"))
+  (label "IMU_INT1" (at 74.93 64.77 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "91f90e35-cd69-54fe-b6c2-5cea58c45f2f"))
+  (wire (pts (xy 72.39 60.96) (xy 74.93 60.96)) (stroke (width 0) (type default)) (uuid "a282f843-fae3-5132-af63-8e05ff4d73c4"))
+  (label "SCK_MCU" (at 74.93 60.96 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "7e8e79a5-967a-5e50-86b5-8806a1de34d8"))
+  (wire (pts (xy 72.39 57.15) (xy 74.93 57.15)) (stroke (width 0) (type default)) (uuid "eeca1ebe-7d63-506b-9fd1-73a1c7a1973f"))
+  (label "SPI_MISO" (at 74.93 57.15 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "f483d920-499d-5d6e-a74e-e0bb85f80033"))
+  (wire (pts (xy 72.39 53.34) (xy 74.93 53.34)) (stroke (width 0) (type default)) (uuid "04be9a55-e92b-5961-8783-8e5e6fa63a5c"))
+  (label "SPI_MOSI" (at 74.93 53.34 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "b1b1091e-353a-5b87-a9dd-447752297e98"))
+  (wire (pts (xy 72.39 49.53) (xy 74.93 49.53)) (stroke (width 0) (type default)) (uuid "944038fb-b59a-5fd7-bbee-1fd6cee1baf4"))
+  (label "+3V3" (at 74.93 49.53 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "ba50a1bf-1fc6-5e31-af14-b994c5795a67"))
+  (wire (pts (xy 72.39 45.72) (xy 74.93 45.72)) (stroke (width 0) (type default)) (uuid "4f748506-486e-5740-9afe-9b6ddf31adcf"))
+  (label "GND" (at 74.93 45.72 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "199a9a3d-d863-5352-b41f-0590fe4ed95b"))
+  (no_connect (at 72.39 41.91) (uuid "808bbfa1-43b9-5c60-9a2a-e67226ae818a"))
+  (no_connect (at 48.26 34.29) (uuid "c9b4e100-e13b-5c6f-9a61-fa2617c20219"))
+  (no_connect (at 52.07 34.29) (uuid "10a80f88-ade2-5b9a-a623-14d5e20e8326"))
+  (no_connect (at 55.88 34.29) (uuid "f68b226d-32ee-51e7-9acc-020f65b78ed4"))
+  (wire (pts (xy 59.69 34.29) (xy 59.69 31.75)) (stroke (width 0) (type default)) (uuid "4983a064-97c2-5187-83d5-0ff14d5cba5e"))
+  (label "GND" (at 59.69 31.75 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "4815d7a3-2636-523d-8a0c-46c6186ff503"))
+  (wire (pts (xy 48.26 71.12) (xy 48.26 73.66)) (stroke (width 0) (type default)) (uuid "1e092ac2-a641-5b4c-a840-d19c1e248313"))
+  (label "VBAT" (at 48.26 73.66 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "e8472352-98d4-5b5e-bd56-ec33e2d34cde"))
+  (wire (pts (xy 52.07 71.12) (xy 52.07 73.66)) (stroke (width 0) (type default)) (uuid "2b994396-1f37-5231-9d2d-09f89688db76"))
+  (label "GND" (at 52.07 73.66 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "57eb9f9e-b869-5820-8813-f02b50d1c3a4"))
+  (no_connect (at 55.88 71.12) (uuid "eb248cae-5514-5514-8d5b-ea796e61fbf1"))
+  (no_connect (at 59.69 71.12) (uuid "8ffa52f4-2447-54c3-9356-c33495bf287a"))
+  (symbol (lib_id "Device:R") (at 93.98 60.96 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "2065240d-cbb1-512e-9b3d-3951c4265bf2")
+  (property "Reference" "R3" (at 97.79 59.69 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "33" (at 97.79 62.23 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at 93.98 60.96 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 93.98 60.96 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "Series resistor on SPI clock (20 mm runs)" (at 93.98 60.96 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "353eca76-0f7e-54a1-ba77-eafd5ff918a8")) (pin "2" (uuid "4890a00c-6936-562e-b8c6-d461cb249dbe"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "R3") (unit 1)))))
+  (wire (pts (xy 93.98 57.15) (xy 93.98 54.61)) (stroke (width 0) (type default)) (uuid "9927e751-8feb-5dd3-8777-25598c85f3dc"))
+  (label "SCK_MCU" (at 93.98 54.61 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "1a9578d5-e3d9-5bf5-90ff-98545e6bf787"))
+  (wire (pts (xy 93.98 64.77) (xy 93.98 67.31)) (stroke (width 0) (type default)) (uuid "5cd1dfa4-e3e8-5df2-8f95-f32a3cf5dae8"))
+  (label "SPI_SCK" (at 93.98 67.31 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "6a9586a3-1e2d-5935-8714-89adddd655fa"))
+  (symbol (lib_id "Device:C") (at 99.06 88.9 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "733cd36b-84fc-5bbf-8b18-8eec523073a7")
+  (property "Reference" "C12" (at 102.87 87.63 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "10u" (at 102.87 90.17 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Capacitor_SMD:C_0603_1608Metric" (at 99.06 88.9 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 99.06 88.9 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "Bulk at XIAO 3V3" (at 99.06 88.9 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "2aa9eafa-c017-51dd-99e0-3bae0b87b5bb")) (pin "2" (uuid "f7833886-c7e5-516d-9758-782b239e801a"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "C12") (unit 1)))))
+  (wire (pts (xy 99.06 85.09) (xy 99.06 82.55)) (stroke (width 0) (type default)) (uuid "9ba4e0bf-6e4a-5c9a-a546-8430406a6a3b"))
+  (label "+3V3" (at 99.06 82.55 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "18c51775-d271-5793-bb7f-20f2a327cf14"))
+  (wire (pts (xy 99.06 92.71) (xy 99.06 95.25)) (stroke (width 0) (type default)) (uuid "7ab69984-2f10-5960-a953-5726fcfd6d5b"))
+  (label "GND" (at 99.06 95.25 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "87e8a93e-8cb2-53e5-ba8c-ded5fa7caaa1"))
+  (text "D0-D10 all used. D6 goes to JP1 (U5 chip-select or buzzer).\nVBUS, SWD, EN and NFC pads left unconnected.\nFirmware: P1.11 (D6) high drive for the buzzer;\ncharge current 100 mA (P0.13 low)." (exclude_from_sim no) (at 15.24 92.71 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "89e35128-eb85-5540-9e7d-117d6c82db61"))
+  (rectangle (start 114.3 20.32) (end 406.4 160.02) (stroke (width 0.15) (type dash)) (fill (type none)) (uuid "275add36-3931-5a3b-afc2-38b7d62c63a3"))
+  (text "Motion sensors · 5x LSM6DSV320X on shared SPI (sensor face, all same orientation)" (exclude_from_sim no) (at 115.57 21.59 0) (effects (font (size 2 2) (bold yes)) (justify left top)) (uuid "118218cf-c6e0-5400-a880-065720201506"))
+  (symbol (lib_id "disctracker:LSM6DSV320X") (at 139.7 63.5 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "29348db2-e501-5236-be01-ee9ea070cc23")
+  (property "Reference" "U1" (at 144.78 49.53 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "LSM6DSV320X" (at 144.78 77.47 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Package_LGA:LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y" (at 139.7 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "https://www.st.com/resource/en/datasheet/lsm6dsv320x.pdf" (at 139.7 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "" (at 139.7 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "MPN" "LSM6DSV320XTR" (at 139.7 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Placement" "Center (0, 0)" (at 139.7 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "13" (uuid "ce7aa868-efc6-5d33-8753-b66d183b828f")) (pin "14" (uuid "2e12ce28-623b-56f1-8ae6-9c0b26084d85")) (pin "1" (uuid "5e11b742-f3eb-5147-b56c-e350d8f5b91e")) (pin "12" (uuid "86b81623-cc4a-50cc-9fcf-c127e58880f7")) (pin "2" (uuid "6f7490ab-85cb-5056-9e0c-f4501b24ab77")) (pin "3" (uuid "599ade59-3483-54ed-a722-8f60d59acc70")) (pin "4" (uuid "af6e71a2-9817-5bbb-9e6a-6ee1e37f96d9")) (pin "9" (uuid "f9f2e4a6-6031-56ed-aec5-0b288da73dd2")) (pin "10" (uuid "0dda2370-a182-5a1f-9559-dc05568a033f")) (pin "11" (uuid "4bdd3b47-479d-56cc-914f-05592c9639d9")) (pin "8" (uuid "80286bef-ec1f-59b8-bec5-4b3d44bcf6e2")) (pin "5" (uuid "d1e033e5-55ac-5bcf-ae75-cf96c621d35b")) (pin "6" (uuid "e7dbb041-7967-5f8a-8e58-5bfdea4acd54")) (pin "7" (uuid "1a9c40e6-89e7-5497-8347-8a01ca206724"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "U1") (unit 1)))))
+  (wire (pts (xy 124.46 55.88) (xy 121.92 55.88)) (stroke (width 0) (type default)) (uuid "cf2e5e5d-da82-55cb-9efc-e67b58f37f6d"))
+  (label "SPI_SCK" (at 121.92 55.88 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "ba7dc0dd-6907-5e43-8f58-2f1e1c8c432f"))
+  (wire (pts (xy 124.46 58.42) (xy 121.92 58.42)) (stroke (width 0) (type default)) (uuid "bb7a495a-f811-556a-bb4b-484c74adb1c1"))
+  (label "SPI_MOSI" (at 121.92 58.42 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "e29faed7-a1a7-544e-8cd8-0481a1361f6e"))
+  (wire (pts (xy 124.46 60.96) (xy 121.92 60.96)) (stroke (width 0) (type default)) (uuid "265e7dcd-9345-548f-bfd6-bd6745314485"))
+  (label "SPI_MISO" (at 121.92 60.96 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "61c7f908-4ded-5ac8-9b90-d0bb5d53c683"))
+  (wire (pts (xy 124.46 63.5) (xy 121.92 63.5)) (stroke (width 0) (type default)) (uuid "a64fa7d7-1737-5b9f-8813-b4c81ffb2df6"))
+  (label "CS1" (at 121.92 63.5 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "4f661e6a-b390-56e8-a250-375cc8568b85"))
+  (wire (pts (xy 124.46 68.58) (xy 121.92 68.58)) (stroke (width 0) (type default)) (uuid "5eaf96c7-5c59-5057-b5ec-3213aeb9ecdd"))
+  (label "GND" (at 121.92 68.58 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "e5da4fe9-3953-51d3-86f5-f2beb3e16fcc"))
+  (wire (pts (xy 124.46 71.12) (xy 121.92 71.12)) (stroke (width 0) (type default)) (uuid "4ef4481b-a9e7-5b68-a2b8-37f6f7f6599f"))
+  (label "GND" (at 121.92 71.12 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "bb96e9ad-b4ae-58b2-8df1-5544f4d8a7e2"))
+  (wire (pts (xy 154.94 58.42) (xy 157.48 58.42)) (stroke (width 0) (type default)) (uuid "9ce2fbb9-5619-5546-ac6d-87e73d602800"))
+  (label "IMU_INT1" (at 157.48 58.42 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "54f748ec-8a36-5fda-b15d-da817373cfe2"))
+  (no_connect (at 154.94 60.96) (uuid "bed2962d-2451-5f25-ac62-1985a6ddb1f5"))
+  (no_connect (at 154.94 66.04) (uuid "85242da5-87bf-56c4-bb16-e75dd4e9e070"))
+  (no_connect (at 154.94 68.58) (uuid "35473297-3fde-5a6d-8f17-517deee14a65"))
+  (wire (pts (xy 137.16 50.8) (xy 137.16 48.26)) (stroke (width 0) (type default)) (uuid "d32148e3-c067-526e-91f7-1a33123c76ae"))
+  (label "+3V3" (at 137.16 48.26 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "3980ac06-df1e-5a4a-b1d0-d43579e9eb59"))
+  (wire (pts (xy 142.24 50.8) (xy 142.24 48.26)) (stroke (width 0) (type default)) (uuid "470d86bf-3c64-58c3-9f49-d2fda5092d6b"))
+  (label "+3V3" (at 142.24 48.26 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "b5e01839-df17-5bed-830b-ce39006aff69"))
+  (wire (pts (xy 137.16 78.74) (xy 137.16 81.28)) (stroke (width 0) (type default)) (uuid "9aeb021f-32b7-507b-b8fb-cabd1d3ca904"))
+  (label "GND" (at 137.16 81.28 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "c0853caa-430f-522c-b305-8ae586546694"))
+  (wire (pts (xy 142.24 78.74) (xy 142.24 81.28)) (stroke (width 0) (type default)) (uuid "45f8bf6e-3c0d-5dc0-82df-0c01088989e6"))
+  (label "GND" (at 142.24 81.28 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "9e1559f4-8346-5767-8783-4be0d0639aa7"))
+  (text "Center (0, 0)" (exclude_from_sim no) (at 127 86.36 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "742e3733-8226-5145-aeee-1bc5a22dc55d"))
+  (symbol (lib_id "Device:C") (at 127 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "63158ad0-c4da-5204-a293-e4615280ef4d")
+  (property "Reference" "C1" (at 130.81 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100n" (at 130.81 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 127 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 127 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "U1 VDD (pin 8) decoupling, place next to the pin" (at 127 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "32e7ea26-62b3-5119-b7f1-c21fb624cb48")) (pin "2" (uuid "6f2d20d5-209a-54fa-9156-e2b54a8e0eef"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "C1") (unit 1)))))
+  (wire (pts (xy 127 102.87) (xy 127 100.33)) (stroke (width 0) (type default)) (uuid "d28948e9-21e7-5e30-afd8-a1edea1d75d3"))
+  (label "+3V3" (at 127 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "f5bdd3c7-e89e-5040-9fb0-1887e8b51b92"))
+  (wire (pts (xy 127 110.49) (xy 127 113.03)) (stroke (width 0) (type default)) (uuid "1b287a98-a7ed-5ae4-ae0a-f6255704c479"))
+  (label "GND" (at 127 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "2af02f5b-f5a4-5d74-8e3e-4f7e86514c1f"))
+  (symbol (lib_id "Device:C") (at 140.97 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "b124201f-2d4c-5982-9e9c-d00a4c0ead2b")
+  (property "Reference" "C2" (at 144.78 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100n" (at 144.78 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 140.97 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 140.97 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "U1 VDDIO (pin 5) decoupling, place next to the pin" (at 140.97 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "80934e3d-2ac5-563a-816d-975c3193e3c6")) (pin "2" (uuid "776f152d-a1bf-5d2c-8879-10ded9e98f94"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "C2") (unit 1)))))
+  (wire (pts (xy 140.97 102.87) (xy 140.97 100.33)) (stroke (width 0) (type default)) (uuid "2eca6eec-26e9-5fc2-912d-63679bf9c747"))
+  (label "+3V3" (at 140.97 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "52c5bc0f-676e-5574-8495-039e4700168d"))
+  (wire (pts (xy 140.97 110.49) (xy 140.97 113.03)) (stroke (width 0) (type default)) (uuid "68a6d51b-ee0a-57be-86f6-835bdcffba64"))
+  (label "GND" (at 140.97 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "30dc4de7-c540-55bf-9a21-06cb3c9d6389"))
+  (symbol (lib_id "Device:R") (at 154.94 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "f2d5a670-87cc-5bb1-a9ec-b00662573865")
+  (property "Reference" "R4" (at 158.75 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100k" (at 158.75 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at 154.94 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 154.94 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "CS1 pull-up (firmware sets I2C_I3C_disable, which turns off the chip's own CS pull-up)" (at 154.94 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "9d45cfb0-2011-5238-b792-09bf937d6b1e")) (pin "2" (uuid "a79a7f50-061f-5a5e-93f3-4bcddc1d77d3"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "R4") (unit 1)))))
+  (wire (pts (xy 154.94 102.87) (xy 154.94 100.33)) (stroke (width 0) (type default)) (uuid "7d28e93a-e978-57eb-8cd9-29f097ec6a5c"))
+  (label "+3V3" (at 154.94 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "230ff106-7d27-5050-9ce3-73a44b1f147e"))
+  (wire (pts (xy 154.94 110.49) (xy 154.94 113.03)) (stroke (width 0) (type default)) (uuid "2a6388ab-06a3-5f6d-92c0-dfc51eca0400"))
+  (label "CS1" (at 154.94 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "e639fd9a-f945-5b8e-b4ff-4be1a1c69d4e"))
+  (symbol (lib_id "disctracker:LSM6DSV320X") (at 198.12 63.5 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "3d13bc53-e5b5-51d6-ab50-687a37746c73")
+  (property "Reference" "U2" (at 203.2 49.53 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "LSM6DSV320X" (at 203.2 77.47 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Package_LGA:LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y" (at 198.12 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "https://www.st.com/resource/en/datasheet/lsm6dsv320x.pdf" (at 198.12 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "" (at 198.12 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "MPN" "LSM6DSV320XTR" (at 198.12 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Placement" "Pair A +X (+20.00, 0)" (at 198.12 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "13" (uuid "a00f0c87-962f-5f8e-8346-9f0838736530")) (pin "14" (uuid "ad5bb310-31b2-58d7-aba5-0f9051460b16")) (pin "1" (uuid "e16e72e4-9490-566e-a6b1-c34c272a6700")) (pin "12" (uuid "67fc3e8d-cb6d-5160-b1ac-b9199785e616")) (pin "2" (uuid "ece30655-1b98-55e5-ac68-1120d3af5229")) (pin "3" (uuid "9f8d38cc-48e9-5884-b87a-c29dcf439bc6")) (pin "4" (uuid "31283a2e-7d2c-5fe4-be80-c056db8dc217")) (pin "9" (uuid "5fed5b20-c1f2-519a-89a6-8f3d67434da0")) (pin "10" (uuid "bd225992-22ed-583b-82cd-dfe1366415c9")) (pin "11" (uuid "32b9ed90-9629-5f5b-bf0c-54734c670442")) (pin "8" (uuid "d4329096-faf4-50aa-ba1b-428af206295b")) (pin "5" (uuid "2b41d51b-92cb-5f92-95d3-c548c85afc27")) (pin "6" (uuid "1984949f-0577-5d54-9afe-97ba3c0a9845")) (pin "7" (uuid "0dbf6122-357c-5d61-92a5-95467dc74d0a"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "U2") (unit 1)))))
+  (wire (pts (xy 182.88 55.88) (xy 180.34 55.88)) (stroke (width 0) (type default)) (uuid "352ffa4e-d322-51f3-95df-86bd1b69c453"))
+  (label "SPI_SCK" (at 180.34 55.88 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "6d9302cb-878c-5707-ad23-a1f5cd22b4fb"))
+  (wire (pts (xy 182.88 58.42) (xy 180.34 58.42)) (stroke (width 0) (type default)) (uuid "024afae8-088f-568a-9ecf-0f15009e3714"))
+  (label "SPI_MOSI" (at 180.34 58.42 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "cd3dfb89-d334-5c26-91db-90d8e147f432"))
+  (wire (pts (xy 182.88 60.96) (xy 180.34 60.96)) (stroke (width 0) (type default)) (uuid "e2b9e63d-8967-5638-adb3-c499e77553ac"))
+  (label "SPI_MISO" (at 180.34 60.96 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "593a7721-a4b9-5bc5-8eac-f7a42b806891"))
+  (wire (pts (xy 182.88 63.5) (xy 180.34 63.5)) (stroke (width 0) (type default)) (uuid "8ee95b17-be16-5f0b-8c1b-e049a5b36504"))
+  (label "CS2" (at 180.34 63.5 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "fc08bea2-25e8-5745-b735-67842aa256dc"))
+  (wire (pts (xy 182.88 68.58) (xy 180.34 68.58)) (stroke (width 0) (type default)) (uuid "efbb3e66-af51-5943-a637-f2afac8a431d"))
+  (label "GND" (at 180.34 68.58 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "dc794d73-bbd6-5c41-af39-7e9a98ed793c"))
+  (wire (pts (xy 182.88 71.12) (xy 180.34 71.12)) (stroke (width 0) (type default)) (uuid "7143097f-7132-58db-8121-4a4cbdb7ecca"))
+  (label "GND" (at 180.34 71.12 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "5f57e969-80f1-5244-ad3b-3dea0ebbd147"))
+  (no_connect (at 213.36 58.42) (uuid "95d34770-9bb4-5def-9e7e-d76f60efbf5d"))
+  (no_connect (at 213.36 60.96) (uuid "2bd8156d-f3b5-52c4-895a-55defde5e6fa"))
+  (no_connect (at 213.36 66.04) (uuid "4205b6aa-ba67-5ae6-9c4c-0f7754bdcbb8"))
+  (no_connect (at 213.36 68.58) (uuid "a7016e37-36b1-515d-b7ec-e1d00b82c828"))
+  (wire (pts (xy 195.58 50.8) (xy 195.58 48.26)) (stroke (width 0) (type default)) (uuid "02f42d71-9c87-537e-a7a7-f80fff8affa1"))
+  (label "+3V3" (at 195.58 48.26 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "75b6afc3-e286-5ad6-8c70-97b7842c1597"))
+  (wire (pts (xy 200.66 50.8) (xy 200.66 48.26)) (stroke (width 0) (type default)) (uuid "76cb483c-64e1-5a5b-8fec-2938e4bcf19e"))
+  (label "+3V3" (at 200.66 48.26 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "5014cc41-eb68-54dc-8534-bd3bd04e683f"))
+  (wire (pts (xy 195.58 78.74) (xy 195.58 81.28)) (stroke (width 0) (type default)) (uuid "4b1ffaed-2ba7-505f-846c-2f5977d4d6cc"))
+  (label "GND" (at 195.58 81.28 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "508198bc-490d-599d-98de-6745f236a350"))
+  (wire (pts (xy 200.66 78.74) (xy 200.66 81.28)) (stroke (width 0) (type default)) (uuid "f4cb5a93-21c3-5db5-8b8d-1bac168a7828"))
+  (label "GND" (at 200.66 81.28 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "a3eddde2-8d4d-5fd1-81fc-2f2239a70e97"))
+  (text "Pair A +X (+20.00, 0)" (exclude_from_sim no) (at 185.42 86.36 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "d1312cd2-88a9-5784-82fb-c0329e0006d7"))
+  (symbol (lib_id "Device:C") (at 185.42 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "0c9e77ae-b60a-55e6-a5b0-a651c0a6011a")
+  (property "Reference" "C3" (at 189.23 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100n" (at 189.23 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 185.42 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 185.42 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "U2 VDD (pin 8) decoupling, place next to the pin" (at 185.42 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "9607118f-2529-538f-9dc2-2e9df400f642")) (pin "2" (uuid "3fcf5dfa-6ad5-54ee-892f-f817c7e5b982"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "C3") (unit 1)))))
+  (wire (pts (xy 185.42 102.87) (xy 185.42 100.33)) (stroke (width 0) (type default)) (uuid "e72afbe4-9ca1-5bd6-8a92-8bfcf1595eb1"))
+  (label "+3V3" (at 185.42 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "862d902a-1db6-5f76-a813-1a85d241ba31"))
+  (wire (pts (xy 185.42 110.49) (xy 185.42 113.03)) (stroke (width 0) (type default)) (uuid "a46baedd-1f56-5591-96cc-a3c1ffb17ff5"))
+  (label "GND" (at 185.42 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "1c6025d2-4e08-5b5a-b2c4-2f7f8caf3f52"))
+  (symbol (lib_id "Device:C") (at 199.39 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "d80cfede-dcec-55cc-a61f-2b7a0fb5f660")
+  (property "Reference" "C4" (at 203.2 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100n" (at 203.2 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 199.39 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 199.39 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "U2 VDDIO (pin 5) decoupling, place next to the pin" (at 199.39 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "489ce87b-93c0-5bd6-85a3-348ff84a7d20")) (pin "2" (uuid "3f0a6dcc-cf28-5a99-bb47-0e03a4f821dd"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "C4") (unit 1)))))
+  (wire (pts (xy 199.39 102.87) (xy 199.39 100.33)) (stroke (width 0) (type default)) (uuid "cd224b23-4c23-517a-b954-6beafbc7e347"))
+  (label "+3V3" (at 199.39 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "17beced9-da62-5228-baff-9f5fa2156b38"))
+  (wire (pts (xy 199.39 110.49) (xy 199.39 113.03)) (stroke (width 0) (type default)) (uuid "ff2f7d6b-6bf6-5457-8e22-c88d18cbeca6"))
+  (label "GND" (at 199.39 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "67688880-cff2-5900-8082-8252843c533e"))
+  (symbol (lib_id "Device:R") (at 213.36 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "ed04b0ad-4803-5a6e-97c1-72202061ebe9")
+  (property "Reference" "R5" (at 217.17 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100k" (at 217.17 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at 213.36 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 213.36 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "CS2 pull-up (firmware sets I2C_I3C_disable, which turns off the chip's own CS pull-up)" (at 213.36 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "eeed4727-8bac-5648-8a4f-b11482aa0d0a")) (pin "2" (uuid "4fedd492-88b2-5c96-b601-c2469dce139d"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "R5") (unit 1)))))
+  (wire (pts (xy 213.36 102.87) (xy 213.36 100.33)) (stroke (width 0) (type default)) (uuid "4a755fc4-c436-5884-aeeb-9ccde372c01d"))
+  (label "+3V3" (at 213.36 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "1f69aad5-90a8-503a-a923-1098a95c02c8"))
+  (wire (pts (xy 213.36 110.49) (xy 213.36 113.03)) (stroke (width 0) (type default)) (uuid "81f389a2-6c91-5178-a63d-483e9cd8fb7f"))
+  (label "CS2" (at 213.36 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "d1cabbd3-1edb-5af7-b79c-c3d8c967afb1"))
+  (symbol (lib_id "disctracker:LSM6DSV320X") (at 256.54 63.5 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "56ab0ec0-fbb6-5b8a-a84f-8ef07c1cff29")
+  (property "Reference" "U3" (at 261.62 49.53 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "LSM6DSV320X" (at 261.62 77.47 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Package_LGA:LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y" (at 256.54 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "https://www.st.com/resource/en/datasheet/lsm6dsv320x.pdf" (at 256.54 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "" (at 256.54 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "MPN" "LSM6DSV320XTR" (at 256.54 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Placement" "Pair A -X (-20.00, 0)" (at 256.54 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "13" (uuid "cd5ef6ca-e694-5539-828c-015c66978c57")) (pin "14" (uuid "0c9c94a9-09b3-55b7-9099-38de536c1a3c")) (pin "1" (uuid "d7b8bf16-a6ba-597a-bc53-b6e56453939f")) (pin "12" (uuid "de9afb94-537f-5202-b91c-1344ecc3923a")) (pin "2" (uuid "42aa6540-de4b-5bb6-b7e7-cfe6e6b13c07")) (pin "3" (uuid "76b8bf90-94b8-57c6-81f0-3011bdc50f66")) (pin "4" (uuid "0662af49-45ba-5001-9a94-dc578fa4f878")) (pin "9" (uuid "24f93ce0-97bf-5685-a653-5f039fe9f029")) (pin "10" (uuid "320b11b4-4b83-5d23-b80e-5c9f80ecfe4f")) (pin "11" (uuid "07b71b09-1a91-555b-9dec-b40fd49b6008")) (pin "8" (uuid "20213ec8-302d-5678-acb4-93c43f88079b")) (pin "5" (uuid "fdd40815-f864-562c-991e-5208c866c4a2")) (pin "6" (uuid "c2180809-f8b5-5b5b-9b58-44dd0523d6d2")) (pin "7" (uuid "5460a09a-fbcc-5266-905a-751688e2a588"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "U3") (unit 1)))))
+  (wire (pts (xy 241.3 55.88) (xy 238.76 55.88)) (stroke (width 0) (type default)) (uuid "7a943d70-22b2-5106-9c8e-52a0363911c3"))
+  (label "SPI_SCK" (at 238.76 55.88 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "c75002a4-1103-5e4f-88ef-34e6caa211ba"))
+  (wire (pts (xy 241.3 58.42) (xy 238.76 58.42)) (stroke (width 0) (type default)) (uuid "2d826994-4224-5bda-b6d7-464fbff28775"))
+  (label "SPI_MOSI" (at 238.76 58.42 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "330147af-8d22-5ab6-bf9e-75533361290b"))
+  (wire (pts (xy 241.3 60.96) (xy 238.76 60.96)) (stroke (width 0) (type default)) (uuid "af93df2c-8f2c-5ab7-9e1d-b8d2fad202b2"))
+  (label "SPI_MISO" (at 238.76 60.96 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "ed0d50ef-f4aa-5568-9895-52ef1cd494bb"))
+  (wire (pts (xy 241.3 63.5) (xy 238.76 63.5)) (stroke (width 0) (type default)) (uuid "2f9d4228-326e-57d5-87a3-0bf628f84c1f"))
+  (label "CS3" (at 238.76 63.5 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "94e6dfa9-7609-5304-9b08-23d2072316fb"))
+  (wire (pts (xy 241.3 68.58) (xy 238.76 68.58)) (stroke (width 0) (type default)) (uuid "16762aff-53f5-5944-bea3-9f76a82ee483"))
+  (label "GND" (at 238.76 68.58 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "51ef7405-0045-5ed1-b724-bc3bb140643e"))
+  (wire (pts (xy 241.3 71.12) (xy 238.76 71.12)) (stroke (width 0) (type default)) (uuid "424f4104-1b0d-57b1-9455-36b7f2ea0cef"))
+  (label "GND" (at 238.76 71.12 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "a24698fd-6c7b-5c91-aa0c-bb7be28a950b"))
+  (no_connect (at 271.78 58.42) (uuid "74bd8399-b7c3-5115-8f1d-93cf4875170b"))
+  (no_connect (at 271.78 60.96) (uuid "3e7a5f6f-b786-5723-9851-071bec818236"))
+  (no_connect (at 271.78 66.04) (uuid "7263e284-e6c1-5b32-a61c-cfe8c656c4ce"))
+  (no_connect (at 271.78 68.58) (uuid "a0297718-6107-5b79-b98a-c8b205ad561e"))
+  (wire (pts (xy 254 50.8) (xy 254 48.26)) (stroke (width 0) (type default)) (uuid "bba9e280-7b4a-5ba7-98b5-d4a1581157db"))
+  (label "+3V3" (at 254 48.26 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "c82fbd54-922a-5071-a996-39c5996f3ad0"))
+  (wire (pts (xy 259.08 50.8) (xy 259.08 48.26)) (stroke (width 0) (type default)) (uuid "2a02159a-41ff-561b-9832-ff620bc21ac7"))
+  (label "+3V3" (at 259.08 48.26 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "13d48cf1-b3b2-5c4a-a617-f29c37027ef4"))
+  (wire (pts (xy 254 78.74) (xy 254 81.28)) (stroke (width 0) (type default)) (uuid "ef8b4bf7-55d9-5192-89de-4ea350e57081"))
+  (label "GND" (at 254 81.28 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "a21aeb70-4c11-56a8-93c7-69047d77f58a"))
+  (wire (pts (xy 259.08 78.74) (xy 259.08 81.28)) (stroke (width 0) (type default)) (uuid "07a0c630-28fb-5cce-847c-bb27a7644fe7"))
+  (label "GND" (at 259.08 81.28 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "60c48802-cc2b-5464-8cef-67b3c210a253"))
+  (text "Pair A -X (-20.00, 0)" (exclude_from_sim no) (at 243.84 86.36 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "98685300-aed7-5962-98b9-285a21995d46"))
+  (symbol (lib_id "Device:C") (at 243.84 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "ecf2113e-3299-5b9b-8f81-818d6498acd3")
+  (property "Reference" "C5" (at 247.65 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100n" (at 247.65 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 243.84 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 243.84 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "U3 VDD (pin 8) decoupling, place next to the pin" (at 243.84 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "d0906538-fb46-53ed-87dd-a896c799c8c8")) (pin "2" (uuid "188c8029-5431-5795-b806-f105fdbd1793"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "C5") (unit 1)))))
+  (wire (pts (xy 243.84 102.87) (xy 243.84 100.33)) (stroke (width 0) (type default)) (uuid "2df72ab0-d5de-51ab-9880-76dee2be499d"))
+  (label "+3V3" (at 243.84 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "3fc58eb6-807e-5f24-8c0d-5d1bd0045de5"))
+  (wire (pts (xy 243.84 110.49) (xy 243.84 113.03)) (stroke (width 0) (type default)) (uuid "788fe7b6-ccdc-5586-bc9f-fea2019e0b22"))
+  (label "GND" (at 243.84 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "468fcc71-98eb-5d73-8924-3679f90a807f"))
+  (symbol (lib_id "Device:C") (at 257.81 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "8d877382-faed-5d90-a2d5-9035d04963ce")
+  (property "Reference" "C6" (at 261.62 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100n" (at 261.62 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 257.81 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 257.81 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "U3 VDDIO (pin 5) decoupling, place next to the pin" (at 257.81 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "80e578d6-089a-5df1-a9dc-1e7bf9a469d5")) (pin "2" (uuid "84084d79-2b3a-5571-bdbf-46e3a75d01b6"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "C6") (unit 1)))))
+  (wire (pts (xy 257.81 102.87) (xy 257.81 100.33)) (stroke (width 0) (type default)) (uuid "f98797ae-d11c-582f-95e0-72f95a17dcf5"))
+  (label "+3V3" (at 257.81 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "222ae6eb-85d5-58f3-bef0-17c21e399170"))
+  (wire (pts (xy 257.81 110.49) (xy 257.81 113.03)) (stroke (width 0) (type default)) (uuid "9e0c6f42-3516-580f-af2a-de161c16cb18"))
+  (label "GND" (at 257.81 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "7d1b9edf-631f-5144-ad5e-e6b38057e199"))
+  (symbol (lib_id "Device:R") (at 271.78 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "01ce892d-50e2-5d4f-8b71-9a94f93dc251")
+  (property "Reference" "R6" (at 275.59 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100k" (at 275.59 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at 271.78 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 271.78 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "CS3 pull-up (firmware sets I2C_I3C_disable, which turns off the chip's own CS pull-up)" (at 271.78 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "ce7a1d12-6903-547d-b324-edd3ff44d8de")) (pin "2" (uuid "6999d174-6c23-54ca-925e-82a0f837daba"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "R6") (unit 1)))))
+  (wire (pts (xy 271.78 102.87) (xy 271.78 100.33)) (stroke (width 0) (type default)) (uuid "b86c8949-915c-50d9-bd69-d8d42b6d2448"))
+  (label "+3V3" (at 271.78 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "defd2c75-9aad-51d1-bf14-1c1c00db5821"))
+  (wire (pts (xy 271.78 110.49) (xy 271.78 113.03)) (stroke (width 0) (type default)) (uuid "8554bd83-b2c8-5b4f-94fb-b84b68afb400"))
+  (label "CS3" (at 271.78 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "715a3a63-7b4e-53e6-9a95-3501cb2bd321"))
+  (symbol (lib_id "disctracker:LSM6DSV320X") (at 314.96 63.5 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes) (uuid "80f3dc4d-392b-59dc-a1a9-940a17c60a84")
+  (property "Reference" "U4" (at 320.04 49.53 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "LSM6DSV320X" (at 320.04 77.47 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Package_LGA:LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y" (at 314.96 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "https://www.st.com/resource/en/datasheet/lsm6dsv320x.pdf" (at 314.96 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "" (at 314.96 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "MPN" "LSM6DSV320XTR" (at 314.96 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Placement" "Pair B +Y (0, +20.00) - not fitted" (at 314.96 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "13" (uuid "f1d5f260-effa-5254-8356-bff9d7860de0")) (pin "14" (uuid "81153abc-e824-53b4-b3fc-e948e678e98f")) (pin "1" (uuid "7281716d-07d8-5b63-a0b1-cc3c1ea27bcc")) (pin "12" (uuid "f62cfd7b-b21a-5fd0-9969-31ab83c655fb")) (pin "2" (uuid "a0a51f34-7657-5156-ac3f-1ab320343e7a")) (pin "3" (uuid "b6e5a060-82c2-5a73-94ce-49f63dbe5080")) (pin "4" (uuid "f844da76-3fdb-59b0-9792-627af14b576a")) (pin "9" (uuid "b47ca9b0-fe3d-55b9-8855-f209ba0bbe2f")) (pin "10" (uuid "043b5d89-a263-58a6-ac17-b108ebf26855")) (pin "11" (uuid "4408078f-47d5-5aab-bf6e-5da6e918c1b2")) (pin "8" (uuid "5cc8e8b7-f807-5585-b6c0-873f07102702")) (pin "5" (uuid "beaae444-c983-53fd-9390-9e2923fbde3d")) (pin "6" (uuid "3c35f611-4cf9-5431-8dcd-a0f2ba685329")) (pin "7" (uuid "1ec3357a-7090-5de7-83e4-d5ec4acf022f"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "U4") (unit 1)))))
+  (wire (pts (xy 299.72 55.88) (xy 297.18 55.88)) (stroke (width 0) (type default)) (uuid "135433f2-b0fe-5a75-b08a-5c20f3a5c03b"))
+  (label "SPI_SCK" (at 297.18 55.88 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "f124e6f2-e917-5371-a753-9d7463b24a8a"))
+  (wire (pts (xy 299.72 58.42) (xy 297.18 58.42)) (stroke (width 0) (type default)) (uuid "4cc92288-a1e9-5196-a91b-21e0d48836ed"))
+  (label "SPI_MOSI" (at 297.18 58.42 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "d1290205-26ee-5712-8c26-86bae10e6b77"))
+  (wire (pts (xy 299.72 60.96) (xy 297.18 60.96)) (stroke (width 0) (type default)) (uuid "d2c4419c-cbd2-50d1-a1ad-60af23b4b851"))
+  (label "SPI_MISO" (at 297.18 60.96 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "c79c5b77-184e-5fed-8c8f-88afe7d6f70c"))
+  (wire (pts (xy 299.72 63.5) (xy 297.18 63.5)) (stroke (width 0) (type default)) (uuid "770c6404-69ec-5c18-8168-93da4c18701d"))
+  (label "CS4" (at 297.18 63.5 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "f708eb88-2c34-5bea-be41-4a6531e29809"))
+  (wire (pts (xy 299.72 68.58) (xy 297.18 68.58)) (stroke (width 0) (type default)) (uuid "1de25ef3-0a4f-5106-8df8-1a5601b08f92"))
+  (label "GND" (at 297.18 68.58 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "f11d4d20-21fe-526a-be1e-b2026d650c97"))
+  (wire (pts (xy 299.72 71.12) (xy 297.18 71.12)) (stroke (width 0) (type default)) (uuid "bc7c7df0-ce3f-5c4a-9835-35ffa07a10a8"))
+  (label "GND" (at 297.18 71.12 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "437a49b9-90af-51c0-99c9-d4184e43e79c"))
+  (no_connect (at 330.2 58.42) (uuid "5dee04af-3eef-5df1-a38d-6b9305baf6e4"))
+  (no_connect (at 330.2 60.96) (uuid "14ae783b-a14a-5928-81e1-b700eeaa7630"))
+  (no_connect (at 330.2 66.04) (uuid "690d9198-d945-5fbd-9e2c-a9184101b026"))
+  (no_connect (at 330.2 68.58) (uuid "3cbf8932-1524-5e8b-bac4-6195c2a6ccd6"))
+  (wire (pts (xy 312.42 50.8) (xy 312.42 48.26)) (stroke (width 0) (type default)) (uuid "0d6bb559-223e-58d8-be25-466d8e602a69"))
+  (label "+3V3" (at 312.42 48.26 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "155668e4-4e4b-5d65-bb05-97706cca6905"))
+  (wire (pts (xy 317.5 50.8) (xy 317.5 48.26)) (stroke (width 0) (type default)) (uuid "6fa6c51d-96b2-5581-b8ac-c5c1345f7b9e"))
+  (label "+3V3" (at 317.5 48.26 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "373e833d-c9de-5349-961a-c176da0c8295"))
+  (wire (pts (xy 312.42 78.74) (xy 312.42 81.28)) (stroke (width 0) (type default)) (uuid "a14dfd87-25f4-5678-846a-48c052a3e179"))
+  (label "GND" (at 312.42 81.28 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "1c63668f-9406-5d27-93fb-72eda240f8f1"))
+  (wire (pts (xy 317.5 78.74) (xy 317.5 81.28)) (stroke (width 0) (type default)) (uuid "fe4649da-2ae5-562c-82a6-e3e77f68d87a"))
+  (label "GND" (at 317.5 81.28 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "8180c7a4-59f3-59d0-966e-7e4dd6b036d9"))
+  (text "Pair B +Y (0, +20.00) - not fitted" (exclude_from_sim no) (at 302.26 86.36 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "f2587e23-d3b4-5991-a3a0-9148156d01cb"))
+  (symbol (lib_id "Device:C") (at 302.26 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes) (uuid "8c2298e2-df3d-50bb-b882-e72f3e51196f")
+  (property "Reference" "C7" (at 306.07 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100n" (at 306.07 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 302.26 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 302.26 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "U4 VDD (pin 8) decoupling, place next to the pin" (at 302.26 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "0b854647-c863-502b-b9ea-16abcbc30a1c")) (pin "2" (uuid "5622f0f7-f2cd-5bd6-bc1f-20f9b50c5a2d"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "C7") (unit 1)))))
+  (wire (pts (xy 302.26 102.87) (xy 302.26 100.33)) (stroke (width 0) (type default)) (uuid "63ec7e7b-6aea-519f-9b9a-b4040a10eb55"))
+  (label "+3V3" (at 302.26 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "88ffa580-098d-59c3-b5c6-d6c2db0d268f"))
+  (wire (pts (xy 302.26 110.49) (xy 302.26 113.03)) (stroke (width 0) (type default)) (uuid "965c93fc-a27f-53b1-b64e-f48e61688ce1"))
+  (label "GND" (at 302.26 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "383b9903-5704-5c18-9afe-4f45527e89cd"))
+  (symbol (lib_id "Device:C") (at 316.23 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes) (uuid "e4728109-46c2-508f-922e-188ae3b9839a")
+  (property "Reference" "C8" (at 320.04 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100n" (at 320.04 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 316.23 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 316.23 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "U4 VDDIO (pin 5) decoupling, place next to the pin" (at 316.23 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "7b9ce7ca-a6b5-5fad-832d-4132f13a1cb7")) (pin "2" (uuid "c2ed16ed-5d49-5c8d-8adb-95480e53e78f"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "C8") (unit 1)))))
+  (wire (pts (xy 316.23 102.87) (xy 316.23 100.33)) (stroke (width 0) (type default)) (uuid "86a3e332-4f7c-5680-adc9-6335117de0f5"))
+  (label "+3V3" (at 316.23 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "9735f341-06ff-5670-9021-bb43dfd66907"))
+  (wire (pts (xy 316.23 110.49) (xy 316.23 113.03)) (stroke (width 0) (type default)) (uuid "493a6c7e-07e3-5796-82de-b21332718415"))
+  (label "GND" (at 316.23 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "5b843c6f-12e3-5d40-9638-8627dae1a81d"))
+  (symbol (lib_id "Device:R") (at 330.2 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes) (uuid "77a7f8d6-40eb-5792-ba13-cad16b533a54")
+  (property "Reference" "R7" (at 334.01 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100k" (at 334.01 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at 330.2 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 330.2 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "CS4 pull-up (firmware sets I2C_I3C_disable, which turns off the chip's own CS pull-up)" (at 330.2 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "2e928cdd-a263-5e56-a37e-0fdca2b7d930")) (pin "2" (uuid "ab096580-8e94-5011-90be-cd7a8ad13966"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "R7") (unit 1)))))
+  (wire (pts (xy 330.2 102.87) (xy 330.2 100.33)) (stroke (width 0) (type default)) (uuid "5c892d63-7fa5-522e-960d-2f41e05cb394"))
+  (label "+3V3" (at 330.2 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "f8be8671-28d5-5570-875a-7af9252885d9"))
+  (wire (pts (xy 330.2 110.49) (xy 330.2 113.03)) (stroke (width 0) (type default)) (uuid "9a9c486e-b62e-5895-ba38-12d252840dda"))
+  (label "CS4" (at 330.2 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "3daf7c4f-d6fb-5dec-9b83-710aa4f132c0"))
+  (symbol (lib_id "disctracker:LSM6DSV320X") (at 373.38 63.5 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes) (uuid "3050fd09-58cf-55b9-ba31-a3ddd7a69fbb")
+  (property "Reference" "U5" (at 378.46 49.53 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "LSM6DSV320X" (at 378.46 77.47 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Package_LGA:LGA-14_3x2.5mm_P0.5mm_LayoutBorder3x4y" (at 373.38 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "https://www.st.com/resource/en/datasheet/lsm6dsv320x.pdf" (at 373.38 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "" (at 373.38 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "MPN" "LSM6DSV320XTR" (at 373.38 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Placement" "Pair B -Y (0, -20.00) - not fitted" (at 373.38 63.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "13" (uuid "53628774-5f87-573e-a633-7b0aaa4aba0f")) (pin "14" (uuid "c0db581c-e8c8-5c1e-b4fe-1b7bc1ca3cae")) (pin "1" (uuid "79b369cc-d3fe-5e00-b933-0b07a5d46259")) (pin "12" (uuid "d2ba362e-cb5b-5ad3-8d6f-17cccf5506f7")) (pin "2" (uuid "d085e99d-55ab-58ae-b3ff-d6a27d22c01b")) (pin "3" (uuid "8f09c92e-c493-5934-b0c1-ecfeb6ead231")) (pin "4" (uuid "f6c1104a-f552-5922-b2c1-ea33cf5a3b46")) (pin "9" (uuid "34199079-6640-592b-ae2d-263291bd44ea")) (pin "10" (uuid "baff219a-5029-5563-b554-350ff355cd15")) (pin "11" (uuid "6d3f8972-439a-5f68-8873-42673a574268")) (pin "8" (uuid "e117e37d-c7e9-5403-b9de-59554ec49e90")) (pin "5" (uuid "21da8c8c-0ced-57a8-8155-e9066888f076")) (pin "6" (uuid "0aeda462-c390-5ee1-8569-5985cda9e304")) (pin "7" (uuid "2cc54ca6-6548-5859-834f-6a9e39ca7be3"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "U5") (unit 1)))))
+  (wire (pts (xy 358.14 55.88) (xy 355.6 55.88)) (stroke (width 0) (type default)) (uuid "6d499e0f-4741-5e2c-b379-77bdb5072c1b"))
+  (label "SPI_SCK" (at 355.6 55.88 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "10899978-5512-5864-8764-f7aaf1cd03f2"))
+  (wire (pts (xy 358.14 58.42) (xy 355.6 58.42)) (stroke (width 0) (type default)) (uuid "4995763f-f261-5b98-bfb0-9cafcea8e8be"))
+  (label "SPI_MOSI" (at 355.6 58.42 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "aaa7b403-b848-5232-a85d-89bc2b583e23"))
+  (wire (pts (xy 358.14 60.96) (xy 355.6 60.96)) (stroke (width 0) (type default)) (uuid "5958251b-3d97-58da-95f2-14969568d44a"))
+  (label "SPI_MISO" (at 355.6 60.96 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "4e3ca0ea-1624-56a3-a398-8721be7a38ae"))
+  (wire (pts (xy 358.14 63.5) (xy 355.6 63.5)) (stroke (width 0) (type default)) (uuid "ac149530-068f-508a-929e-161e123419c1"))
+  (label "CS5" (at 355.6 63.5 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "7b7c1eb7-84e3-589f-a3bf-8746ef43b1f2"))
+  (wire (pts (xy 358.14 68.58) (xy 355.6 68.58)) (stroke (width 0) (type default)) (uuid "08773735-d5e7-57bc-a86c-ed7f9f851e1a"))
+  (label "GND" (at 355.6 68.58 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "fd05d9e3-b58a-506e-a227-483bc07ada76"))
+  (wire (pts (xy 358.14 71.12) (xy 355.6 71.12)) (stroke (width 0) (type default)) (uuid "5e994445-74a1-5e9c-8aa4-06ec3b4c7763"))
+  (label "GND" (at 355.6 71.12 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "4c61e51d-ac05-5c92-b951-a824031637ec"))
+  (no_connect (at 388.62 58.42) (uuid "8aa9ad54-b28c-55e1-a999-6cc67a53d857"))
+  (no_connect (at 388.62 60.96) (uuid "892b58ed-d863-5d45-a66b-3fcecf47025f"))
+  (no_connect (at 388.62 66.04) (uuid "d20b7983-1980-56c9-b4de-6de209a7f399"))
+  (no_connect (at 388.62 68.58) (uuid "5ac919b4-7075-5a27-9f0e-0b21e96f31ad"))
+  (wire (pts (xy 370.84 50.8) (xy 370.84 48.26)) (stroke (width 0) (type default)) (uuid "ae8ee251-fab3-519b-8d39-bedcef2e9e63"))
+  (label "+3V3" (at 370.84 48.26 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "35bc2a5e-5656-5afd-97a6-c867569af95e"))
+  (wire (pts (xy 375.92 50.8) (xy 375.92 48.26)) (stroke (width 0) (type default)) (uuid "0738139b-3bd0-58dc-99a7-609bc3c12942"))
+  (label "+3V3" (at 375.92 48.26 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "dfc1759c-f989-5e1e-b016-32487722b1c7"))
+  (wire (pts (xy 370.84 78.74) (xy 370.84 81.28)) (stroke (width 0) (type default)) (uuid "d411b391-722b-5fd1-b4b1-13056221a949"))
+  (label "GND" (at 370.84 81.28 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "d7015688-28e6-571b-8991-925690d98b2d"))
+  (wire (pts (xy 375.92 78.74) (xy 375.92 81.28)) (stroke (width 0) (type default)) (uuid "32cc46c8-c08d-5cb1-af1a-4a013c632048"))
+  (label "GND" (at 375.92 81.28 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "67a167b4-7e90-5769-84c1-2f19660f6b77"))
+  (text "Pair B -Y (0, -20.00) - not fitted" (exclude_from_sim no) (at 360.68 86.36 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "cc0f30a3-64f3-50b9-b223-e2fb2440da49"))
+  (symbol (lib_id "Device:C") (at 360.68 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes) (uuid "b2234677-0ccb-5f13-82e0-2366bd1e6de7")
+  (property "Reference" "C9" (at 364.49 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100n" (at 364.49 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 360.68 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 360.68 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "U5 VDD (pin 8) decoupling, place next to the pin" (at 360.68 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "3f406822-b7af-5319-8582-dba37cd9275a")) (pin "2" (uuid "702ca1cf-c65a-5fe5-84ee-63d7ed3f82f6"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "C9") (unit 1)))))
+  (wire (pts (xy 360.68 102.87) (xy 360.68 100.33)) (stroke (width 0) (type default)) (uuid "61fea79d-bdea-5453-9ddd-a4a1f9f16ffe"))
+  (label "+3V3" (at 360.68 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "fad97a4d-26b8-5038-8adf-5fedcd67ea4f"))
+  (wire (pts (xy 360.68 110.49) (xy 360.68 113.03)) (stroke (width 0) (type default)) (uuid "bf495c16-afd6-5f05-b9f4-14e658595acf"))
+  (label "GND" (at 360.68 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "01502a07-79b1-5ff3-8b13-3133017a5dda"))
+  (symbol (lib_id "Device:C") (at 374.65 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes) (uuid "b9d8b5ba-4822-50a7-907b-249607d05bc0")
+  (property "Reference" "C10" (at 378.46 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100n" (at 378.46 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 374.65 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 374.65 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "U5 VDDIO (pin 5) decoupling, place next to the pin" (at 374.65 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "4503240d-1a64-5c82-840e-a302544caf0e")) (pin "2" (uuid "69ad21b6-4b6a-58b6-a8d5-9ccb1e1ac892"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "C10") (unit 1)))))
+  (wire (pts (xy 374.65 102.87) (xy 374.65 100.33)) (stroke (width 0) (type default)) (uuid "4482d310-6036-5862-8dab-66d1e2e1fed1"))
+  (label "+3V3" (at 374.65 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "f054020e-fa77-5822-b3b2-32152e569f2d"))
+  (wire (pts (xy 374.65 110.49) (xy 374.65 113.03)) (stroke (width 0) (type default)) (uuid "fe467fb6-684b-5585-97fb-b3c419a16906"))
+  (label "GND" (at 374.65 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "67ad52eb-6f22-5c4a-a58e-fea73b02eb69"))
+  (symbol (lib_id "Device:R") (at 388.62 106.68 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp yes) (uuid "9f2e0bab-b69f-577b-a9db-2a50584a9e38")
+  (property "Reference" "R8" (at 392.43 105.41 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100k" (at 392.43 107.95 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at 388.62 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 388.62 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "CS5 pull-up (firmware sets I2C_I3C_disable, which turns off the chip's own CS pull-up)" (at 388.62 106.68 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "b8a9b04a-b168-54fe-bcb1-0ab298e1241b")) (pin "2" (uuid "d0432ddb-8349-5d88-b662-579c90fc69f1"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "R8") (unit 1)))))
+  (wire (pts (xy 388.62 102.87) (xy 388.62 100.33)) (stroke (width 0) (type default)) (uuid "3790d915-46c8-526e-b798-be6d7d4a745c"))
+  (label "+3V3" (at 388.62 100.33 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "e2b4dc9d-e9dd-513e-88d8-c7213f822e1a"))
+  (wire (pts (xy 388.62 110.49) (xy 388.62 113.03)) (stroke (width 0) (type default)) (uuid "f48e1287-c631-5520-8b7c-8fd10f983fe7"))
+  (label "CS5" (at 388.62 113.03 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "c3d9f795-2839-5d2e-84fd-658c55217706"))
+  (text "Pins: 1 SDO -> MISO · 2 SDx, 3 SCx -> GND · 4 INT1 -> D7 (U1 only) · 5 VDDIO, 8 VDD -> 3V3 + 100 nF each · 6, 7 GND\n9 INT2, 10 OCS_Aux, 11 SDO_Aux: soldered, not connected (datasheet DS14623 Table 2) · 12 CS · 13 SCL/SPC -> SCK · 14 SDA/SDI -> MOSI\nFirmware: first SPI write to every chip sets I2C_I3C_disable (IF_CFG 03h). High-g +/-256 g at 1.92 kHz; gyro +/-4000 dps.\nU4, U5, C7-C10, R7, R8 are DNP (pair B, fitted later)." (exclude_from_sim no) (at 116.84 124.46 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "803436d9-06cd-594c-969c-b5a2444b5601"))
+  (rectangle (start 12.7 165.1) (end 107.95 238.76) (stroke (width 0.15) (type dash)) (fill (type none)) (uuid "6a203eea-aa3d-5808-9aac-c4e701c2fcf2"))
+  (text "Magnetometer · MMC5603NJ (sensor face, (0, -24) mm)" (exclude_from_sim no) (at 13.97 166.37 0) (effects (font (size 2 2) (bold yes)) (justify left top)) (uuid "298c354c-aa65-5a1b-b269-e74ca5b086dc"))
+  (symbol (lib_id "disctracker:MMC5603NJ") (at 48.26 199.39 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "18c526fd-2264-5328-a060-f0933aa65238")
+  (property "Reference" "U6" (at 57.15 198.12 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "MMC5603NJ" (at 57.15 200.66 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Package_BGA:WLP-4_0.86x0.86mm_P0.4mm" (at 48.26 199.39 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "https://www.espruino.com/files/MMC5603NJ.pdf" (at 48.26 199.39 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "" (at 48.26 199.39 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "MPN" "MMC5603NJ" (at 48.26 199.39 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "LCSC" "C404328" (at 48.26 199.39 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "A2" (uuid "68db2e01-71e8-59bd-b24a-8c14d0cfceee")) (pin "B2" (uuid "dc88219e-29cf-5faf-8bbd-75883a05d784")) (pin "B1" (uuid "e59bbca9-dcea-588e-9446-a81c7377dcb7")) (pin "A1" (uuid "2d485b7e-cabb-5c43-94db-2ecfc6bb4d22"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "U6") (unit 1)))))
+  (wire (pts (xy 38.1 196.85) (xy 35.56 196.85)) (stroke (width 0) (type default)) (uuid "9a14d8a6-7e23-55d3-ad54-5e3974998be4"))
+  (label "I2C_SCL" (at 35.56 196.85 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "72e3f359-dfba-5fd9-b213-c57bd27fd040"))
+  (wire (pts (xy 38.1 199.39) (xy 35.56 199.39)) (stroke (width 0) (type default)) (uuid "51bc3172-be24-5a7d-9ed1-e9ce6d64d75a"))
+  (label "I2C_SDA" (at 35.56 199.39 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "a8f0ce72-2dee-553f-bcad-d7eb966ae3b4"))
+  (wire (pts (xy 48.26 191.77) (xy 48.26 189.23)) (stroke (width 0) (type default)) (uuid "717cb00e-3ac0-59ca-aea1-5c2568fc2d3a"))
+  (label "+3V3" (at 48.26 189.23 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "7d7651f3-b63e-57e1-94dc-a4c3b3fd75da"))
+  (wire (pts (xy 48.26 207.01) (xy 48.26 209.55)) (stroke (width 0) (type default)) (uuid "f77d3828-57b1-5063-adf3-a259ee1d2998"))
+  (label "GND" (at 48.26 209.55 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "64d5dd75-7835-5b22-a403-75c62fb63427"))
+  (symbol (lib_id "Device:C") (at 71.12 199.39 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "0236dbe4-0998-5acb-be8f-a1d140e63a3e")
+  (property "Reference" "C11" (at 74.93 198.12 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "2.2u" (at 74.93 200.66 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Capacitor_SMD:C_0402_1005Metric" (at 71.12 199.39 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 71.12 199.39 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "MMC5603NJ VDD bypass, datasheet minimum 2.2 uF, close to B1" (at 71.12 199.39 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "02137af8-1cd4-5b82-bea6-bec35599d180")) (pin "2" (uuid "8ccc570a-0ebc-5417-b583-d2db2338c1f8"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "C11") (unit 1)))))
+  (wire (pts (xy 71.12 195.58) (xy 71.12 193.04)) (stroke (width 0) (type default)) (uuid "1e09c30c-df2c-5db0-82ca-86912db1114d"))
+  (label "+3V3" (at 71.12 193.04 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "64f46405-7f89-576b-a669-a3efe3bdd0e7"))
+  (wire (pts (xy 71.12 203.2) (xy 71.12 205.74)) (stroke (width 0) (type default)) (uuid "493c238e-ccb4-546b-8445-f84cb015037f"))
+  (label "GND" (at 71.12 205.74 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "67d97900-8e71-51de-9973-78d9fa6074f2"))
+  (symbol (lib_id "Device:R") (at 81.28 199.39 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "4ddc814b-f27f-53f2-a26e-6d5280b393cd")
+  (property "Reference" "R1" (at 85.09 198.12 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "4.7k" (at 85.09 200.66 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at 81.28 199.39 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 81.28 199.39 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "I2C SDA pull-up" (at 81.28 199.39 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "e9bc20fe-8cd5-561e-a491-a38e38ed8419")) (pin "2" (uuid "4bcf478c-8e48-5ab4-b01f-3ff1ba012fd2"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "R1") (unit 1)))))
+  (wire (pts (xy 81.28 195.58) (xy 81.28 193.04)) (stroke (width 0) (type default)) (uuid "84eb1f81-e4a1-52b8-b6d7-f49386dbfe8a"))
+  (label "+3V3" (at 81.28 193.04 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "0d8ac574-fe80-5a52-9806-8fad035a8edd"))
+  (wire (pts (xy 81.28 203.2) (xy 81.28 205.74)) (stroke (width 0) (type default)) (uuid "f38f2e06-f92b-5ae0-96bb-a55b65b966fe"))
+  (label "I2C_SDA" (at 81.28 205.74 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "fc136733-9d04-5763-ad2e-de28125a4ecb"))
+  (symbol (lib_id "Device:R") (at 93.98 199.39 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "d608bf1f-5be8-589a-b142-945d9869f323")
+  (property "Reference" "R2" (at 97.79 198.12 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "4.7k" (at 97.79 200.66 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at 93.98 199.39 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 93.98 199.39 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "I2C SCL pull-up" (at 93.98 199.39 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "329fa1be-c0f0-5fbc-a425-e30f040b509c")) (pin "2" (uuid "d2458a82-6871-5409-9570-74fc2e81335d"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "R2") (unit 1)))))
+  (wire (pts (xy 93.98 195.58) (xy 93.98 193.04)) (stroke (width 0) (type default)) (uuid "fee399ab-5747-53ab-a205-aeeafc4e32ce"))
+  (label "+3V3" (at 93.98 193.04 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "828d9b68-d26a-59a4-8ce0-1d4e4b2a571b"))
+  (wire (pts (xy 93.98 203.2) (xy 93.98 205.74)) (stroke (width 0) (type default)) (uuid "4bfbcee3-4b7e-5d7f-9816-138b4641abe2"))
+  (label "I2C_SCL" (at 93.98 205.74 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "5d6b1409-8120-5dba-a7f4-bb317eceadf5"))
+  (text "I2C address 0x30. Keep >= 10 mm from XIAO, battery and any current-carrying\ntrace on either face. Footprint: verify ball pitch vs MEMSIC drawing." (exclude_from_sim no) (at 15.24 222.25 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "50a4a049-330c-53e5-bede-a178312a94ae"))
+  (rectangle (start 114.3 165.1) (end 220.98 238.76) (stroke (width 0.15) (type dash)) (fill (type none)) (uuid "caf3b12e-fabf-5659-b825-4a492da0b1d8"))
+  (text "Finder buzzer · CUI CPT-9019S on D6 via JP1" (exclude_from_sim no) (at 115.57 166.37 0) (effects (font (size 2 2) (bold yes)) (justify left top)) (uuid "56f6973d-8a5a-5858-8055-78ae60c739a2"))
+  (symbol (lib_id "Jumper:SolderJumper_3_Open") (at 142.24 190.5 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "df348c11-be18-5525-964e-11bc6d658e09")
+  (property "Reference" "JP1" (at 137.16 181.61 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "D6 select" (at 137.16 184.15 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Jumper:SolderJumper-3_P1.3mm_Open_RoundedPad1.0x1.5mm" (at 142.24 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 142.24 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "1-2 (A): D6 = U5 chip-select. 2-3 (B): D6 = buzzer. Ship bridged 2-3." (at 142.24 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "a9d35b8e-8960-5145-abf2-932ba3557f7f")) (pin "2" (uuid "34d9aa94-bb06-5561-8df2-645d956c2728")) (pin "3" (uuid "ca3c7cdf-17e1-511d-bf74-02c7818043e3"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "JP1") (unit 1)))))
+  (wire (pts (xy 137.16 190.5) (xy 134.62 190.5)) (stroke (width 0) (type default)) (uuid "95acb05e-da10-568d-85b5-627ef9123228"))
+  (label "CS5" (at 134.62 190.5 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "b9e38ecf-f010-5909-98f4-5522b4131d62"))
+  (wire (pts (xy 142.24 194.31) (xy 142.24 196.85)) (stroke (width 0) (type default)) (uuid "82649ba0-491f-5b24-9709-2163053f54ed"))
+  (label "D6_CS5_BZ" (at 142.24 196.85 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "3f79d833-4974-5032-95e0-d05496c61566"))
+  (wire (pts (xy 147.32 190.5) (xy 149.86 190.5)) (stroke (width 0) (type default)) (uuid "be1d50d0-ec2c-547f-96fd-29b6ade7f56e"))
+  (label "BZ_DRV" (at 149.86 190.5 0) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "d97af9bf-1a7b-5a98-9546-c56abf4632c4"))
+  (symbol (lib_id "Device:R") (at 170.18 200.66 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "0e9c22ab-a8f1-5494-8a1e-feaceaf47c97")
+  (property "Reference" "R9" (at 173.99 199.39 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "100" (at 173.99 201.93 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at 170.18 200.66 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 170.18 200.66 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "Limits GPIO peak current into the piezo's capacitance" (at 170.18 200.66 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "b720b8f2-6eaa-554e-a2ba-66774dc0aad1")) (pin "2" (uuid "b8169cea-36e7-52ef-a3e2-39f996124944"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "R9") (unit 1)))))
+  (wire (pts (xy 170.18 196.85) (xy 170.18 194.31)) (stroke (width 0) (type default)) (uuid "5d778620-8128-59ee-839c-f7d88a1af933"))
+  (label "BZ_DRV" (at 170.18 194.31 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "7bd6e5c3-66f7-5e2f-9d71-7fafde40fdd0"))
+  (wire (pts (xy 170.18 204.47) (xy 170.18 207.01)) (stroke (width 0) (type default)) (uuid "ed9809b3-ff22-526e-a81a-9af986b99d5f"))
+  (label "BZ_P" (at 170.18 207.01 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "65f2f840-b96a-560a-827b-3e7b024b55c2"))
+  (symbol (lib_id "Device:Buzzer") (at 190.5 200.66 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "cc7be20a-b7b5-5594-8b00-1a2dafa45556")
+  (property "Reference" "BZ1" (at 182.88 194.31 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "CPT-9019S-SMT" (at 182.88 207.01 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Buzzer_Beeper:Buzzer_CUI_CPT-9019S-SMT" (at 190.5 200.66 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "https://www.sameskydevices.com/product/resource/cpt-9019s-smt.pdf" (at 190.5 200.66 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "Piezo, externally driven, 3 V / 5 mA / 65 dB @ 10 cm, 4 kHz. Non-magnetic." (at 190.5 200.66 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "MPN" "CPT-9019S-SMT-TR" (at 190.5 200.66 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "LCSC" "C95163" (at 190.5 200.66 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "8fec6066-70a5-5798-b449-469caec3d088")) (pin "2" (uuid "549c9585-b4d4-589e-b816-705888efc3a5"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "BZ1") (unit 1)))))
+  (wire (pts (xy 187.96 198.12) (xy 185.42 198.12)) (stroke (width 0) (type default)) (uuid "c6854b73-82e0-5eb1-a2c9-7ced37a64548"))
+  (label "BZ_P" (at 185.42 198.12 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "1cff43ae-3230-5f6d-b0ea-1eb132ae2354"))
+  (wire (pts (xy 187.96 203.2) (xy 185.42 203.2)) (stroke (width 0) (type default)) (uuid "efb6e3bf-6f97-5848-abd7-25921c2ee746"))
+  (label "GND" (at 185.42 203.2 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "8f80673e-fbc2-5363-a5d1-a75afdf53541"))
+  (text "Ship JP1 bridged 2-3 (buzzer) while U5 is not fitted.\nDrive D6 with a 4 kHz PWM square wave." (exclude_from_sim no) (at 116.84 222.25 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "21658cdc-5d2e-5923-82d1-e7c941aa1917"))
+  (rectangle (start 226.06 165.1) (end 312.42 238.76) (stroke (width 0.15) (type dash)) (fill (type none)) (uuid "9369dfbf-301f-5d06-aefe-7d98dfd736c6"))
+  (text "Power · Adafruit 1317 LiPo, 150 mAh" (exclude_from_sim no) (at 227.33 166.37 0) (effects (font (size 2 2) (bold yes)) (justify left top)) (uuid "ca9c7317-29a0-5efc-941f-0217672d1813"))
+  (symbol (lib_id "Device:Battery_Cell") (at 241.3 198.12 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board no) (dnp no) (uuid "af1b8488-9f3e-5dc0-891c-1d68ab49b2a3")
+  (property "Reference" "BT1" (at 245.11 194.31 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "Adafruit 1317 150mAh" (at 245.11 196.215 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "" (at 241.3 198.12 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "https://www.adafruit.com/product/1317" (at 241.3 198.12 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "3.7 V protected LiPo, 19.75 x 26.02 x 3.8 mm, 4.65 g. Leads soldered to J1/J2." (at 241.3 198.12 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "MPN" "Adafruit 1317" (at 241.3 198.12 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "ef218aff-91f1-5b32-87f3-11932b6014f9")) (pin "2" (uuid "53939f3e-d0ee-58a4-b518-92dc99ae969a"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "BT1") (unit 1)))))
+  (wire (pts (xy 241.3 193.04) (xy 241.3 190.5)) (stroke (width 0) (type default)) (uuid "b9a7d4f5-e396-5039-bc55-5b20bf5a0d8d"))
+  (label "VBAT" (at 241.3 190.5 90) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify left bottom)) (uuid "26f806e1-9a6e-57f0-945d-57c3e684ba1d"))
+  (wire (pts (xy 241.3 200.66) (xy 241.3 203.2)) (stroke (width 0) (type default)) (uuid "1c1b5765-bdb3-59b2-a45a-0675f93fb162"))
+  (label "GND" (at 241.3 203.2 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "9eaa7550-48e9-51c1-b40b-af3640bcdb54"))
+  (symbol (lib_id "Connector_Generic:Conn_01x01") (at 274.32 190.5 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "2bb6e833-503f-5a1e-8647-5b88f4c30a1f")
+  (property "Reference" "J1" (at 276.86 187.96 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "BAT+" (at 276.86 193.04 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Connector_Wire:SolderWirePad_1x01_SMD_1.5x3mm" (at 274.32 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 274.32 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "" (at 274.32 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "963c1c2a-fcf0-564b-9db1-f60c83d8092f"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "J1") (unit 1)))))
+  (wire (pts (xy 269.24 190.5) (xy 266.7 190.5)) (stroke (width 0) (type default)) (uuid "93acd592-2766-59a5-af26-6114b57263b1"))
+  (label "VBAT" (at 266.7 190.5 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "6aba4abb-7ef5-558f-ac77-1d98b3495344"))
+  (symbol (lib_id "Connector_Generic:Conn_01x01") (at 274.32 205.74 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "87d0082e-695d-5217-a6ae-59e21f5e747a")
+  (property "Reference" "J2" (at 276.86 203.2 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "BAT-" (at 276.86 208.28 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "Connector_Wire:SolderWirePad_1x01_SMD_1.5x3mm" (at 274.32 205.74 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 274.32 205.74 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "" (at 274.32 205.74 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "99d40be8-bab0-520b-b1a4-e928e97cf93a"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "J2") (unit 1)))))
+  (wire (pts (xy 269.24 205.74) (xy 266.7 205.74)) (stroke (width 0) (type default)) (uuid "7309129d-3082-5ee5-a2bb-3f431caf8dcf"))
+  (label "GND" (at 266.7 205.74 180) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "9f2a40b1-69f3-5108-aaec-c81f4d6e60a9"))
+  (symbol (lib_id "power:PWR_FLAG") (at 294.64 190.5 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid "4affea52-47c6-5a9a-9d78-59ff77749ccd")
+  (property "Reference" "#FLG01" (at 294.64 184.15 0) (effects (font (size 1.27 1.27)) (justify left) (hide yes)))
+  (property "Value" "PWR_FLAG" (at 294.64 186.055 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "" (at 294.64 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 294.64 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "" (at 294.64 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "42ee4043-e83b-5041-9729-9da91885b9b6"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "#FLG01") (unit 1)))))
+  (wire (pts (xy 294.64 190.5) (xy 294.64 193.04)) (stroke (width 0) (type default)) (uuid "62ebff6c-10e7-5213-9c8b-2859a536b2ec"))
+  (label "GND" (at 294.64 193.04 270) (fields_autoplaced yes) (effects (font (size 1.27 1.27)) (justify right bottom)) (uuid "ada23f47-a6b3-539a-92dd-91c08d6ba899"))
+  (text "J1/J2 at (-18.4, +/-3) mm on the XIAO face, routed to\nXIAO VBAT (pad 19) / GND (pad 20). Battery bonded,\ncentered at (-6.54, 0) mm to balance the XIAO." (exclude_from_sim no) (at 228.6 222.25 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "b376aa95-8c7c-5f4a-bcac-048cda8cafd5"))
+  (rectangle (start 317.5 165.1) (end 406.4 238.76) (stroke (width 0.15) (type dash)) (fill (type none)) (uuid "4460b1b5-5bef-5fef-a17c-114586bcf300"))
+  (text "Mechanical · trim pads and alignment holes" (exclude_from_sim no) (at 318.77 166.37 0) (effects (font (size 2 2) (bold yes)) (justify left top)) (uuid "83cb3104-a787-5bfe-b579-d500b7708aac"))
+  (symbol (lib_id "Connector:TestPoint") (at 330.2 190.5 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "03431cc4-4f60-56a3-b928-2e125dee96fc")
+  (property "Reference" "TP1" (at 332.74 184.15 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "trim +X" (at 332.74 186.055 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "TestPoint:TestPoint_Pad_3.0x3.0mm" (at 330.2 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 330.2 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "Balance trim pad: add solder after weighing the built pod" (at 330.2 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "b1363c19-6225-52e2-920c-37f7c7adc8f9"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "TP1") (unit 1)))))
+  (no_connect (at 330.2 190.5) (uuid "77b5d2ea-6011-5962-9da4-17dac1a9fe6d"))
+  (symbol (lib_id "Connector:TestPoint") (at 347.98 190.5 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "4ee3d398-9ed3-5124-80e6-b7cc8ec4ed76")
+  (property "Reference" "TP2" (at 350.52 184.15 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "trim -X" (at 350.52 186.055 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "TestPoint:TestPoint_Pad_3.0x3.0mm" (at 347.98 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 347.98 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "Balance trim pad: add solder after weighing the built pod" (at 347.98 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "643f70d9-ff49-57e1-985d-1ec6065cd44c"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "TP2") (unit 1)))))
+  (no_connect (at 347.98 190.5) (uuid "b70ab1d2-f129-5a15-a5c5-ab02511c546e"))
+  (symbol (lib_id "Connector:TestPoint") (at 365.76 190.5 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "6ed5e835-a5a4-5ef5-aeec-33b2ecd424d8")
+  (property "Reference" "TP3" (at 368.3 184.15 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "trim +Y" (at 368.3 186.055 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "TestPoint:TestPoint_Pad_3.0x3.0mm" (at 365.76 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 365.76 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "Balance trim pad: add solder after weighing the built pod" (at 365.76 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "e6534071-d745-5964-86b8-2a256d52d973"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "TP3") (unit 1)))))
+  (no_connect (at 365.76 190.5) (uuid "425c44aa-f494-537e-b49d-60f3040cfe7c"))
+  (symbol (lib_id "Connector:TestPoint") (at 383.54 190.5 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "8f51c890-42de-5fe2-8fad-6f4b271dd24f")
+  (property "Reference" "TP4" (at 386.08 184.15 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "trim -Y" (at 386.08 186.055 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "TestPoint:TestPoint_Pad_3.0x3.0mm" (at 383.54 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 383.54 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "Balance trim pad: add solder after weighing the built pod" (at 383.54 190.5 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (pin "1" (uuid "d44b458b-bf8f-55c3-904a-3ca9292090fc"))
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "TP4") (unit 1)))))
+  (no_connect (at 383.54 190.5) (uuid "92586e27-1c71-54cf-beff-80d9d7210fde"))
+  (symbol (lib_id "Mechanical:MountingHole") (at 335.28 210.82 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "f79c3e5e-ddba-535e-922f-e40eabaf4d5f")
+  (property "Reference" "H1" (at 337.82 209.55 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "align" (at 337.82 212.09 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "MountingHole:MountingHole_2.1mm" (at 335.28 210.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 335.28 210.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "Pod alignment pin hole, r = 25.6 mm at 30 / 150 / 250 deg" (at 335.28 210.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "H1") (unit 1)))))
+  (symbol (lib_id "Mechanical:MountingHole") (at 358.14 210.82 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "9ac61143-0cb9-598e-9eac-6831520a17ac")
+  (property "Reference" "H2" (at 360.68 209.55 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "align" (at 360.68 212.09 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "MountingHole:MountingHole_2.1mm" (at 358.14 210.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 358.14 210.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "Pod alignment pin hole, r = 25.6 mm at 30 / 150 / 250 deg" (at 358.14 210.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "H2") (unit 1)))))
+  (symbol (lib_id "Mechanical:MountingHole") (at 381 210.82 0) (unit 1) (exclude_from_sim no) (in_bom no) (on_board yes) (dnp no) (uuid "b28111b1-c827-5064-9201-c585353f0834")
+  (property "Reference" "H3" (at 383.54 209.55 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Value" "align" (at 383.54 212.09 0) (effects (font (size 1.27 1.27)) (justify left)))
+  (property "Footprint" "MountingHole:MountingHole_2.1mm" (at 381 210.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Datasheet" "" (at 381 210.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  (property "Description" "Pod alignment pin hole, r = 25.6 mm at 30 / 150 / 250 deg" (at 381 210.82 0) (effects (font (size 1.27 1.27)) (hide yes)))
+  
+  (instances (project "disctracker_sensor" (path "/ed8d3162-2461-588e-942b-e23f59aa8ac7" (reference "H3") (unit 1)))))
+  (text "Trim pads: -Y pad sits opposite the buzzer; others for fine balance.\nHoles locate the board on the pod's pins." (exclude_from_sim no) (at 320.04 222.25 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "18ac3233-7fb7-55bc-ab3b-09fc10eca8bc"))
+  (rectangle (start 12.7 243.84) (end 226.06 284.48) (stroke (width 0.15) (type dash)) (fill (type none)) (uuid "db7ae127-5e5e-57d0-96e1-180cebbe9091"))
+  (text "Board notes" (exclude_from_sim no) (at 13.97 245.11 0) (effects (font (size 2 2) (bold yes)) (justify left top)) (uuid "5e09fb81-541e-561d-8456-51cc5fdf4555"))
+  (text "56 mm round, 4 layers, 0.8 mm (0.6 mm or cutouts to save weight). Solid GND plane under the sensors.\nSensor face (machine assembled): U1-U6, C1-C11, R1-R9, JP1 · XIAO face (hand-soldered): M1, BZ1, C12, J1/J2, TP1-TP4, battery.\nU1 exactly at board center; U2/U3 centers at (+/-20.00, 0); U4/U5 at (0, +/-20.00). Measure to package center.\nEvery off-center mass mirrored or trimmed. Magnetometer clear of XIAO, battery, buzzer and current traces.\nSource of truth for positions: hardware/placement.csv · pins: hardware/pinmap.csv · overview: hardware/overview.html" (exclude_from_sim no) (at 15.24 250.19 0) (effects (font (size 1.27 1.27)) (justify left top)) (uuid "3882ea51-fb1b-5fed-80cc-5457a92f624f"))
+  (sheet_instances (path "/" (page "1")))
+  (embedded_fonts no))
