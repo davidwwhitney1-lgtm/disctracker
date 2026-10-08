@@ -188,6 +188,7 @@ Plan: side-by-side test (both trackers on one disc) with radar gun, laser tachom
 | …0005 | status (20 B: cal, battery, tilt, flags, captures, endReason, flight, rejectFlags, power mode) |
 | …0006 | finder RSSI (8 B) |
 | …0007 | data-log status (12 B: flags ok/recording/full/stopped-full, records, usedKB, capacityKB, seconds, last test marker) |
+| …0008 | data-log download: [u32 offset][bytes]; 0xFFFFFFFF start [total, records, crc32], 0xFFFFFFFE end. Cmd `logread <offset>`. MTU 247 + 8-deep notify queue (configPrphConn(247,12,8,2)) → ~41 KB/s |
 
 ### Raw data recorder (new, 2026-10-07/08)
 - Every capture (counted **and** rejected) stored on the 2 MB flash with all raw samples + every result + settings.
