@@ -237,6 +237,23 @@
     <p class="note" id="sensDesc" style="margin-bottom:0"></p>
   </section>
 
+  <section class="card">
+    <div class="result-head">
+      <div class="label">Data recorder</div>
+      <div class="note" id="logState">–</div>
+    </div>
+    <div class="meter" style="height:14px;margin-top:10px"><div class="meterFill" id="logFill" style="background:var(--accent2)"></div></div>
+    <p class="note" id="logInfo" style="margin:8px 0 10px">Connect to see what's recorded.</p>
+    <div class="row">
+      <button id="sessBtn" disabled>Start session recording</button>
+      <button id="logClearBtn" disabled>Clear recorder</button>
+    </div>
+    <p class="note" style="margin-bottom:0">Every capture is always saved – counted <b>and</b> rejected – with all its raw
+      sensor readings. <b>Session recording</b> also saves everything in between (about 6 minutes fits), so missed
+      throws can be found. To get the data: plug the disc into a computer and run <code>py disclab.py export</code>
+      in the <code>analysis</code> folder.</p>
+  </section>
+
   <section class="card" id="findCard">
     <div class="result-head">
       <div class="label">Find my disc</div>
@@ -381,7 +398,7 @@
     <button id="clearBoard" disabled>Erase throws stored on disc</button>
   </div>
 
-  <p class="note">Version 2026-10-07d. Roll/pitch are only accurate while the disc is still.
+  <p class="note">Version 2026-10-07e. Roll/pitch are only accurate while the disc is still.
     Spin above ~333 rpm exceeds the gyro's range; the board then estimates it from the accelerometer.</p>
   </div>
 
@@ -469,6 +486,7 @@ const CMD     = "19b10002-e8f2-537e-4f6c-d104768a1214";
 const LIVE    = "19b10004-e8f2-537e-4f6c-d104768a1214";
 const STATUS  = "19b10005-e8f2-537e-4f6c-d104768a1214";
 const FIND    = "19b10006-e8f2-537e-4f6c-d104768a1214";
+const LOGINFO = "19b10007-e8f2-537e-4f6c-d104768a1214";
 
 const LIVE_STILL = 1, LIVE_CAPTURING = 2, LIVE_GYRO_SAT = 4;
 const F = { VALID: 1, GYRO_Z_SAT: 2, ACCEL_SAT: 4, NO_RELEASE: 8, NO_STATIC: 16, SPIN_FROM_ACC: 32, SHORT_FLIGHT: 64, SPIN_CCW: 128 };
@@ -906,6 +924,13 @@ async function setupGatt() {
   await summary.startNotifications();
 
   try {
+    const lc = await svc.getCharacteristic(LOGINFO);
+    lc.addEventListener("characteristicvaluechanged", e => onLogInfo(e.target.value));
+    await lc.startNotifications();
+    onLogInfo(await lc.readValue());
+  } catch (e) { console.warn("no recorder channel (old firmware)", e); }
+
+  try {
     const fc = await svc.getCharacteristic(FIND);
     fc.addEventListener("characteristicvaluechanged", e => onFind(e.target.value));
     await fc.startNotifications();
@@ -916,6 +941,7 @@ async function setupGatt() {
   $("sensBar").disabled = false;
   $("frontBtn").disabled = false;
   $("spinCalBtn").disabled = false;
+  if (lastLogDv) onLogInfo(lastLogDv);
   if (finding) {                       // the disc drops find mode on disconnect; resume it
     await sendCmd("find");
     if (ledOn) await sendCmd("ledon");
@@ -935,6 +961,7 @@ function onDisconnected() {
   $("calBtn").disabled = $("clearBoard").disabled = true;
   $("standbyBtn").disabled = $("wakeBtn").disabled = $("offBtn").disabled = true;
   $("findBtn").disabled = $("ledBtn").disabled = $("dirBtn").disabled = true;
+  $("sessBtn").disabled = $("logClearBtn").disabled = true;
   $("sensBar").disabled = true;
   if (finding) $("findState").textContent = "out of range – reconnecting…";
   if (calPending) { clearTimeout(calPending); calPending = null; setCalMsg("Disconnected during calibration – try again.", "bad"); }
@@ -1544,6 +1571,28 @@ document.addEventListener("click", e => {
   b.classList.remove("pressed"); void b.offsetWidth; b.classList.add("pressed");
   setTimeout(() => b.classList.remove("pressed"), 500);
 }, true);
+
+// ---- data recorder ----
+let sessionOn = false;
+let lastLogDv = null;
+function onLogInfo(dv) {
+  lastLogDv = dv;
+  const fl = dv.getUint8(1), rec = dv.getUint16(2, true), used = dv.getUint16(4, true), cap = dv.getUint16(6, true) || 2048;
+  const secs = dv.getUint16(8, true);
+  sessionOn = !!(fl & 2);
+  const pct = Math.min(100, used / cap * 100);
+  $("logFill").style.width = pct.toFixed(1) + "%";
+  $("logState").textContent = !(fl & 1) ? "not available" : (fl & 4) ? "FULL – export, then clear" : sessionOn ? `recording… ${secs} s` : "ready";
+  $("logInfo").textContent = (fl & 1) ? `${rec} records · ${used} of ${cap} KB used (${pct.toFixed(0)}%)` : "Recorder chip not found.";
+  $("sessBtn").textContent = sessionOn ? "Stop session recording" : "Start session recording";
+  $("sessBtn").classList.toggle("on", sessionOn);
+  $("sessBtn").disabled = !cmdChar || !(fl & 1);
+  $("logClearBtn").disabled = !cmdChar || !(fl & 1);
+}
+$("sessBtn").onclick = () => sendCmd(sessionOn ? "streamoff" : "streamon");
+$("logClearBtn").onclick = () => {
+  if (confirm("Erase everything on the disc's recorder?\n\nExport it to a computer first if you want to keep it.")) sendCmd("logclear");
+};
 
 // ---- set front (USB-C) ----
 // Tip the disc so the USB-C port points down: gravity's "up" then leans toward
