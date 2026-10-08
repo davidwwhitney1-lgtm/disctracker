@@ -1,0 +1,15 @@
+Ref,Part,Value,Package,Qty,Populate,Notes
+U1,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.86,1,Yes,Center IMU: gyro +/-4000 dps; accel +/-16 g plus high-g channel
+U2,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.86,1,Yes,Spin pair A at (+20.00; 0) mm
+U3,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.86,1,Yes,Spin pair A at (-20.00; 0) mm
+U4,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.86,1,DNP,Spin pair B at (0; +20.00) mm - fit later
+U5,ST LSM6DSV320X,,LGA-14 2.5x3.0x0.86,1,DNP,Spin pair B at (0; -20.00) mm - fit later
+U6,MEMSIC MMC5603NJ,,WLCSP 0.8x0.8,1,Yes,Magnetometer; JLCPCB C404328; 8-10 mm off center
+C1-C10,Capacitor,100 nF,0402,10,Yes (6 of 10),2 per LSM6DSV320X (VDD and VDDIO); C7-C10 DNP with U4/U5
+C11,Capacitor,1 uF,0402,1,Yes,Magnetometer decoupling
+C12,Capacitor,10 uF,0603,1,Yes,Bulk at the XIAO 3V3 connection
+R1 R2,Resistor,4.7 k,0402,2,Yes,I2C pull-ups for the magnetometer
+R3,Resistor,33 R,0402,1,Yes,Series resistor on SPI clock (20 mm runs)
+M1,Seeed XIAO nRF52840 Sense,,castellated SMD,1,Yes,Soldered flat on top; centered over U1
+BZ1,Piezo buzzer (non-magnetic),,small SMD,1,TBD,Pin not yet assigned - see README open item 1
+J1 J2,Battery pads BAT+ BAT-,,pads,2,Yes,To the XIAO underside battery pads

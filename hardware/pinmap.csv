@@ -1,0 +1,15 @@
+XIAO_pin,Net,Goes_to,Notes
+3V3,+3V3,VDD+VDDIO of U1-U5; VDD of U6; R1 R2; C12,
+GND,GND,All GND + ground plane,
+D8 (SCK),SPI_SCK,U1-U5 SCL/SPC via R3 (33 R),
+D10 (MOSI),SPI_MOSI,U1-U5 SDA/SDI,
+D9 (MISO),SPI_MISO,U1-U5 SDO/SA0,
+D0,CS1,U1 CS,Idle high (pull-up)
+D1,CS2,U2 CS,Idle high (pull-up)
+D2,CS3,U3 CS,Idle high (pull-up)
+D3,CS4,U4 CS,DNP at first; idle high
+D6,CS5,U5 CS,DNP at first; idle high
+D7,INT1,U1 INT1,Data-ready: read all sensors together
+D4 (SDA),I2C_SDA,U6 SDA + R1,
+D5 (SCL),I2C_SCL,U6 SCL + R2,
+BAT+/BAT-,VBAT,Pads to XIAO underside battery pads,
