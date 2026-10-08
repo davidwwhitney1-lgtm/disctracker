@@ -1,0 +1,182 @@
+<title>DiscTracker Sensor Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Condensed:wght@500;700&family=IBM+Plex+Sans:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column of drawings, each followed by a known / unknown ledger. Bench-drawing feel: paper, ink, copper. */
+:root {
+  --bg: #F2F4F3; --panel: #FFFFFF; --ink: #1B2320; --muted: #5C6A65; --line: #CBD4D0;
+  --copper: #B0632A; --signal: #2C6A8A; --i2c: #6A57A8; --bz: #B57B10; --pwr: #B03A30;
+  --pcbfill: #DCE6E0; --shell: #E2E5E9; --batt: #D9CBB0; --plastic: #F1C9A5; --xiaofill: #2F4D3E;
+  --ok: #2B7A4B; --dec: #2D5CA6; --calc: #5B4BA0; --est: #A8710D; --open: #B0382C;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111614; --panel: #19201D; --ink: #E3EBE7; --muted: #9AABA4; --line: #34413C;
+  --copper: #DE8C4E; --signal: #6DB2D3; --i2c: #A99BE6; --bz: #E2B04B; --pwr: #EE7F72;
+  --pcbfill: #24332C; --shell: #2A2F35; --batt: #5A4E38; --plastic: #6B4A33; --xiaofill: #3F6B55;
+  --ok: #5CC28A; --dec: #80A9F0; --calc: #B3A6EE; --est: #E6B451; --open: #F07F72; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #111614; --panel: #19201D; --ink: #E3EBE7; --muted: #9AABA4; --line: #34413C;
+  --copper: #DE8C4E; --signal: #6DB2D3; --i2c: #A99BE6; --bz: #E2B04B; --pwr: #EE7F72;
+  --pcbfill: #24332C; --shell: #2A2F35; --batt: #5A4E38; --plastic: #6B4A33; --xiaofill: #3F6B55;
+  --ok: #5CC28A; --dec: #80A9F0; --calc: #B3A6EE; --est: #E6B451; --open: #F07F72; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font: 15px/1.6 var(--body); }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 16px; padding-block: 32px 64px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: 26px; font-weight: 700; margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); }
+h3 { font-size: 18px; font-weight: 500; margin-top: 22px; }
+p, li { max-width: 68ch; }
+.kicker { font: 600 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--copper); }
+.lede { font-size: 17px; color: var(--muted); margin-top: 10px; }
+.mono, code { font-family: var(--mono); font-size: .92em; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 18px; font: 13px var(--mono); color: var(--muted); }
+.facts b { color: var(--ink); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.st { display: inline-block; font: 600 11px/1 var(--mono); letter-spacing: .04em; text-transform: uppercase;
+  padding: 4px 7px; border-radius: 3px; border: 1px solid currentColor; white-space: nowrap; }
+.st.ok { color: var(--ok); } .st.dec { color: var(--dec); } .st.calc { color: var(--calc); } .st.est { color: var(--est); } .st.open { color: var(--open); }
+figure { margin: 20px 0 0; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
+.scroll { overflow-x: auto; }
+figcaption { font-size: 13px; color: var(--muted); margin-top: 10px; }
+svg.dia { display: block; width: 100%; height: auto; }
+svg.wiring { min-width: 760px; }
+svg.board { max-width: 600px; margin: 0 auto; }
+svg.housing { min-width: 720px; }
+.keyrow { display: flex; flex-wrap: wrap; gap: 6px 18px; font: 12px var(--mono); color: var(--muted); margin-top: 10px; }
+.keyrow i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+/* wiring */
+.wiring text { font-family: var(--mono); fill: var(--ink); }
+.wiring .hd { font-size: 12px; font-weight: 600; } .wiring .sub { font-size: 10.5px; fill: var(--muted); }
+.wiring .pinl { font-size: 11px; } .wiring .tiny { font-size: 9.5px; fill: var(--muted); } .wiring .bus { font-size: 11px; fill: var(--copper); font-weight: 600; }
+.wiring .box { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; } .wiring .dnp { stroke-dasharray: 5 4; stroke: var(--muted); }
+.wiring .res, .wiring .jp { fill: var(--bg); }
+.wiring .w { fill: none; stroke-width: 1.6; } .wiring .spi { stroke: var(--copper); } .wiring .cs { stroke: var(--signal); }
+.wiring .int { stroke: var(--signal); stroke-dasharray: 6 3; } .wiring .i2c { stroke: var(--i2c); } .wiring .bz { stroke: var(--bz); }
+.wiring .pwr { stroke: var(--pwr); } .wiring .gnd { stroke: var(--muted); } .wiring .pin { stroke: var(--ink); stroke-width: 1.2; }
+.wiring .dot { fill: var(--copper); }
+/* board, units are mm */
+.board text { font-family: var(--mono); fill: var(--ink); }
+.board .sm { font-size: 1.2px; fill: var(--muted); } .board .ref { font-size: 1.45px; font-weight: 600; } .board .dimt { font-size: 1.25px; fill: var(--muted); }
+.board .pcb { fill: var(--pcbfill); } .board .keep { fill: none; stroke: var(--ink); stroke-width: .25; }
+.board .xiao, .board .usb { fill: none; stroke: var(--muted); stroke-width: .18; stroke-dasharray: .8 .5; }
+.board .chip { fill: var(--ink); } .board .chip.dnp { fill: var(--pcbfill); stroke: var(--ink); stroke-width: .15; stroke-dasharray: .4 .3; }
+.board .pas { fill: var(--copper); } .board .mag { fill: var(--i2c); } .board .zone { fill: none; stroke: var(--i2c); stroke-width: .15; stroke-dasharray: .6 .4; }
+.board .buz { fill: none; stroke: var(--bz); stroke-width: .3; } .board .bal { fill: none; stroke: var(--copper); stroke-width: .18; stroke-dasharray: .3 .25; }
+.board .pad { fill: var(--pwr); } .board .hole { fill: var(--bg); stroke: var(--ink); stroke-width: .12; } .board .mark { fill: var(--copper); }
+.board .dim { stroke: var(--muted); stroke-width: .1; }
+/* housing, units are mm */
+.housing text { font-family: var(--mono); fill: var(--ink); } .housing .sm { font-size: 2.3px; } .housing .dimt { font-size: 2.2px; fill: var(--muted); }
+.housing .plate { fill: var(--plastic); stroke: var(--ink); stroke-width: .25; } .housing .brk { fill: none; stroke: var(--ink); stroke-width: .25; }
+.housing .vhb { fill: var(--est); opacity: .7; } .housing .shell { fill: var(--shell); stroke: var(--ink); stroke-width: .25; } .housing .cavity { fill: var(--bg); }
+.housing .batt { fill: var(--batt); stroke: var(--ink); stroke-width: .15; } .housing .foam { fill: var(--line); }
+.housing .chip { fill: var(--ink); } .housing .pcb { fill: var(--pcbfill); stroke: var(--ink); stroke-width: .15; }
+.housing .xiaob { fill: var(--xiaofill); } .housing .comp { fill: var(--muted); } .housing .usbb { fill: var(--line); stroke: var(--ink); stroke-width: .15; }
+.housing .lead { stroke: var(--muted); stroke-width: .15; } .housing .dim { stroke: var(--muted); stroke-width: .2; }
+/* ledgers */
+.ledger { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 14px; }
+.ledger td { padding: 9px 10px 9px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.ledger td:first-child { width: 112px; } .ledger td:last-child { padding-right: 0; }
+.callout { margin-top: 18px; padding: 14px 16px; border-left: 3px solid var(--open); background: var(--panel); border-radius: 0 6px 6px 0; }
+.callout h3 { margin: 0 0 4px; }
+.nums { width: 100%; border-collapse: collapse; margin-top: 12px; font: 13px var(--mono); font-variant-numeric: tabular-nums; }
+.nums th, .nums td { text-align: right; padding: 7px 10px; border-top: 1px solid var(--line); white-space: nowrap; }
+.nums th:first-child, .nums td:first-child { text-align: left; } .nums th { color: var(--muted); font-weight: 600; border-top: 0; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; margin-top: 16px; }
+.col { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; min-width: 0; }
+.col h3 { margin: 0 0 8px; } .col ul { margin: 0; padding-left: 18px; } .col li { margin: 4px 0; font-size: 14px; }
+a { color: var(--signal); }
+</style>
+<div class="wrap">
+<div class="kicker">DiscTracker · custom PCB · step 1</div>
+<h1>DiscTracker Sensor Board</h1>
+<p class="lede">How the parts connect, where they sit on the 48 mm board, and how the board might fit under a disc's flight plate. Every item is tagged with how sure we are about it.</p>
+<div class="facts">
+  <span>Board <b>⌀48 mm round</b></span><span>Layers <b>4 · 0.8 mm</b></span><span>Spin target <b>2,500 rpm</b></span>
+  <span>Spin pair radius <b>20.00 mm</b></span><span>Buzzer <b>D6 via JP1</b></span><span>Fitted <b>U1 + U2 + U3</b></span>
+</div>
+<div class="legend">
+  <span class="st ok">Confirmed</span><span class="st dec">Decided</span><span class="st calc">Calculated</span><span class="st est">Estimate</span><span class="st open">Open</span>
+</div>
+<p style="font-size:13px;color:var(--muted);margin-top:8px">Confirmed = read from a datasheet or spec. Decided = your choice. Calculated = math from known numbers. Estimate = a reasonable guess that needs measuring. Open = still to be found, worked out or designed.</p>
+
+<h2>1 · How everything connects</h2>
+<p>The XIAO talks to the five motion chips over one shared <b>SPI bus</b> (three wires, copper below). Each chip gets its own <b>chip-select</b> wire (blue) so the XIAO can talk to one at a time. The magnetometer uses a separate two-wire <b>I²C</b> bus (purple). The buzzer shares pin D6 with U5 through a solder jumper.</p>
+<figure><div class="scroll">
+<svg viewBox="0 0 960 580" class="dia wiring" role="img" aria-label="Wiring diagram from XIAO pins to sensors"><rect x="30" y="30" width="200" height="500" rx="4" class="box"/><text x="130" y="56" class="hd" text-anchor="middle">M1 · XIAO nRF52840 Sense</text><text x="130" y="74" class="sub" text-anchor="middle">hand-soldered on the other face</text><path d="M222 86h8" class="pin"/><text x="214" y="90" class="pinl" text-anchor="end">D8 · SCK</text><path d="M222 108h8" class="pin"/><text x="214" y="112" class="pinl" text-anchor="end">D10 · MOSI</text><path d="M222 130h8" class="pin"/><text x="214" y="134" class="pinl" text-anchor="end">D9 · MISO</text><path d="M222 170h8" class="pin"/><text x="214" y="174" class="pinl" text-anchor="end">D0</text><path d="M222 195h8" class="pin"/><text x="214" y="199" class="pinl" text-anchor="end">D1</text><path d="M222 220h8" class="pin"/><text x="214" y="224" class="pinl" text-anchor="end">D2</text><path d="M222 245h8" class="pin"/><text x="214" y="249" class="pinl" text-anchor="end">D3</text><path d="M222 270h8" class="pin"/><text x="214" y="274" class="pinl" text-anchor="end">D6</text><path d="M222 295h8" class="pin"/><text x="214" y="299" class="pinl" text-anchor="end">D7</text><path d="M222 335h8" class="pin"/><text x="214" y="339" class="pinl" text-anchor="end">D4 · SDA</text><path d="M222 360h8" class="pin"/><text x="214" y="364" class="pinl" text-anchor="end">D5 · SCL</text><path d="M222 410h8" class="pin"/><text x="214" y="414" class="pinl" text-anchor="end">3V3</text><path d="M222 435h8" class="pin"/><text x="214" y="439" class="pinl" text-anchor="end">GND</text><path d="M222 480h8" class="pin"/><text x="214" y="484" class="pinl" text-anchor="end">BAT+</text><path d="M222 505h8" class="pin"/><text x="214" y="509" class="pinl" text-anchor="end">BAT−</text><rect x="700" y="41" width="230" height="68" rx="4" class="box"/><text x="774" y="69" class="hd" text-anchor="start">U1 · LSM6DSV320X</text><text x="774" y="85" class="sub" text-anchor="start">center</text><text x="706" y="54" class="tiny" text-anchor="start">SCL/SPC</text><text x="706" y="66" class="tiny" text-anchor="start">SDA/SDI</text><text x="706" y="78" class="tiny" text-anchor="start">SDO/SA0</text><text x="706" y="92" class="tiny" text-anchor="start">CS</text><rect x="700" y="121" width="230" height="68" rx="4" class="box"/><text x="774" y="149" class="hd" text-anchor="start">U2 · LSM6DSV320X</text><text x="774" y="165" class="sub" text-anchor="start">pair A +X</text><text x="706" y="134" class="tiny" text-anchor="start">SCL/SPC</text><text x="706" y="146" class="tiny" text-anchor="start">SDA/SDI</text><text x="706" y="158" class="tiny" text-anchor="start">SDO/SA0</text><text x="706" y="172" class="tiny" text-anchor="start">CS</text><rect x="700" y="201" width="230" height="68" rx="4" class="box"/><text x="774" y="229" class="hd" text-anchor="start">U3 · LSM6DSV320X</text><text x="774" y="245" class="sub" text-anchor="start">pair A −X</text><text x="706" y="214" class="tiny" text-anchor="start">SCL/SPC</text><text x="706" y="226" class="tiny" text-anchor="start">SDA/SDI</text><text x="706" y="238" class="tiny" text-anchor="start">SDO/SA0</text><text x="706" y="252" class="tiny" text-anchor="start">CS</text><rect x="700" y="281" width="230" height="68" rx="4" class="box dnp"/><text x="774" y="309" class="hd" text-anchor="start">U4 · LSM6DSV320X</text><text x="774" y="325" class="sub" text-anchor="start">pair B +Y · not fitted</text><text x="706" y="294" class="tiny" text-anchor="start">SCL/SPC</text><text x="706" y="306" class="tiny" text-anchor="start">SDA/SDI</text><text x="706" y="318" class="tiny" text-anchor="start">SDO/SA0</text><text x="706" y="332" class="tiny" text-anchor="start">CS</text><rect x="700" y="361" width="230" height="68" rx="4" class="box dnp"/><text x="774" y="389" class="hd" text-anchor="start">U5 · LSM6DSV320X</text><text x="774" y="405" class="sub" text-anchor="start">pair B −Y · not fitted</text><text x="706" y="374" class="tiny" text-anchor="start">SCL/SPC</text><text x="706" y="386" class="tiny" text-anchor="start">SDA/SDI</text><text x="706" y="398" class="tiny" text-anchor="start">SDO/SA0</text><text x="706" y="412" class="tiny" text-anchor="start">CS</text><path d="M230 86H300" class="w spi"/><rect x="300" y="78" width="40" height="16" rx="2" class="box res"/><text x="320" y="90" class="tiny" text-anchor="middle">R3 33Ω</text><path d="M340 86H600" class="w spi"/><path d="M230 108H615" class="w spi"/><path d="M230 130H630" class="w spi"/><circle cx="600" cy="86" r="3" class="dot"/><circle cx="615" cy="108" r="3" class="dot"/><circle cx="630" cy="130" r="3" class="dot"/><path d="M600 51V371" class="w spi"/><path d="M615 63V383" class="w spi"/><path d="M630 75V395" class="w spi"/><path d="M600 51H700" class="w spi"/><circle cx="600" cy="51" r="3" class="dot"/><path d="M615 63H700" class="w spi"/><circle cx="615" cy="63" r="3" class="dot"/><path d="M630 75H700" class="w spi"/><circle cx="630" cy="75" r="3" class="dot"/><path d="M600 131H700" class="w spi"/><circle cx="600" cy="131" r="3" class="dot"/><path d="M615 143H700" class="w spi"/><circle cx="615" cy="143" r="3" class="dot"/><path d="M630 155H700" class="w spi"/><circle cx="630" cy="155" r="3" class="dot"/><path d="M600 211H700" class="w spi"/><circle cx="600" cy="211" r="3" class="dot"/><path d="M615 223H700" class="w spi"/><circle cx="615" cy="223" r="3" class="dot"/><path d="M630 235H700" class="w spi"/><circle cx="630" cy="235" r="3" class="dot"/><path d="M600 291H700" class="w spi"/><circle cx="600" cy="291" r="3" class="dot"/><path d="M615 303H700" class="w spi"/><circle cx="615" cy="303" r="3" class="dot"/><path d="M630 315H700" class="w spi"/><circle cx="630" cy="315" r="3" class="dot"/><path d="M600 371H700" class="w spi"/><circle cx="600" cy="371" r="3" class="dot"/><path d="M615 383H700" class="w spi"/><circle cx="615" cy="383" r="3" class="dot"/><path d="M630 395H700" class="w spi"/><circle cx="630" cy="395" r="3" class="dot"/><text x="605" y="45" class="bus" text-anchor="start">SPI bus</text><path d="M230 170H450V89H700" class="w cs"/><path d="M230 195H470V169H700" class="w cs"/><path d="M230 220H490V249H700" class="w cs"/><path d="M230 245H510V329H700" class="w cs"/><path d="M230 270H380" class="w cs"/><rect x="380" y="258" width="44" height="24" rx="3" class="box jp"/><text x="402" y="274" class="tiny" text-anchor="middle">JP1</text><path d="M424 266H530V409H700" class="w cs"/><text x="436" y="262" class="tiny" text-anchor="start">A → CS5</text><path d="M424 278H560V525H640" class="w bz"/><text x="436" y="292" class="tiny" text-anchor="start">B → buzzer</text><path d="M230 295H550V101H700" class="w int"/><text x="712" y="105" class="tiny" text-anchor="start"></text><text x="706" y="104" class="tiny" text-anchor="start">INT1</text><path d="M230 335H575V462H700" class="w i2c"/><path d="M230 360H590V478H700" class="w i2c"/><rect x="700" y="440" width="230" height="56" rx="4" class="box"/><text x="774" y="464" class="hd" text-anchor="start">U6 · MMC5603NJ</text><text x="774" y="480" class="sub" text-anchor="start">magnetometer · I²C 0x30</text><text x="706" y="465" class="tiny" text-anchor="start">SDA</text><text x="706" y="481" class="tiny" text-anchor="start">SCL</text><text x="250" y="388" class="tiny" text-anchor="start">R1, R2 4.7 kΩ pull-ups on SDA / SCL</text><rect x="640" y="513" width="44" height="24" rx="3" class="box res"/><text x="662" y="529" class="tiny" text-anchor="middle">Q1?</text><path d="M684 525H700" class="w bz"/><rect x="700" y="505" width="230" height="44" rx="4" class="box"/><text x="774" y="523" class="hd" text-anchor="start">BZ1 · piezo</text><text x="774" y="539" class="sub" text-anchor="start">non-magnetic · PWM</text><path d="M230 410H300" class="w pwr"/><text x="306" y="414" class="tiny" text-anchor="start">3V3 → every chip VDD/VDDIO + C1–C12</text><path d="M230 435H300" class="w gnd"/><text x="306" y="439" class="tiny" text-anchor="start">GND → all parts + inner ground plane</text><rect x="300" y="466" width="110" height="52" rx="4" class="box"/><text x="355" y="488" class="hd" text-anchor="middle">LiPo battery</text><text x="355" y="505" class="sub" text-anchor="middle">~3 g · size TBD</text><path d="M230 480H300" class="w pwr"/><path d="M230 505H300" class="w gnd"/></svg></div>
+<div class="keyrow"><span><i style="background:var(--copper)"></i>SPI bus</span><span><i style="background:var(--signal)"></i>chip select / INT1 (dashed)</span><span><i style="background:var(--i2c)"></i>I²C</span><span><i style="background:var(--bz)"></i>buzzer</span><span><i style="background:var(--pwr)"></i>3V3 / BAT+</span><span>dot = joined · crossing without dot = not joined · dashed box = footprint only</span></div>
+<figcaption>Schematic-style block diagram, not a KiCad schematic. Pin names on the chips follow ST's naming; the pin <i>numbers</i> still need the LSM6DSV320X datasheet.</figcaption>
+</figure>
+<table class="ledger">
+<tr><td><span class="st dec">Decided</span></td><td>Pin map: D8/D10/D9 = SPI, D0 D1 D2 D3 D6 = chip selects, D7 = data-ready, D4/D5 = magnetometer. Every XIAO pin D0–D10 is used.</td></tr>
+<tr><td><span class="st dec">Decided</span></td><td>Buzzer on D6. JP1 is a 3-pad solder jumper: bridge A to use U5, bridge B to use the buzzer. With pair B unfitted, it ships bridged to B.</td></tr>
+<tr><td><span class="st ok">Confirmed</span></td><td>MMC5603NJ: balls A1 = GND, A2 = SCL, B1 = VDD, B2 = SDA. Runs on 1.62–3.6 V, so 3.3 V is fine. Fixed I²C address 0x30, which doesn't clash with anything on that bus. 1,000 Hz only in its high-power mode.</td></tr>
+<tr><td><span class="st ok">Confirmed</span></td><td>MMC5603NJ wants <b>at least 2.2 µF</b> right at VDD. The old BOM said 1 µF, so C11 is now 2.2 µF. Datasheet pull-up guide: 2.7 kΩ for buses under 10 cm, 10 kΩ under 5 cm. Ours is about 3 cm, so 4.7 kΩ is fine.</td></tr>
+<tr><td><span class="st ok">Confirmed</span></td><td>LSM6DSV320X ranges: accelerometer up to 320 g with a 256 g option, high-g rate 480–7,680 Hz, gyro up to 4,000 dps (= 667 rpm). Source: Zephyr's driver bindings, because ST's site blocked the PDF from here. Re-check in the datasheet.</td></tr>
+<tr><td><span class="st calc">Calculated</span></td><td>SPI load: about 20 bytes per chip per reading. At 8 MHz that's about 25 µs each, or about 125 µs for all five, out of the 521 µs between readings at 1,920 Hz. That leaves plenty of room.</td></tr>
+<tr><td><span class="st open">Open</span></td><td>LSM6DSV320X pin <b>numbers</b> and footprint, and how to tie off SDx, SCx and OCS_Aux in SPI mode. The sister chip LSM6DSV says: SDx/SCx to VDDIO or GND, OCS_Aux unconnected. Needs confirming for the 320X.</td></tr>
+<tr><td><span class="st open">Open</span></td><td>Whether a bare piezo on a GPIO pin is loud enough, or Q1 (a small transistor) is needed. This depends on which piezo part you pick.</td></tr>
+</table>
+
+<h2>2 · Where the parts sit on the board</h2>
+<p>Drawn to scale in millimetres, looking at the <b>sensor face</b>. The XIAO is on the other face, shown dashed. That split matters (see the callout below).</p>
+<figure>
+<svg viewBox="-27 -28 54 57" class="dia board" role="img" aria-label="Board layout, 48 mm round"><circle cx="0" cy="0" r="24" class="pcb"/><circle cx="0" cy="0" r="24" class="keep"/><rect x="-10.5" y="-8.9" width="21" height="17.8" class="xiao"/><rect x="7.3999999999999995" y="-4.5" width="7.4" height="9" class="usb"/><text x="-5.5" y="7.4" class="sm" text-anchor="middle">XIAO · other face</text><text x="14.6" y="-5.4" class="sm" text-anchor="middle">USB-C</text><rect x="-1.25" y="-1.5" width="2.5" height="3.0" class="chip"/><rect x="2.1" y="-1.15" width="1.0" height="0.5" class="pas"/><rect x="2.1" y="0.65" width="1.0" height="0.5" class="pas"/><text x="-2.2" y="3.6" class="ref" text-anchor="middle">U1</text><rect x="18.75" y="-1.5" width="2.5" height="3.0" class="chip"/><rect x="22.1" y="-1.15" width="1.0" height="0.5" class="pas"/><rect x="22.1" y="0.65" width="1.0" height="0.5" class="pas"/><text x="20" y="3.6" class="ref" text-anchor="middle">U2</text><rect x="-21.25" y="-1.5" width="2.5" height="3.0" class="chip"/><rect x="-17.9" y="-1.15" width="1.0" height="0.5" class="pas"/><rect x="-17.9" y="0.65" width="1.0" height="0.5" class="pas"/><text x="-20" y="3.6" class="ref" text-anchor="middle">U3</text><rect x="-1.25" y="-21.5" width="2.5" height="3.0" class="chip dnp"/><rect x="2.1" y="-21.15" width="1.0" height="0.5" class="pas"/><rect x="2.1" y="-19.35" width="1.0" height="0.5" class="pas"/><text x="-3.2" y="-19.6" class="ref" text-anchor="end">U4</text><rect x="-1.25" y="18.5" width="2.5" height="3.0" class="chip dnp"/><rect x="2.1" y="18.85" width="1.0" height="0.5" class="pas"/><rect x="2.1" y="20.65" width="1.0" height="0.5" class="pas"/><text x="-3.2" y="20.4" class="ref" text-anchor="end">U5</text><circle cx="0" cy="0" r="0.25" class="mark"/><line x1="0" y1="1.9" x2="0" y2="1.9" class="dim"/><line x1="1.6" y1="4.6" x2="18.4" y2="4.6" class="dim"/><text x="10" y="6.3" class="dimt" text-anchor="middle">20.00</text><line x1="-1.4" y1="-1.8" x2="-1.4" y2="-18.4" class="dim"/><text transform="translate(-2.9,-10) rotate(-90)" class="dimt" text-anchor="middle">20.00</text><rect x="-15.4" y="-15.4" width="0.8" height="0.8" class="mag"/><circle cx="-15" cy="-15" r="10" class="zone"/><text x="-15" y="-17.2" class="sm" text-anchor="middle">U6 mag</text><rect x="13.0" y="-17.0" width="4" height="4" class="buz"/><text x="15" y="-18.2" class="sm" text-anchor="middle">BZ1</text><rect x="14.4" y="14.4" width="1.2" height="1.2" class="bal"/><text x="15" y="13.3" class="sm" text-anchor="middle">trim pad</text><rect x="-17.0" y="13.0" width="4" height="4" class="bal"/><text x="-15" y="18.2" class="sm" text-anchor="middle">trim pad</text><rect x="-6.5" y="11.25" width="1.0" height="0.5" class="pas"/><rect x="-5.0" y="11.25" width="1.0" height="0.5" class="pas"/><text x="-5.2" y="13.3" class="sm" text-anchor="middle">R1 R2</text><rect x="-13.5" y="-13.25" width="1.0" height="0.5" class="pas"/><text x="-12.4" y="-11.1" class="sm" text-anchor="middle">C11</text><rect x="4.2" y="11.1" width="1.6" height="0.8" class="pas"/><text x="5" y="13.3" class="sm" text-anchor="middle">C12</text><rect x="-17.5" y="-0.25" width="1.0" height="0.5" class="pas"/><rect x="-5.0" y="14.25" width="2" height="1.5" class="pad"/><rect x="3.0" y="14.25" width="2" height="1.5" class="pad"/><text x="0" y="17.2" class="sm" text-anchor="middle">BAT+ / BAT−</text><circle cx="7.5244431531647145" cy="-20.673237657289985" r="0.6" class="hole"/><circle cx="-21.665770566268577" cy="3.8202599086724702" r="0.6" class="hole"/><circle cx="14.141327413103863" cy="16.85297774861752" r="0.6" class="hole"/><text x="0" y="-26.5" class="dimt" text-anchor="middle">⌀ 48 mm</text></svg><div class="keyrow"><span><i style="background:var(--ink)"></i>LSM6DSV320X (dashed = not fitted)</span><span><i style="background:var(--copper)"></i>caps/resistors</span><span><i style="background:var(--i2c)"></i>magnetometer + 10 mm keep-out</span><span><i style="background:var(--pwr)"></i>battery pads</span><span>small circles = alignment holes</span></div>
+<figcaption>Chip centers are exact (20.00 mm). U6, BZ1, the battery pads and the passives are placeholders that show roughly where they go.</figcaption>
+</figure>
+<div class="callout">
+<h3>New finding: sensors and XIAO go on opposite faces</h3>
+<p style="margin:0">The plan said "XIAO soldered flat, centered over U1". A XIAO soldered flat by its edge pads sits about 0 mm off the board, so the 0.86 mm-tall U1 can't fit under it. Put all the sensors on one face, which JLCPCB can machine-assemble, and hand-solder the XIAO on the other. All five chips stay on the same face in the same orientation, so the spin math is unchanged. It also means the true center can't have a drilled alignment hole, because U1 sits there. The drawing uses three holes on a 22 mm circle instead.</p>
+</div>
+<table class="ledger">
+<tr><td><span class="st dec">Decided</span></td><td>48 mm round. U1 at center, U2/U3 at ±20.00 mm on X, U4/U5 at ±20.00 mm on Y. All the same rotation.</td></tr>
+<tr><td><span class="st calc">Calculated</span></td><td>At 2,500 rpm each spin-pair chip feels <b>140 g</b> (ω²r at 20 mm). Add roughly 20 g of pull and you get about 160 g, inside the 256 g range.</td></tr>
+<tr><td><span class="st open">Open</span></td><td><b>Magnetometer spot.</b> The datasheet says keep it away from current-carrying traces, including traces on the opposite face, and from the battery. At (−15, 15) it is only about 8 mm from the XIAO's corner. We need to find where the XIAO's charger chip and battery traces are, then move U6 (maybe to about r = 21 mm).</td></tr>
+<tr><td><span class="st open">Open</span></td><td>XIAO underside battery-pad positions, which set where BAT+/BAT− land. Read them from Seeed's KiCad footprint.</td></tr>
+<tr><td><span class="st open">Open</span></td><td>Balance. The XIAO is heavier at its USB-C end and the buzzer is off-center. Trim pads are drawn opposite each one, but their size comes from a mass estimate we haven't done yet.</td></tr>
+</table>
+
+<h2>3 · What the housing might look like</h2>
+<p>A side cut through the middle with the disc right-side up. The tracker hangs under the center of the flight plate. Heights are a first guess, roughly to scale.</p>
+<figure><div class="scroll">
+<svg viewBox="-108 -8 214 50" class="dia housing" role="img" aria-label="Housing cross-section"><path d="M-70 4 Q0 -3 40 1.6 L40 3.6 Q0 -1 -70 6 Z" class="plate"/><path d="M40 0.4 l1.5 1.4 l-1.5 1.2 l1.5 1.4" class="brk"/><path d="M-70 4 C-90 4 -100 8 -104 14 L-104 18 C-100 20 -94 20 -88 16 C-80 12 -74 8 -70 6 Z" class="plate"/><text x="-104" y="-2.5" class="sm" text-anchor="start">flight plate · disc upright, dome up</text><rect x="-25" y="2.7" width="50" height="0.8" rx="0" class="vhb"/><path d="M-27 3.5 H27 V16.7 Q27 18.1 25.6 18.1 H-25.6 Q-27 18.1 -27 16.7 Z" class="shell"/><path d="M-25.8 4.5 H25.8 V16.9 H-25.8 Z" class="cavity"/><rect x="-15" y="4.7" width="30" height="3.8" rx="0.8" class="batt"/><rect x="-24" y="8.5" width="48" height="0.5" rx="0" class="foam"/><rect x="-21.25" y="9.0" width="2.5" height="0.86" rx="0" class="chip"/><rect x="-1.25" y="9.0" width="2.5" height="0.86" rx="0" class="chip"/><rect x="18.75" y="9.0" width="2.5" height="0.86" rx="0" class="chip"/><rect x="-15.6" y="9.0" width="1.2" height="0.6" rx="0" class="chip"/><rect x="-24" y="9.86" width="48" height="0.8" rx="0" class="pcb"/><rect x="-10.5" y="10.66" width="21" height="1.2" rx="0" class="xiaob"/><rect x="-9" y="11.86" width="8" height="2.0" rx="0" class="comp"/><rect x="2" y="11.86" width="4" height="1.0" rx="0" class="comp"/><rect x="5.9" y="11.86" width="7.4" height="3.2" rx="0" class="usbb"/><line x1="24" y1="3.1" x2="40" y2="8.4" class="lead"/><line x1="40" y1="8.4" x2="44" y2="8.4" class="lead"/><text x="45" y="9.0" class="sm" text-anchor="start">VHB tape ~0.8</text><line x1="26" y1="4.0" x2="40" y2="11.700000000000001" class="lead"/><line x1="40" y1="11.700000000000001" x2="44" y2="11.700000000000001" class="lead"/><text x="45" y="12.3" class="sm" text-anchor="start">housing lid 1.0</text><line x1="26" y1="6.6" x2="40" y2="15.0" class="lead"/><line x1="40" y1="15.0" x2="44" y2="15.0" class="lead"/><text x="45" y="15.6" class="sm" text-anchor="start">LiPo ~3.8 (TBD)</text><line x1="26" y1="8.75" x2="40" y2="18.299999999999997" class="lead"/><line x1="40" y1="18.299999999999997" x2="44" y2="18.299999999999997" class="lead"/><text x="45" y="18.9" class="sm" text-anchor="start">foam / potting 0.5</text><line x1="26" y1="9.459999999999999" x2="40" y2="21.599999999999998" class="lead"/><line x1="40" y1="21.599999999999998" x2="44" y2="21.599999999999998" class="lead"/><text x="45" y="22.2" class="sm" text-anchor="start">sensors 0.86 (bottom side)</text><line x1="26" y1="10.26" x2="40" y2="24.9" class="lead"/><line x1="40" y1="24.9" x2="44" y2="24.9" class="lead"/><text x="45" y="25.5" class="sm" text-anchor="start">sensor PCB 0.8</text><line x1="26" y1="11.26" x2="40" y2="28.199999999999996" class="lead"/><line x1="40" y1="28.199999999999996" x2="44" y2="28.199999999999996" class="lead"/><text x="45" y="28.799999999999997" class="sm" text-anchor="start">XIAO PCB ~1.2</text><line x1="26" y1="13.46" x2="40" y2="31.499999999999993" class="lead"/><line x1="40" y1="31.499999999999993" x2="44" y2="31.499999999999993" class="lead"/><text x="45" y="32.099999999999994" class="sm" text-anchor="start">XIAO parts + USB-C ~3.2</text><line x1="26" y1="17.5" x2="40" y2="34.8" class="lead"/><line x1="40" y1="34.8" x2="44" y2="34.8" class="lead"/><text x="45" y="35.4" class="sm" text-anchor="start">floor 1.2</text><line x1="-33" y1="2.7" x2="-33" y2="18.099999999999998" class="dim"/><text transform="translate(-35,10.2) rotate(-90)" class="dimt" text-anchor="middle">≈ 15.6 mm</text><line x1="-27" y1="21.4" x2="27" y2="21.4" class="dim"/><text x="0" y="24.5" class="dimt" text-anchor="middle">⌀ ≈ 54 mm housing (48 mm board + walls)</text><text x="28" y="15.7" class="sm" text-anchor="start"></text><line x1="-104" y1="18" x2="-60" y2="18" class="dim"/><text x="-104" y="22" class="sm" text-anchor="start">rim bottom: depth varies by disc — measure</text></svg></div>
+<figcaption>Concept only. Stack from the plate down: tape, lid, battery, foam, sensor board (sensors facing up), XIAO, floor. A side opening lines up with the USB-C port.</figcaption>
+</figure>
+<table class="ledger">
+<tr><td><span class="st est">Estimate</span></td><td>Stack height ≈ <b>15–16 mm</b> below the plate, diameter ≈ <b>54 mm</b>. Most of the height is the battery and the XIAO's USB-C connector.</td></tr>
+<tr><td><span class="st est">Estimate</span></td><td>Housing weight. A fully closed printed shell at 1 mm walls is about <b>6–9 g</b>, heavier than the electronics. Ways to cut it: drop the lid and let the flight plate be the lid (glued ring), use 0.8 mm walls, or pot the board in a thin open cup. Target 3–5 g.</td></tr>
+<tr><td><span class="st est">Estimate</span></td><td>Total add-on ≈ <b>10–14 g</b> (board + XIAO + battery + housing). PDGA's limit for a 21.1 cm disc is about 175 g, so to stay legal a host disc would need to be around 160 g or lighter.</td></tr>
+<tr><td><span class="st open">Open</span></td><td>Does 15–16 mm clear the rim? Measure the inside depth of the discs you'll use. Drivers are shallow, and the housing must not hit the ground before the rim does.</td></tr>
+<tr><td><span class="st open">Open</span></td><td>Battery size (mAh, dimensions) and runtime. The power draw of three IMUs at 1,920 Hz plus Bluetooth hasn't been worked out.</td></tr>
+<tr><td><span class="st open">Open</span></td><td>Housing details still to design: material (PETG or nylon), USB-C opening, a window for the XIAO LED, a sound hole for the buzzer, how the lid holds at 2,500 rpm, and some splash resistance.</td></tr>
+</table>
+
+<h2>4 · What "16 MB of flash" means</h2>
+<p>Flash is the disc's own storage, the same kind of memory as a USB stick. The XIAO already has <b>2 MB</b>, which your raw-data recorder uses. Throw <i>results</i> are tiny (20 bytes each), so you'll never fill flash with those. Flash only matters for recording <b>every raw sensor sample</b> so you can analyze throws later in <code>disclab.py</code>.</p>
+<p>The new board makes far more raw data: three chips at 1,920 readings a second, plus the magnetometer, comes to about <b>113 KB every second</b>. Today's board makes 5.4 KB/s, about 20 times less. Earlier notes estimated about 50 minutes for 16 MB, but that used today's rate.</p>
+<table class="nums">
+<tr><th>Recording at the new board's full rate</th><th>2 MB (have now)</th><th>16 MB (W25Q128)</th></tr>
+<tr><td>Continuous recording</td><td>≈ 18 s</td><td>≈ 2.4 min</td></tr>
+<tr><td>Throws kept (3 s window each)</td><td>≈ 6</td><td>≈ 48</td></tr>
+</table>
+<p><span class="st calc">Calculated</span> &nbsp;Recommendation: <b>skip it for step 1.</b> There's no free pin for it (D3 is the only option, and only while pair B stays unfitted). Saving just a short window around each release gets most of the benefit with the 2 MB you already have. Plan the bigger chip for the step-2 board.</p>
+
+<h2>5 · Where things stand</h2>
+<div class="cols">
+<div class="col"><h3>Known now</h3><ul>
+<li>48 mm round, 4 layers, 0.8 mm</li><li>Chip positions and orientation</li><li>Full pin map, buzzer on D6</li>
+<li>MMC5603NJ pinout, cap, address, layout rules</li><li>LSM6DSV320X ranges and rates (second source)</li><li>Spin forces: 140 g at 2,500 rpm</li><li>SPI bus has room for all five chips</li></ul></div>
+<div class="col"><h3>Still to look up</h3><ul>
+<li>LSM6DSV320X pinout, land pattern, tie-offs (ST PDF)</li><li>XIAO charger and battery-pad locations (Seeed footprint)</li>
+<li>Piezo part, its frequency and current</li><li>JLCPCB stock, or plan to consign the chips</li></ul></div>
+<div class="col"><h3>Still to calculate</h3><ul>
+<li>Mass map, then balance trim-pad sizes</li><li>Battery runtime and capacity</li><li>Housing weight vs PDGA limit</li><li>Magnetometer distance from current paths</li></ul></div>
+<div class="col"><h3>Still to design</h3><ul>
+<li>KiCad symbol + footprint for LSM6DSV320X</li><li>Schematic, then layout and ground plane</li><li>Housing CAD (cup, openings, mount)</li><li>Firmware drivers for the new chips</li></ul></div>
+<div class="col"><h3>Still to test</h3><ul>
+<li>Spin accuracy on a drill/motor rig with a tachometer</li><li>Buzzer loudness through the housing</li><li>Bluetooth range through the housing</li><li>Drop and impact survival</li></ul></div>
+</div>
+<p style="font-size:13px;color:var(--muted);margin-top:28px">Sources: <a href="https://www.espruino.com/files/MMC5603NJ.pdf">MMC5603NJ datasheet</a> · <a href="https://docs.zephyrproject.org/latest/build/dts/api/bindings/sensor/st%2Clsm6dsv320x-spi.html">Zephyr LSM6DSV320X binding</a> · <a href="https://www.st.com/en/mems-and-sensors/lsm6dsv320x.html">ST LSM6DSV320X page</a> · <code>docs/PROJECT_CONTEXT.md</code> in the disctracker repo.</p>
+</div>

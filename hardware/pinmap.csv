@@ -8,7 +8,7 @@ D0,CS1,U1 CS,Idle high (pull-up)
 D1,CS2,U2 CS,Idle high (pull-up)
 D2,CS3,U3 CS,Idle high (pull-up)
 D3,CS4,U4 CS,DNP at first; idle high
-D6,CS5,U5 CS,DNP at first; idle high
+D6,CS5 / BUZZER,JP1 common -> A: U5 CS / B: BZ1,Ships bridged to buzzer while U5 is DNP
 D7,INT1,U1 INT1,Data-ready: read all sensors together
 D4 (SDA),I2C_SDA,U6 SDA + R1,
 D5 (SCL),I2C_SCL,U6 SCL + R2,
