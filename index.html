@@ -153,6 +153,10 @@
   button.pressed { background: var(--accent2) !important; color: #fff !important; box-shadow: 0 0 0 3px rgba(74,168,255,.35); }
   button.on { background: var(--accent2); color: #fff; }
   button.primary.on { background: var(--warn); color: #1d1300; }
+  #sessBtn.on { background: var(--bad); color: #fff; }
+  .testRow { flex-wrap: wrap; gap: 8px; }
+  .testRow button { flex: 1 1 30%; min-width: 96px; }
+  #recCard.full { box-shadow: 0 0 0 2px var(--bad) inset; }
   /* simulate form */
   .field { width: 100%; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
     background: var(--panel2); color: var(--text); margin-top: 8px; }
@@ -235,23 +239,6 @@
     <input type="range" id="sensBar" min="1" max="5" step="1" value="5" disabled>
     <div class="sensScale"><span>Hand tests</span><span>Real throws</span></div>
     <p class="note" id="sensDesc" style="margin-bottom:0"></p>
-  </section>
-
-  <section class="card">
-    <div class="result-head">
-      <div class="label">Data recorder</div>
-      <div class="note" id="logState">–</div>
-    </div>
-    <div class="meter" style="height:14px;margin-top:10px"><div class="meterFill" id="logFill" style="background:var(--accent2)"></div></div>
-    <p class="note" id="logInfo" style="margin:8px 0 10px">Connect to see what's recorded.</p>
-    <div class="row">
-      <button id="sessBtn" disabled>Start session recording</button>
-      <button id="logClearBtn" disabled>Clear recorder</button>
-    </div>
-    <p class="note" style="margin-bottom:0">Every capture is always saved – counted <b>and</b> rejected – with all its raw
-      sensor readings. <b>Session recording</b> also saves everything in between (about 6 minutes fits), so missed
-      throws can be found. To get the data: plug the disc into a computer and run <code>py disclab.py export</code>
-      in the <code>analysis</code> folder.</p>
   </section>
 
   <section class="card" id="findCard">
@@ -349,7 +336,7 @@
 
   <section class="card">
     <div class="result-head">
-      <div class="label">Calibrate</div>
+      <div class="label">Calibrate &amp; test</div>
       <div class="note" id="calSaved"></div>
     </div>
     <ol class="steps">
@@ -372,6 +359,45 @@
       </ol>
       <button id="spinCalBtn" class="wide" disabled>Calibrate spin</button>
     </div>
+  </section>
+
+  <section class="card" id="recCard">
+    <div class="result-head">
+      <div class="label">Full sensor recording</div>
+      <div class="note" id="logState">–</div>
+    </div>
+    <p class="note" style="margin-top:6px">Saves <b>every</b> gyro and accelerometer reading (416 a second) on the disc
+      itself, so it keeps recording while the disc is out of range. It <b>stops by itself when the memory is full</b>
+      and won't record again until you move the data off and clear it.</p>
+    <div class="meter" style="height:16px;margin-top:10px"><div class="meterFill" id="logFill" style="background:var(--accent2)"></div></div>
+    <p class="note" id="logInfo" style="margin:8px 0 12px">Connect to see what's recorded.</p>
+    <button class="primary wide" id="sessBtn" disabled>● Record all sensor data</button>
+
+    <div class="label" style="margin-top:16px">What test is next?</div>
+    <p class="note" style="margin:4px 0 8px">Tap before each test – it's written into the recording, so every test is labeled
+      when you look at the data later.</p>
+    <div class="row testRow">
+      <button class="testBtn" data-mark="1">Drop</button>
+      <button class="testBtn" data-mark="2">Throw into net</button>
+      <button class="testBtn" data-mark="3">Real throw</button>
+      <button class="testBtn" data-mark="4">Hand spin / flick</button>
+      <button class="testBtn" data-mark="5">Other</button>
+    </div>
+    <p class="note" id="markMsg" style="margin:6px 0 0"></p>
+
+    <details style="margin-top:14px">
+      <summary>Move the data off the disc</summary>
+      <ol class="steps">
+        <li>Stop recording (or let it fill up). Plug the disc into the computer with a data cable.</li>
+        <li>Close the Arduino Serial Monitor. In the <code>Disc_tracker\analysis</code> folder run:<br>
+          <code>py disclab.py export --clear</code></li>
+        <li>It saves everything to <code>analysis\data\&lt;date&gt;</code> (CSV files for Excel) and only then erases the disc,
+          so it's ready to record again.</li>
+      </ol>
+      <p class="note">Disc light: <b>green</b> blink every 4 s = on · <b>blue</b> every second = recording ·
+        <b>red</b> every 2 s = memory full.</p>
+      <button id="logClearBtn" class="wide" disabled>Erase recording without saving</button>
+    </details>
   </section>
 
   <section class="card">
@@ -398,7 +424,7 @@
     <button id="clearBoard" disabled>Erase throws stored on disc</button>
   </div>
 
-  <p class="note">Version 2026-10-07e. Roll/pitch are only accurate while the disc is still.
+  <p class="note">Version 2026-10-08a. Roll/pitch are only accurate while the disc is still.
     Spin above ~333 rpm exceeds the gyro's range; the board then estimates it from the accelerometer.</p>
   </div>
 
@@ -962,6 +988,7 @@ function onDisconnected() {
   $("standbyBtn").disabled = $("wakeBtn").disabled = $("offBtn").disabled = true;
   $("findBtn").disabled = $("ledBtn").disabled = $("dirBtn").disabled = true;
   $("sessBtn").disabled = $("logClearBtn").disabled = true;
+  document.querySelectorAll(".testBtn").forEach(b => b.disabled = true);
   $("sensBar").disabled = true;
   if (finding) $("findState").textContent = "out of range – reconnecting…";
   if (calPending) { clearTimeout(calPending); calPending = null; setCalMsg("Disconnected during calibration – try again.", "bad"); }
@@ -1575,23 +1602,37 @@ document.addEventListener("click", e => {
 // ---- data recorder ----
 let sessionOn = false;
 let lastLogDv = null;
+const KB_PER_S = 5.4;                         // 416 readings/s x 12 bytes + record headers
+const TEST_NAMES = { 1: "Drop", 2: "Throw into net", 3: "Real throw", 4: "Hand spin / flick", 5: "Other" };
+function fmtTime(s) { return s >= 60 ? `${Math.floor(s / 60)} min ${String(Math.round(s % 60)).padStart(2, "0")} s` : `${Math.round(s)} s`; }
 function onLogInfo(dv) {
   lastLogDv = dv;
   const fl = dv.getUint8(1), rec = dv.getUint16(2, true), used = dv.getUint16(4, true), cap = dv.getUint16(6, true) || 2048;
-  const secs = dv.getUint16(8, true);
+  const secs = dv.getUint16(8, true), mark = dv.byteLength > 10 ? dv.getUint8(10) : 0;
+  const ok = !!(fl & 1), full = !!(fl & 4) || !!(fl & 8);
   sessionOn = !!(fl & 2);
-  const pct = Math.min(100, used / cap * 100);
+  const pct = Math.min(100, used / cap * 100), left = Math.max(0, (cap - used - 16) / KB_PER_S);
   $("logFill").style.width = pct.toFixed(1) + "%";
-  $("logState").textContent = !(fl & 1) ? "not available" : (fl & 4) ? "FULL – export, then clear" : sessionOn ? `recording… ${secs} s` : "ready";
-  $("logInfo").textContent = (fl & 1) ? `${rec} records · ${used} of ${cap} KB used (${pct.toFixed(0)}%)` : "Recorder chip not found.";
-  $("sessBtn").textContent = sessionOn ? "Stop session recording" : "Start session recording";
+  $("logFill").style.background = full ? "var(--bad)" : sessionOn ? "var(--warn)" : "var(--accent2)";
+  $("recCard").classList.toggle("full", ok && full);
+  $("logState").textContent = !ok ? "not available" : full ? "FULL – move the data off" : sessionOn ? `● recording ${fmtTime(secs)}` : "ready";
+  $("logInfo").innerHTML = !ok ? "Recorder chip not found (old firmware?)."
+    : full ? `<b>Memory full – recording stopped.</b> ${used} of ${cap} KB, ${rec} records. Plug into the computer and run <code>py disclab.py export --clear</code>.`
+    : `${used} of ${cap} KB used (${pct.toFixed(0)}%) · about <b>${fmtTime(left)}</b> of full recording left`;
+  $("sessBtn").textContent = sessionOn ? "■ Stop recording" : full ? "Memory full – move the data off first" : "● Record all sensor data";
   $("sessBtn").classList.toggle("on", sessionOn);
-  $("sessBtn").disabled = !cmdChar || !(fl & 1);
-  $("logClearBtn").disabled = !cmdChar || !(fl & 1);
+  $("sessBtn").disabled = !cmdChar || !ok || (full && !sessionOn);
+  $("logClearBtn").disabled = !cmdChar || !ok;
+  document.querySelectorAll(".testBtn").forEach(b => {
+    b.disabled = !cmdChar || !ok || full;
+    b.classList.toggle("on", +b.dataset.mark === mark);
+  });
+  if (mark) $("markMsg").textContent = `Labeled as: ${TEST_NAMES[mark] || mark}. Everything recorded from now on belongs to this test.`;
 }
 $("sessBtn").onclick = () => sendCmd(sessionOn ? "streamoff" : "streamon");
+document.querySelectorAll(".testBtn").forEach(b => b.onclick = () => sendCmd("mark " + b.dataset.mark));
 $("logClearBtn").onclick = () => {
-  if (confirm("Erase everything on the disc's recorder?\n\nExport it to a computer first if you want to keep it.")) sendCmd("logclear");
+  if (confirm("Erase the whole recording WITHOUT saving it?\n\nTo keep it, use 'py disclab.py export --clear' on the computer instead.")) sendCmd("logclear");
 };
 
 // ---- set front (USB-C) ----
