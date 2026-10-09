@@ -195,14 +195,14 @@ box(12.7, 20.32, 107.95, 109.22, "MCU + radio · XIAO nRF52840 Sense")
 place("disctracker:XIAO_nRF52840_Sense_SMD", "M1", "XIAO nRF52840 Sense", 55.88, 60.96, {
     "1": "CS1", "2": "CS2", "3": "CS3", "4": "CS4", "5": "I2C_SDA", "6": "I2C_SCL", "7": "D6_CS5_BZ",
     "8": "IMU_INT1", "9": "SCK_MCU", "10": "SPI_MISO", "11": "SPI_MOSI", "12": "+3V3", "13": "GND",
-    "14": None, "15": None, "16": None, "17": None, "18": "GND", "19": "VBAT", "20": "GND", "21": None, "22": None},
+    "14": None, "15": None, "16": None, "17": None, "18": None, "19": "VBAT", "20": "GND", "21": None, "22": None},
     fp="disctracker:XIAO-nRF52840-SMD", ds="https://wiki.seeedstudio.com/XIAO_BLE/",
     refoff=(7.62, -31.75), valoff=(7.62, -29.21),
     fields={"MPN": "Seeed 102010469", "Placement": "XIAO face, center (+15, 0) mm, USB-C at pod edge"})
 place("Device:R", "R3", "33", 93.98, 60.96, {"1": "SCK_MCU", "2": "SPI_SCK"}, fp=R0402,
       desc="Series resistor on SPI clock (20 mm runs)")
 place("Device:C", "C12", "10u", 99.06, 88.9, {"1": "+3V3", "2": "GND"}, fp=C0603, desc="Bulk at XIAO 3V3")
-text("D0-D10 all used. D6 goes to JP1 (U5 chip-select or buzzer).\nVBUS, SWD, EN and NFC pads left unconnected.\nFirmware: P1.11 (D6) high drive for the buzzer;\ncharge current 100 mA (P0.13 low).", 15.24, 92.71)
+text("D0-D10 all used. D6 goes to JP1 (U5 chip-select or buzzer).\nVBUS, SWD, EN, NFC and underside GND pad 18 left unconnected\n(GND via pads 13 and 20; 19/20 are plated holes).\nFirmware: P1.11 (D6) high drive for the buzzer;\ncharge current 100 mA (P0.13 low).", 15.24, 92.71)
 
 # ---------------------------------------------------------------- IMU block
 box(114.3, 20.32, 406.4, 160.02, "Motion sensors · 5x LSM6DSV320X on shared SPI (sensor face, all same orientation)")
@@ -273,7 +273,7 @@ text("J1/J2 at (-18.4, +/-3) mm on the XIAO face, routed to\nXIAO VBAT (pad 19) 
 
 # ---------------------------------------------------------------- mechanical
 box(317.5, 165.1, 406.4, 238.76, "Mechanical · trim pads and alignment holes")
-for i, (ref, where) in enumerate((("TP1", "+X"), ("TP2", "-X"), ("TP3", "+Y"), ("TP4", "-Y"))):
+for i, (ref, where) in enumerate((("TP1", "NE"), ("TP2", "NW"), ("TP3", "SW"), ("TP4", "SE"))):
     place("Connector:TestPoint", ref, f"trim {where}", 330.2 + i * 17.78, 190.5, {"1": None},
           fp="TestPoint:TestPoint_Pad_3.0x3.0mm", refoff=(2.54, -6.35), valoff=(2.54, -4.445),
           desc="Balance trim pad: add solder after weighing the built pod", in_bom=False)
@@ -281,7 +281,7 @@ for i in range(3):
     place("Mechanical:MountingHole", f"H{i+1}", "align", 335.28 + i * 22.86, 210.82, {},
           fp="MountingHole:MountingHole_2.1mm", refoff=(2.54, -1.27), valoff=(2.54, 1.27), in_bom=False,
           desc="Pod alignment pin hole, r = 25.6 mm at 30 / 150 / 250 deg")
-text("Trim pads: -Y pad sits opposite the buzzer; others for fine balance.\nHoles locate the board on the pod's pins.", 320.04, 222.25)
+text("Trim pads at r = 22 mm on the diagonals (XIAO face); SW/SE sit opposite the buzzer.\nHoles locate the board on the pod's pins.", 320.04, 222.25)
 
 # ---------------------------------------------------------------- notes block
 box(12.7, 243.84, 226.06, 284.48, "Board notes")
