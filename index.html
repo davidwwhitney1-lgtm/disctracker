@@ -437,7 +437,7 @@
     <button id="clearBoard" disabled>Erase throws stored on disc</button>
   </div>
 
-  <p class="note">Version 2026-10-08c. Roll/pitch are only accurate while the disc is still.
+  <p class="note">Version 2026-10-09a. Roll/pitch are only accurate while the disc is still.
     Spin above ~333 rpm exceeds the gyro's range; the board then estimates it from the accelerometer.</p>
   </div>
 
@@ -476,6 +476,7 @@
         <div class="row" style="margin-top:12px">
           <button class="primary" id="csvAllBtn">Excel file – every reading</button>
           <button id="csvThrowBtn">Excel file – throw results</button>
+          <button id="csvRawBtn">Excel file – raw I²C counts</button>
           <button id="binBtn">Raw file (for disclab)</button>
           <button id="recDelBtn">Delete</button>
         </div>
@@ -1805,7 +1806,7 @@ function parseLog(u8) {
       n: dv.getUint16(off + 24, true), odr: dv.getUint16(off + 26, true) || 416, rel: dv.getUint16(off + 28, true),
       counted: dv.getUint8(off + 32), src: dv.getUint8(off + 33), flags: dv.getUint16(off + 34, true),
       speed: f(36), spin: f(40), hyzer: f(44), nose: f(48), launch: f(52), wobble: f(56), peak: f(60),
-      bias: [f(76), f(80), f(84)], alsb: f(152) || 0.000488, glsb: f(156) || 0.070, sampleOff: off + 256,
+      bias: [f(76), f(80), f(84)], R: Array.from({ length: 9 }, (_, k) => f(88 + 4 * k)), alsb: f(152) || 0.000488, glsb: f(156) || 0.070, sampleOff: off + 256,
     };
     if (r.length < 256) break;
     recs.push(r);
@@ -2016,6 +2017,35 @@ $("csvAllBtn").onclick = () => {
     parts.push(chunk);
   }
   saveFile(`disc_readings_${stamp(view.item.date)}.csv`, parts, "text/csv");
+};
+// Raw sensor counts exactly as the chip sends them over I2C (16-bit integers, 416 per second).
+// The disc stores them rotated into disc axes (stored = R * raw), so undo it: raw = R^T * stored.
+// Exact to +-1 count (rounding); a clipped sample stays clipped.
+function rawCounts(r, i) {
+  const dv = new DataView(r.u8.buffer, r.u8.byteOffset + r.sampleOff + i * 12, 12), R = r.R;
+  const st = [0, 1, 2, 3, 4, 5].map(k => dv.getInt16(k * 2, true));
+  const isId = R.every((v, k) => Math.abs(v - (k % 4 === 0 ? 1 : 0)) < 1e-6) || R.every(v => v === 0);
+  if (isId) return st;
+  const back = (x, y, z) => [0, 1, 2].map(c => {
+    const v = Math.round(R[c] * x + R[3 + c] * y + R[6 + c] * z);
+    return Math.max(-32768, Math.min(32767, v));
+  });
+  return [...back(st[0], st[1], st[2]), ...back(st[3], st[4], st[5])];
+}
+$("csvRawBtn").onclick = () => {
+  if (!view) return;
+  const streams = view.recs.filter(r => r.type === 2);
+  const src = streams.length ? streams : view.recs.filter(r => r.type === 1);
+  const parts = ["sample,time_s,test,from,gx (x0.070 = deg/s),gy (x0.070 = deg/s),gz (x0.070 = deg/s)," +
+                 "ax (x0.000488 = g),ay (x0.000488 = g),az (x0.000488 = g)\n"];
+  let k = 0;
+  for (const r of src) {
+    const from = r.type === 1 ? `capture ${r.no}` : "recording", test = TEST_NAMES[r.test] || "";
+    let chunk = "";
+    for (let i = 0; i < r.n; i++, k++) chunk += `${k},${(r.t + i / r.odr).toFixed(4)},${test},${from},${rawCounts(r, i).join(",")}\n`;
+    parts.push(chunk);
+  }
+  saveFile(`disc_raw_counts_${stamp(view.item.date)}.csv`, parts, "text/csv");
 };
 $("csvThrowBtn").onclick = () => {
   if (!view) return;
