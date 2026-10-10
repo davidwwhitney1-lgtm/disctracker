@@ -1,0 +1,27 @@
+{
+ "pod_height_below_plate_mm": 7.5,
+ "pod_od_mm": 59.6,
+ "dock_od_mm": 66.0,
+ "snap_engagement_mm": 0.45,
+ "arm_flex_length_mm": 5.15,
+ "arm_strain_pct": 2.34,
+ "mass_g": {
+  "pod": {
+   "PA12 (MJF/SLS)": 3.32,
+   "PETG (FDM, 100%)": 4.17
+  },
+  "cover": {
+   "PA12 (MJF/SLS)": 1.47,
+   "PETG (FDM, 100%)": 1.85
+  },
+  "dock": {
+   "PA12 (MJF/SLS)": 1.01,
+   "PETG (FDM, 100%)": 1.27
+  },
+  "jig": {
+   "PA12 (MJF/SLS)": 29.68,
+   "PETG (FDM, 100%)": 37.32
+  }
+ },
+ "interference_mm3": {}
+}
