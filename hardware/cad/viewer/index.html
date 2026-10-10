@@ -174,8 +174,15 @@ const plate = new THREE.Mesh(plateGeo, mat(0xd9a877, { opacity: 0.55 }));
 scene.add(plate); parts.plate = plate;
 
 const loader = new STLLoader();
+// models.json bundles the STL meshes (base64); the separate .stl files are the fallback when opened from the repo
+let bundle = null;
+try { const r = await fetch("models.json"); if (r.ok) bundle = await r.json(); } catch (e) {}
+function b64ToBuf(s) { const bin = atob(s); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
 await Promise.all(spec.map(([name, file, color, o]) => new Promise((res, rej) => {
-  loader.load(file, g => { g.computeVertexNormals(); const m = new THREE.Mesh(g, mat(color, o)); scene.add(m); parts[name] = m; res(); }, undefined, rej);
+  const add = g => { g.computeVertexNormals(); const m = new THREE.Mesh(g, mat(color, o)); scene.add(m); parts[name] = m; res(); };
+  const key = file.replace(".stl", "");
+  if (bundle && bundle[key]) add(loader.parse(b64ToBuf(bundle[key])));
+  else loader.load(file, add, undefined, rej);
 }))).catch(e => { document.getElementById("loading").textContent = "Couldn't load the 3D parts: " + e; throw e; });
 document.getElementById("loading").remove();
 
