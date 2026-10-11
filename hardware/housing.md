@@ -1,39 +1,34 @@
 # Housing brief: dock + pod
 
-Every disc gets a **dock** glued under the flight plate. One **pod** (board + XIAO + battery) twists into any dock.
-Numbers are first estimates; finalize the pod around the KiCad STEP export.
+Every disc gets a **dock** glued under the flight plate. One **pod** (board, XIAO, battery) clicks into any dock.
+The current design is **rev B**; the CAD, fit report and assembly steps are in `cad/README.md`.
+
+## Decisions
+- **Click in, squeeze to release.** Spring fingers in the dock snap over a ridge on the pod and hold it flat against the
+  plate with no rattle. Two square latch hooks lock into windows in the dock; press them through the windows to remove the pod.
+  A flat by the USB-C port keys the pod one way round.
+- **Glued dock.** 3M VHB 4914-025 with 3M 94 primer, or 3M 9495LE (300LSE). The printed jig centres the dock on the disc rim.
+- **Sensor face up against the plate.** The XIAO, battery and buzzer face the cover, where the reset button, LED window and
+  buzzer ports are.
+- **Material.** JLC3DP PA11-HP (MJF) for the pod, cover and dock; the flexures need its elongation.
+- **No magnets or steel.** The magnetometer is 9 mm from the nearest screw, so the screws are nylon or brass.
 
 ## Height budget (below the flight plate)
 | Layer | mm |
 |---|---|
-| VHB tape | 0.25 |
-| Dock ring | 0.8 |
-| Pod lid | 0.6 |
-| Sensors (LSM6DSV320X, datasheet) | 0.83 |
+| Pod lid | 1.0 |
+| Lid to sensors | 0.3 |
+| Sensors (LSM6DSV320X, max) | 0.86 |
 | Sensor PCB | 0.8 |
-| XIAO incl. USB-C (measure) | ~4.2 |
-| Pod floor | 0.6 |
-| **Total** | **~8.1** |
+| XIAO incl. USB-C (Seeed STEP: 1.25 board + 3.21 receptacle + solder) | 4.51 |
+| Cover clearance + cover | 1.25 |
+| **Total** | **8.72** |
 
-Shallowest drivers have ~11 mm rim depth (putters 12-16 mm), so ~3 mm clearance.
+The shallowest drivers have about 11 mm of rim depth (putters 12-16 mm), which leaves about 2.3 mm.
 
-## Dock (one per disc), target <= 1.5 g
-- Flat ring ~66 mm OD, ~50 mm ID, 0.8 mm thick; glue face flat or matched to the plate dome.
-- 3 bayonet lugs at r ~30-33 mm, 2.6 mm tall with inward lip; one lug ~14 deg wider (key).
-- Detent notch in each lip; "front" arrow.
-- Bond with 3M VHB + 3M 94 primer (disc plastics are low-surface-energy); peel-test on a spare disc.
-
-## Pod
-- ~58 mm OD, ~7 mm tall; 0.6 mm lid/floor, 0.8 mm wall; translucent print so the XIAO LED shows.
-- 3 top-edge tabs matching the lugs, each with a detent bump; grip ribs.
-- USB-C notch at "front"; sound hole under BZ1.
-- Board located by 3 pins through its alignment holes (r = 25.6 mm at 30/150/250 deg), then bonded/potted.
-  Battery bonded (it sees ~110 g at 2,500 rpm).
-
-## Centering jig
-- Ring that sits on the disc's outer edge (~210-213 mm) with 3 flexible fingers; center cup holds the dock while glue cures.
-- Target +/-0.3 mm. Each 0.1 mm off-center = ~0.7 g bias on U1 at 2,500 rpm (spin pair unaffected; firmware calibrates it per disc).
-- Mark to align "front" with the disc stamp.
-
-## Loads (calculated)
-- Release twist: ~0.02 N*m. Impact: 12 g pod x 1,000 g = ~120 N axial.
+## Loads
+- Release spin-up: about 0.02 N·m on the pod. A tree hit that stops a 2,500 rpm spin: about 0.35 N·m, carried by the
+  latch hooks in the dock windows.
+- Pull-out (rim-down landing): the square latch hooks and the dock sill hold about 110 N, roughly 600 g on a 20 g pod.
+- Centring: the dock fingers hold the pod repeatably in its dock. Each 0.1 mm the dock is off the spin axis gives about
+  0.7 g of bias on U1 at 2,500 rpm, which the spin pair cancels and the firmware calibrates per disc.

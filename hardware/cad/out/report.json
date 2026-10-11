@@ -1,27 +1,585 @@
 {
- "pod_height_below_plate_mm": 7.5,
- "pod_od_mm": 59.6,
- "dock_od_mm": 66.0,
- "snap_engagement_mm": 0.45,
- "arm_flex_length_mm": 5.15,
- "arm_strain_pct": 2.34,
+ "rev": "B",
+ "material": "PA11-HP (MJF)",
+ "depth_below_plate_mm": 8.72,
+ "pod_mm": {
+  "diameter_over_ridge": 61.4,
+  "wall_od": 58.8,
+  "over_latches": 65.6,
+  "flat_to_centre": 27.9
+ },
+ "dock_mm": {
+  "od": 69.0,
+  "lowest_point": -8.7
+ },
+ "z_stack_mm": {
+  "lid_top": 0,
+  "lid_underside": -1.0,
+  "board_top": -2.16,
+  "board_bottom": -2.96,
+  "xiao_face": -4.26,
+  "usb_c_centre": -5.865,
+  "cover_inner": -7.72,
+  "pod_bottom": -8.72
+ },
  "mass_g": {
   "pod": {
-   "PA12 (MJF/SLS)": 3.32,
-   "PETG (FDM, 100%)": 4.17
+   "PA11-HP": 4.84,
+   "PA12-HP": 4.66
   },
   "cover": {
-   "PA12 (MJF/SLS)": 1.47,
-   "PETG (FDM, 100%)": 1.85
+   "PA11-HP": 2.92,
+   "PA12-HP": 2.81
   },
   "dock": {
-   "PA12 (MJF/SLS)": 1.01,
-   "PETG (FDM, 100%)": 1.27
+   "PA11-HP": 1.42,
+   "PA12-HP": 1.37
   },
-  "jig": {
-   "PA12 (MJF/SLS)": 29.68,
-   "PETG (FDM, 100%)": 37.32
+  "jig_frame": {
+   "PA11-HP": 24.11,
+   "PA12-HP": 23.19
+  },
+  "jig_plunger": {
+   "PA11-HP": 13.65,
+   "PA12-HP": 13.13
   }
  },
- "interference_mm3": {}
+ "stackups": {
+  "board edge to pod wall (radial)": {
+   "nominal": 0.4,
+   "wc": [
+    0.025,
+    0.775
+   ],
+   "rss": [
+    0.211,
+    0.589
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "board flat to pod inner flat": {
+   "nominal": 0.4,
+   "wc": [
+    0.025,
+    0.775
+   ],
+   "rss": [
+    0.211,
+    0.589
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "lid to tallest sensor part": {
+   "nominal": 0.3,
+   "wc": [
+    0.01,
+    0.59
+   ],
+   "rss": [
+    0.145,
+    0.455
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "cover to USB-C shell": {
+   "nominal": 0.25,
+   "wc": [
+    0.02,
+    0.48
+   ],
+   "rss": [
+    0.124,
+    0.376
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "cover to battery (after 0.4 swell)": {
+   "nominal": 0.46,
+   "wc": [
+    0.11,
+    0.81
+   ],
+   "rss": [
+    0.231,
+    0.689
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "pod ridge to dock flange (radial)": {
+   "nominal": 0.3,
+   "wc": [
+    0.05,
+    0.55
+   ],
+   "rss": [
+    0.15,
+    0.45
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "pod flat to dock key": {
+   "nominal": 0.3,
+   "wc": [
+    0.1,
+    0.5
+   ],
+   "rss": [
+    0.159,
+    0.441
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "finger deflection when seated": {
+   "nominal": 0.5,
+   "wc": [
+    0.05,
+    0.95
+   ],
+   "rss": [
+    0.294,
+    0.706
+   ],
+   "need_min": 0.0,
+   "need_max": 1.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "latch catch to sill (play)": {
+   "nominal": 0.5,
+   "wc": [
+    0.15,
+    0.85
+   ],
+   "rss": [
+    0.32,
+    0.68
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "latch block to window side": {
+   "nominal": 0.3,
+   "wc": [
+    0.1,
+    0.5
+   ],
+   "rss": [
+    0.159,
+    0.441
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "latch block to its overload shoulder (same part)": {
+   "nominal": 0.6,
+   "wc": [
+    0.5,
+    0.7
+   ],
+   "rss": [
+    0.529,
+    0.671
+   ],
+   "need_min": 0.5,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "latch arm to sill inner face (radial)": {
+   "nominal": 0.3,
+   "wc": [
+    0.05,
+    0.55
+   ],
+   "rss": [
+    0.15,
+    0.45
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "USB-C 12.35x6.5 overmold to opening (per side, Y)": {
+   "nominal": 0.375,
+   "wc": [
+    0.0,
+    0.75
+   ],
+   "rss": [
+    0.186,
+    0.564
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "USB-C 12.35x6.5 overmold to opening (per side, Z)": {
+   "nominal": 0.35,
+   "wc": [
+    0.05,
+    0.65
+   ],
+   "rss": [
+    0.192,
+    0.508
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "USB-C receptacle to bezel posts": {
+   "nominal": 0.3,
+   "wc": [
+    0.025,
+    0.575
+   ],
+   "rss": [
+    0.14,
+    0.46
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "reset plunger to switch at rest (>-0.15 = <1.6 N, not actuated)": {
+   "nominal": 0.2,
+   "wc": [
+    -0.13,
+    0.53
+   ],
+   "rss": [
+    0.039,
+    0.361
+   ],
+   "need_min": -0.15,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "reset switch force at the stop, N": {
+   "nominal": 3.826,
+   "wc": [
+    1.196,
+    6.457
+   ],
+   "rss": [
+    2.249,
+    5.403
+   ],
+   "need_min": 2.08,
+   "need_max": 6.5,
+   "ok_rss": true,
+   "ok_wc": false
+  },
+  "LED shroud to LEDs": {
+   "nominal": 0.4,
+   "wc": [
+    0.2,
+    0.6
+   ],
+   "rss": [
+    0.278,
+    0.522
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  },
+  "buzzer chamber rim to buzzer": {
+   "nominal": 0.3,
+   "wc": [
+    0.05,
+    0.55
+   ],
+   "rss": [
+    0.15,
+    0.45
+   ],
+   "need_min": 0.0,
+   "ok_rss": true,
+   "ok_wc": true
+  }
+ },
+ "mechanics": {
+  "dock fingers": {
+   "count": 4,
+   "length": 9.52,
+   "thickness": 1.1300000000000026,
+   "height": 3.0,
+   "stiffness_N_per_mm": 2.26,
+   "engagement": 1.0,
+   "strain_at_full_deflection_pct": 2.06,
+   "preload_total_N_min_nom_max": [
+    0.78,
+    1.95,
+    3.11
+   ],
+   "insert_lead_deg": 25.7,
+   "insert_force_total_N": 8.3,
+   "pull_off_force_total_N": 13.8,
+   "vertical_stiffness_N_per_mm": 15.9,
+   "sag_at_pull_off_mm": 0.22,
+   "vertical_stress_at_pull_off_MPa": 19.0
+  },
+  "pod latches": {
+   "count": 2,
+   "length": 10.0,
+   "thickness": 1.6000000000000014,
+   "height": 3.0,
+   "stiffness_N_per_mm": 5.53,
+   "overload_backstop": "hook rises 0.6 mm then bears on the ridge shoulder; arm carries 11.7 N each up to then, strain 2.7 %",
+   "engagement": 0.6,
+   "squeeze_force_each_N": 3.6,
+   "strain_at_squeeze_stop_pct": 2.16,
+   "insert_force_total_N": 9.1,
+   "pull_out_capacity_total_N (sill yield, 48 MPa)": 111.0,
+   "shoulder_bearing_capacity_total_N (60 MPa)": 240.0,
+   "catch": "90 deg (positive): cannot be pulled out without squeezing"
+  },
+  "reset flexure": {
+   "tongue_stiffness_N_per_mm": 1.19,
+   "springboard_stiffness_N_per_mm": 11.96,
+   "switch_force_at_stop_N_min_nom_max": [
+    2.03,
+    3.83,
+    5.62
+   ],
+   "switch_rated_N": 1.6,
+   "finger_force_at_stop_N": 4.6,
+   "travel_to_stop_mm": 0.63,
+   "stop_strip_thickness": 0.57,
+   "springboard_strain_pct_max": 4.39,
+   "tongue_strain_pct": 0.65,
+   "stop": "tongue strip lands on the USB-C shell; plunger and stop both reference the XIAO"
+  },
+  "buzzer chamber": {
+   "volume_mm3": 275.0,
+   "outlet_area_mm2": 4.02,
+   "helmholtz_Hz": 4300.0,
+   "buzzer_resonance_Hz": 4000
+  }
+ },
+ "stackups_at_tol_0.2 (robustness)": {
+  "board edge to pod wall (radial)": {
+   "rss": [
+    0.144,
+    0.656
+   ],
+   "ok_rss": true
+  },
+  "board flat to pod inner flat": {
+   "rss": [
+    0.144,
+    0.656
+   ],
+   "ok_rss": true
+  },
+  "lid to tallest sensor part": {
+   "rss": [
+    0.067,
+    0.533
+   ],
+   "ok_rss": true
+  },
+  "cover to USB-C shell": {
+   "rss": [
+    0.036,
+    0.464
+   ],
+   "ok_rss": true
+  },
+  "cover to battery (after 0.4 swell)": {
+   "rss": [
+    0.173,
+    0.747
+   ],
+   "ok_rss": true
+  },
+  "pod ridge to dock flange (radial)": {
+   "rss": [
+    0.013,
+    0.587
+   ],
+   "ok_rss": true
+  },
+  "pod flat to dock key": {
+   "rss": [
+    0.017,
+    0.583
+   ],
+   "ok_rss": true
+  },
+  "finger deflection when seated": {
+   "rss": [
+    0.136,
+    0.864
+   ],
+   "ok_rss": true
+  },
+  "latch catch to sill (play)": {
+   "rss": [
+    0.196,
+    0.804
+   ],
+   "ok_rss": true
+  },
+  "latch block to window side": {
+   "rss": [
+    0.017,
+    0.583
+   ],
+   "ok_rss": true
+  },
+  "latch block to its overload shoulder (same part)": {
+   "rss": [
+    0.529,
+    0.671
+   ],
+   "ok_rss": true
+  },
+  "latch arm to sill inner face (radial)": {
+   "rss": [
+    0.013,
+    0.587
+   ],
+   "ok_rss": true
+  },
+  "USB-C 12.35x6.5 overmold to opening (per side, Y)": {
+   "rss": [
+    0.119,
+    0.631
+   ],
+   "ok_rss": true
+  },
+  "USB-C 12.35x6.5 overmold to opening (per side, Z)": {
+   "rss": [
+    0.115,
+    0.585
+   ],
+   "ok_rss": true
+  },
+  "USB-C receptacle to bezel posts": {
+   "rss": [
+    0.064,
+    0.536
+   ],
+   "ok_rss": true
+  },
+  "reset plunger to switch at rest (>-0.15 = <1.6 N, not actuated)": {
+   "rss": [
+    -0.036,
+    0.436
+   ],
+   "ok_rss": true
+  },
+  "reset switch force at the stop, N": {
+   "rss": [
+    2.249,
+    5.403
+   ],
+   "ok_rss": true
+  },
+  "LED shroud to LEDs": {
+   "rss": [
+    0.188,
+    0.612
+   ],
+   "ok_rss": true
+  },
+  "buzzer chamber rim to buzzer": {
+   "rss": [
+    0.071,
+    0.529
+   ],
+   "ok_rss": true
+  }
+ },
+ "strain_check_pct": {
+  "worst_flexure": 4.39,
+  "PA11-HP": {
+   "allowable": 6.7,
+   "ok": true
+  },
+  "PA12-HP": {
+   "allowable": 2.7,
+   "ok": false
+  }
+ },
+ "balance": {
+  "note": "off-centre mass of each part (PA11); trim with solder on TP1-TP4 (r = 22 mm) after weighing",
+  "pod": {
+   "cg_xy_mm": [
+    -0.65,
+    0.025
+   ],
+   "g_mm": [
+    -3.15,
+    0.12
+   ]
+  },
+  "cover": {
+   "cg_xy_mm": [
+    -0.37,
+    0.706
+   ],
+   "g_mm": [
+    -1.08,
+    2.06
+   ]
+  },
+  "dock": {
+   "cg_xy_mm": [
+    2.257,
+    0.0
+   ],
+   "g_mm": [
+    3.21,
+    0.0
+   ]
+  }
+ },
+ "designed_preload_overlap_mm3 (finger bumps on the ridge)": 4.35,
+ "interference_mm3": {},
+ "min_gap_mm": {
+  "lid to U1 (centre IMU)": 0.3,
+  "lid to U2": 0.3,
+  "pod wall to board edge": 0.4,
+  "cover to USB-C shell": 0.25,
+  "cover to battery": 0.5,
+  "cover to shield": 0.46,
+  "plunger to reset switch": 0.21,
+  "stop strip to USB-C shell (designed)": 0.68,
+  "LED shroud to LEDs": 0.452,
+  "buzzer chamber to buzzer": 0.3,
+  "pod to dock (bumps excluded)": 0.169,
+  "cover to dock": 1.896
+ },
+ "xiao_step_check": {
+  "pod": {
+   "interference_mm3": 0.0,
+   "min_gap_mm": 0.9
+  },
+  "cover": {
+   "interference_mm3": 0.0,
+   "min_gap_mm": 0.1
+  },
+  "dock": {
+   "interference_mm3": 0.0,
+   "min_gap_mm": 2.513
+  }
+ }
 }

@@ -15,8 +15,8 @@ The XIAO nRF52840 Sense is soldered flat on top and keeps BLE, charging and firm
 | `kicad/README.md` | KiCad project setup, sheet plan, layout rules, pre-fab checklist |
 
 ## Decided / recommended (revision 2)
-- **Dock + pod housing**: a light dock glued under every disc; one pod twists in/out (keyed quarter turn). See `housing.md`.
-- **56 mm round board** (was 48), 4 layers, 0.8 mm (0.6 mm or cutouts to save weight). Pod ~8 mm tall vs ~11 mm shallowest rim.
+- **Dock + pod housing**: a light dock glued under every disc; one pod clicks in and comes out by squeezing two latches. See `housing.md` and `cad/README.md` (rev B CAD).
+- **56 mm round board** (was 48), 4 layers, 0.8 mm. Pod 8.72 mm below the plate vs ~11 mm shallowest rim.
 - Sensors on one face (factory assembled), XIAO + battery + buzzer on the other (hand-soldered).
   U1 stays at the exact center; the XIAO only computes, so its position doesn't affect the measurements.
 - **XIAO shifted to ~+15 mm** so USB-C reaches the pod edge (charge/flash in place); battery opposite at ~-18 mm for balance.
@@ -36,7 +36,7 @@ The XIAO nRF52840 Sense is soldered flat on top and keeps BLE, charging and firm
 - Schematic: done, ERC clean. PCB layout: done, DRC clean, fab files in `kicad/fab/` (see `kicad/README.md`).
 
 ## Before KiCad (done)
-1. ~~Measure XIAO~~ done: 2.027 g, ~4.0 mm tall (incl. USB-C). Pod height now ~7.9 mm.
+1. ~~Measure XIAO~~ done: 2.027 g, ~4.0 mm tall measured; Seeed's 3D model gives 4.46 mm incl. USB-C, which the housing uses.
 2. Measure rim depth / inside rim diameter of your shallowest driver; disc weights. (you)
 3. ~~Choose battery~~ done: Adafruit 1317, center (-6.54, 0). When it arrives: weigh it, note which edge the leads exit.
 4. ~~Confirm layout~~ done: 56 mm board, XIAO at +15 mm with edge USB-C; balance via battery position + trim pads.

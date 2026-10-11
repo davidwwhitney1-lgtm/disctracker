@@ -3,20 +3,20 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Condensed:wght@500;700&family=IBM+Plex+Sans:wght@400;600&display=swap">
 <style>
-/* Layout: one wide 3D stage with a slim control rail, spec sheet underneath. Workshop drawing: paper, ink, nylon grey, dock blue. */
+/* Layout: one wide 3D stage with a slim control rail, then the fit sheet. Workshop drawing: paper, ink, nylon grey, dock blue. */
 :root {
   --bg: #F1F3F2; --panel: #FFFFFF; --ink: #1B2320; --muted: #5C6A65; --line: #CBD4D0;
-  --stage: #E4E8E6; --accent: #2D5CA6; --ok: #2B7A4B; --warn: #A8710D;
+  --stage: #E4E8E6; --accent: #2D5CA6; --ok: #2B7A4B; --warn: #A8710D; --bad: #B23A2E;
   --display: "IBM Plex Sans Condensed", "Arial Narrow", sans-serif;
   --body: "IBM Plex Sans", system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #111614; --panel: #19201D; --ink: #E3EBE7; --muted: #9AABA4; --line: #34413C;
-  --stage: #1E2623; --accent: #80A9F0; --ok: #5CC28A; --warn: #E6B451; color-scheme: dark } }
+  --stage: #1E2623; --accent: #80A9F0; --ok: #5CC28A; --warn: #E6B451; --bad: #F08A7E; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #111614; --panel: #19201D; --ink: #E3EBE7; --muted: #9AABA4; --line: #34413C;
-  --stage: #1E2623; --accent: #80A9F0; --ok: #5CC28A; --warn: #E6B451; color-scheme: dark }
+  --stage: #1E2623; --accent: #80A9F0; --ok: #5CC28A; --warn: #E6B451; --bad: #F08A7E; color-scheme: dark }
 body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--body); }
 .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; }
 h1, h2 { font-family: var(--display); margin: 0; text-wrap: balance; line-height: 1.15; }
@@ -24,102 +24,110 @@ h1 { font-size: clamp(28px, 4.5vw, 40px); }
 h2 { font-size: 22px; margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--line); }
 .kicker { font: 600 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
 .lede { color: var(--muted); max-width: 70ch; margin: 8px 0 0; }
-.studio { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 14px; margin-top: 20px; }
+.studio { display: grid; grid-template-columns: minmax(0, 1fr) 236px; gap: 14px; margin-top: 20px; }
 @media (max-width: 760px) { .studio { grid-template-columns: 1fr; } }
 .stage { position: relative; background: var(--stage); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; aspect-ratio: 4 / 3; max-width: 100%; }
 .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .hint { position: absolute; left: 12px; bottom: 10px; font: 12px var(--mono); color: var(--muted); pointer-events: none; }
+.caption { position: absolute; left: 12px; top: 10px; right: 12px; font: 13px var(--body); color: var(--ink); pointer-events: none; max-width: 52ch; }
 .loading { position: absolute; inset: 0; display: grid; place-items: center; font: 13px var(--mono); color: var(--muted); }
-.rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.rail { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .group { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
 .group h3 { margin: 0 0 8px; font: 600 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.seg { display: grid; grid-template-columns: 1fr; gap: 6px; }
-.seg button { font: 500 14px var(--body); text-align: left; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+.seg { display: grid; grid-template-columns: 1fr; gap: 5px; }
+.seg button { font: 500 14px var(--body); text-align: left; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--panel); }
 .seg button:focus-visible, .toggle input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 3px 0; cursor: pointer; }
+.toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 2px 0; cursor: pointer; }
 .sw { width: 12px; height: 12px; border-radius: 3px; flex: none; }
 .specs { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
 .specs td { padding: 8px 10px 8px 0; border-top: 1px solid var(--line); vertical-align: top; }
-.specs td:first-child { width: 44%; color: var(--muted); }
+.specs td:first-child { width: 40%; color: var(--muted); }
 .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.scroll { overflow-x: auto; margin-top: 12px; }
+.fits { border-collapse: collapse; font-size: 13.5px; min-width: 640px; width: 100%; }
+.fits th { text-align: left; font: 600 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); }
+.fits td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.fits td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 14px; }
 .col { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; min-width: 0; }
 .col h3 { margin: 0 0 6px; font: 600 16px var(--display); }
 .col p, .col li { font-size: 14px; margin: 4px 0; }
-.col ul { margin: 0; padding-left: 18px; }
+.col ul, .col ol { margin: 0; padding-left: 18px; }
 code { font-family: var(--mono); font-size: .9em; }
-.tag { font: 600 11px var(--mono); padding: 3px 6px; border-radius: 3px; border: 1px solid currentColor; }
-.tag.ok { color: var(--ok); } .tag.warn { color: var(--warn); }
+.tag { font: 600 11px var(--mono); padding: 2px 6px; border-radius: 3px; border: 1px solid currentColor; white-space: nowrap; }
+.tag.ok { color: var(--ok); } .tag.warn { color: var(--warn); } .tag.bad { color: var(--bad); }
+.note { color: var(--muted); font-size: 13.5px; max-width: 80ch; margin: 10px 0 0; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
 </style>
 
 <div class="wrap">
-  <div class="kicker">DiscTracker · housing · rev A</div>
+  <div class="kicker">DiscTracker · housing · rev B</div>
   <h1>DiscTracker Housing</h1>
-  <p class="lede">The pod clicks into a dock glued under the flight plate. Three hooks on the dock snap over a ridge near the bottom of the pod. A tab on the pod and a notch in the dock make sure the USB-C side always faces the same way. Drag to turn, scroll to zoom.</p>
+  <p class="lede">The pod clicks into a dock glued under the flight plate. To remove it, squeeze both latches through the dock's windows and pull. The cover has a reset button that can't be over-pressed, a window for the XIAO's charge and status lights, and a tuned sound port for the buzzer. Drag to turn, scroll to zoom.</p>
 
   <div class="studio">
     <div class="stage" id="stage">
       <div class="loading" id="loading">Loading parts…</div>
+      <div class="caption" id="caption"></div>
       <div class="hint">drag · scroll · right-drag to pan</div>
     </div>
     <div class="rail">
       <div class="group">
         <h3>View</h3>
         <div class="seg" id="views">
-          <button type="button" data-view="assembled" aria-pressed="true">Assembled</button>
-          <button type="button" data-view="exploded" aria-pressed="false">Exploded</button>
-          <button type="button" data-view="section" aria-pressed="false">Cut in half</button>
+          <button type="button" id="v-assembled" data-view="assembled" aria-pressed="true">Assembled</button>
+          <button type="button" id="v-exploded" data-view="exploded" aria-pressed="false">Exploded</button>
+          <button type="button" id="v-usb" data-view="usb" aria-pressed="false">Cut through USB-C</button>
+          <button type="button" id="v-latch" data-view="latch" aria-pressed="false">Cut through latches</button>
+          <button type="button" id="v-reset" data-view="reset" aria-pressed="false">Cut through reset</button>
+          <button type="button" id="v-jig" data-view="jig" aria-pressed="false">Gluing jig</button>
         </div>
       </div>
       <div class="group">
         <h3>Show</h3>
-        <label class="toggle"><input type="checkbox" id="t-plate" checked> <span class="sw" style="background:#D9A877"></span>Flight plate</label>
+        <label class="toggle"><input type="checkbox" id="t-disc" checked> <span class="sw" style="background:#D9A877"></span>Disc</label>
         <label class="toggle"><input type="checkbox" id="t-dock" checked> <span class="sw" style="background:#3D6FC4"></span>Dock (glued)</label>
         <label class="toggle"><input type="checkbox" id="t-pod" checked> <span class="sw" style="background:#C9CDD3"></span>Pod</label>
-        <label class="toggle"><input type="checkbox" id="t-cover" checked> <span class="sw" style="background:#9AA0A8"></span>Floor cover</label>
-        <label class="toggle"><input type="checkbox" id="t-pcb" checked> <span class="sw" style="background:#2E6B45"></span>Board + parts</label>
+        <label class="toggle"><input type="checkbox" id="t-cover" checked> <span class="sw" style="background:#8F96A0"></span>Cover</label>
+        <label class="toggle"><input type="checkbox" id="t-pcb" checked> <span class="sw" style="background:#2E6B45"></span>Board, XIAO, battery</label>
       </div>
       <div class="group">
         <h3>Camera</h3>
         <div class="seg" id="cams">
-          <button type="button" data-cam="under" aria-pressed="true">From under the disc</button>
-          <button type="button" data-cam="side" aria-pressed="false">Side</button>
+          <button type="button" id="c-under" data-cam="under" aria-pressed="true">Under the disc</button>
+          <button type="button" id="c-cover" data-cam="cover" aria-pressed="false">Cover face</button>
+          <button type="button" id="c-usb" data-cam="usb" aria-pressed="false">USB-C end</button>
+          <button type="button" id="c-latch" data-cam="latch" aria-pressed="false">Latch</button>
+          <button type="button" id="c-finger" data-cam="finger" aria-pressed="false">Dock finger</button>
+          <button type="button" id="c-side" data-cam="side" aria-pressed="false">Side</button>
         </div>
       </div>
     </div>
   </div>
 
   <h2>Key numbers</h2>
-  <table class="specs">
-    <tr><td>Depth below the flight plate</td><td><span class="num">7.5 mm</span> · shallowest drivers have about 11 mm of rim, so about 3.5 mm to spare <span class="tag ok">OK</span></td></tr>
-    <tr><td>Pod diameter</td><td><span class="num">58.4 mm</span> (59.6 mm across the click ridge)</td></tr>
-    <tr><td>Dock diameter</td><td><span class="num">66 mm</span>, 1.2 mm thick, about 7 cm² of glue face</td></tr>
-    <tr><td>Click engagement</td><td><span class="num">0.45 mm</span> hook overlap. Arm bend while clicking about <span class="num">2.3 %</span>, safe for nylon and PETG</td></tr>
-    <tr><td>Centering</td><td>Dock bore fits the pod within <span class="num">±0.25 mm</span></td></tr>
-    <tr><td>Weight, nylon PA12</td><td>pod <span class="num">3.3 g</span> + cover <span class="num">1.5 g</span> + dock <span class="num">1.0 g</span> = <span class="num">5.8 g</span> <span class="tag warn">over the 3–5 g target</span></td></tr>
-    <tr><td>Weight, PETG</td><td><span class="num">7.3 g</span> (prototypes only)</td></tr>
-    <tr><td>Fit check</td><td>No overlap between any housing part and the board, XIAO, battery or buzzer models</td></tr>
+  <table class="specs" id="specs">
+    <tr><td>Depth below the flight plate</td><td><span class="num" data-k="depth">8.7 mm</span>. The shallowest drivers have about 11 mm of rim.</td></tr>
   </table>
+
+  <h2>Fits and gaps</h2>
+  <p class="note">Each fit is checked at nominal, statistically (RSS, the normal way to qualify a printed part), and at the absolute worst case of every tolerance stacking the same way. Printed features are taken as ±0.1 mm (MJF nylon holds about ±0.2 mm on a diameter). Flexures absorb the rest.</p>
+  <div class="scroll"><table class="fits" id="fits"><tr><th>Fit</th><th>Nominal</th><th>RSS range</th><th>Worst case</th><th></th></tr></table></div>
 
   <h2>How it works</h2>
   <div class="cols">
-    <div class="col"><h3>Click in</h3><p>Line up the tab with the dock's notch and push. The three hooks ride up the ridge's ramp and snap under it. The catch face is nearly flat, so the pod won't shake loose when the disc hits a tree or chains.</p></div>
-    <div class="col"><h3>Take out</h3><p>Hook a fingernail under each arm's small outer lip, ease it outward, and pull the pod down. The arms flex outward only, so they never press on the board.</p></div>
-    <div class="col"><h3>Inside the pod</h3><ul>
-      <li>The board sits on three 2 mm pins through its alignment holes; melt or glue the pin tips.</li>
-      <li>The sensors face the lid, with 0.17 mm of clearance.</li>
-      <li>The battery and XIAO face the floor cover, with 0.3 mm of clearance. Add a foam pad on the battery.</li>
-      <li>The cover clicks in on three bumps. It has a sound hole for the buzzer, a window for the XIAO's LEDs, and a fingernail notch.</li></ul></div>
-    <div class="col"><h3>Gluing the dock</h3><p>Use 3M VHB with 3M 94 primer. The printed jig sits on the upturned disc's rim and holds the dock dead center. Its front pointer lines up with the disc's stamp. Set <code>DISC_OD</code> and <code>RIM_TO_PLATE</code> in <code>housing.py</code> for each disc mould.</p></div>
+    <div class="col"><h3>Click in</h3><p>The flat by the USB-C port lines up with a flat in the dock, so the pod only goes in one way. Push it up. Four spring fingers in the dock snap over the ridge at the top of the pod and pull it flat against the disc with no rattle. At the same moment, both latches snap into the dock's windows.</p></div>
+    <div class="col"><h3>Take out</h3><p>Press both latch pads through the dock windows with thumb and finger, then pull. The latch hooks are square, so a hard landing can't pull the pod out. The springs alone would let go at about 14 N.</p></div>
+    <div class="col"><h3>Reset button</h3><p>Press the ring on the cover. A flexible tongue pushes a small spring arm onto the XIAO's reset switch at about 3.8 N. A strip on the tongue then lands on the USB-C shell, so pressing harder never reaches the switch.</p></div>
+    <div class="col"><h3>Lights and sound</h3><p>The slot over the XIAO's lights has a shroud, so the red charge light and the RGB status light show up sharp. The buzzer sits in a sealed chamber with two 1.6 mm holes, tuned near its 4 kHz tone.</p></div>
   </div>
 
   <h2>Files</h2>
   <div class="cols">
-    <div class="col"><h3>SolidWorks</h3><p>Open the <code>.step</code> files in <code>hardware/cad/out/</code>: <code>pod</code>, <code>cover</code>, <code>dock</code>, <code>jig</code>, and <code>housing_assembly.step</code> with the board in place.</p></div>
-    <div class="col"><h3>Printing</h3><p><code>.stl</code> files in the same folder. Order the pod, cover and dock in nylon PA12 (MJF or SLS). Print the jig in PETG or PLA at home; it's 216 mm across.</p></div>
-    <div class="col"><h3>Changing it</h3><p>Every size is a parameter at the top of <code>hardware/cad/housing.py</code> (CadQuery). Re-run it to rebuild all files.</p></div>
+    <div class="col"><h3>SolidWorks</h3><p>Open the <code>.step</code> files in <code>hardware/cad/out/</code>: <code>pod</code>, <code>cover</code>, <code>dock</code>, <code>jig_frame</code>, <code>jig_plunger</code>, plus <code>housing_assembly.step</code> with the board inside.</p></div>
+    <div class="col"><h3>Ordering</h3><p>Order the <code>.stl</code> files from JLC3DP in PA11-HP (MJF). The flexures need its 50 % elongation. Print the jig in PETG or PLA at home. You also need three M2 × 6 countersunk screws in nylon or brass, nothing steel near the magnetometer.</p></div>
+    <div class="col"><h3>Changing it</h3><p>Every size is a parameter at the top of <code>hardware/cad/housing.py</code>. Re-run it to rebuild the files and <code>report.json</code>, which lists every fit shown here.</p></div>
   </div>
 </div>
 
@@ -134,82 +142,142 @@ import * as THREE from "three";
 import { STLLoader } from "three/addons/loaders/STLLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
+// ---------------------------------------------------------------- report (fits, numbers)
+async function getJSON(paths) {
+  for (const p of paths) { try { const r = await fetch(p); if (r.ok) return await r.json(); } catch (e) {} }
+  return null;
+}
+const rep = await getJSON(["report.json", "../out/report.json"]);
+const fmt = (x, d = 2) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d);
+if (rep) {
+  const m = rep.mechanics, g = rep.mass_g;
+  const rows = [
+    ["Depth below the flight plate", `<span class="num">${fmt(rep.depth_below_plate_mm, 2)} mm</span>. The shallowest drivers have about 11 mm of rim, which leaves about ${fmt(11 - rep.depth_below_plate_mm, 1)} mm.`],
+    ["Pod", `<span class="num">${rep.pod_mm.wall_od} mm</span> body, <span class="num">${rep.pod_mm.diameter_over_ridge} mm</span> over the top ridge, <span class="num">${rep.pod_mm.over_latches} mm</span> across the latches`],
+    ["Dock", `<span class="num">${rep.dock_mm.od} mm</span> across, glued with 0.25 mm VHB or 300LSE tape`],
+    ["Weight, PA11", `pod <span class="num">${g.pod["PA11-HP"]} g</span> + cover <span class="num">${g.cover["PA11-HP"]} g</span> + dock <span class="num">${g.dock["PA11-HP"]} g</span> = <span class="num">${fmt(g.pod["PA11-HP"] + g.cover["PA11-HP"] + g.dock["PA11-HP"], 1)} g</span>, plus about 0.1 g of nylon screws`],
+    ["Click in", `about <span class="num">${fmt(m["dock fingers"].insert_force_total_N, 0)} N</span> for the four fingers and <span class="num">${fmt(m["pod latches"].insert_force_total_N, 0)} N</span> for the two latches`],
+    ["Hold-down (no rattle)", `<span class="num">${fmt(m["dock fingers"].preload_total_N_min_nom_max[1], 1)} N</span> nominal (${fmt(m["dock fingers"].preload_total_N_min_nom_max[0], 1)}–${fmt(m["dock fingers"].preload_total_N_min_nom_max[2], 1)} N across tolerances)`],
+    ["Remove", `squeeze each latch with <span class="num">${fmt(m["pod latches"].squeeze_force_each_N, 1)} N</span>, then pull about <span class="num">${fmt(m["dock fingers"].pull_off_force_total_N, 0)} N</span>`],
+    ["Impact hold", `the latches hold about <span class="num">${fmt(m["pod latches"]["pull_out_capacity_total_N (sill yield, 48 MPa)"], 0)} N</span> before the dock's sill yields, roughly ${Math.round(m["pod latches"]["pull_out_capacity_total_N (sill yield, 48 MPa)"] / 0.196 / 100) * 100} g on a 20 g pod. A shoulder above each hook takes the load off the latch arm`],
+    ["Reset button", `<span class="num">${fmt(m["reset flexure"].switch_force_at_stop_N_min_nom_max[1], 1)} N</span> on the switch (rated ${m["reset flexure"].switch_rated_N} N), <span class="num">${fmt(m["reset flexure"].travel_to_stop_mm, 2)} mm</span> of travel, hard stop on the USB-C shell`],
+    ["Buzzer port", `Helmholtz resonance about <span class="num">${fmt(m["buzzer chamber"].helmholtz_Hz / 1000, 1)} kHz</span> for a 4 kHz buzzer`],
+    ["Bend in the springs", `fingers <span class="num">${fmt(m["dock fingers"].strain_at_full_deflection_pct, 1)} %</span>, latches <span class="num">${fmt(m["pod latches"].strain_at_squeeze_stop_pct, 1)} %</span>, reset spring arm <span class="num">${fmt(m["reset flexure"].springboard_strain_pct_max, 1)} %</span>. PA11 allows 6.7 %; PA12 allows 2.7 %, which the reset arm exceeds`],
+    ["Fit check", Object.keys(rep.interference_mm3).length ? `<span class="tag bad">overlap</span> ${Object.keys(rep.interference_mm3).join(", ")}` : `<span class="tag ok">clear</span> No overlap between any housing part and the board, XIAO, battery or buzzer models, and none against Seeed's own XIAO 3D model`],
+  ];
+  document.getElementById("specs").innerHTML = rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("");
+  const unit = k => k.endsWith(", N") ? " N" : " mm";
+  const label = k => k.replace(/ \(>-0\.15 = <1\.6 N, not actuated\)/, " (a little preload is fine)").replace(/, N$/, "");
+  const fits = Object.entries(rep.stackups).map(([k, v]) => {
+    const u = unit(k);
+    const st = v.ok_rss && v.ok_wc ? `<span class="tag ok">OK</span>` : v.ok_rss ? `<span class="tag warn">RSS OK</span>` : `<span class="tag bad">check</span>`;
+    return `<tr><td>${label(k)}</td><td class="n">${fmt(v.nominal)}${u}</td><td class="n">${fmt(v.rss[0])} to ${fmt(v.rss[1])}</td><td class="n">${fmt(v.wc[0])} to ${fmt(v.wc[1])}</td><td>${st}</td></tr>`;
+  }).join("");
+  document.getElementById("fits").insertAdjacentHTML("beforeend", fits);
+}
+
+// ---------------------------------------------------------------- 3D
 const stage = document.getElementById("stage");
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-renderer.setClearColor(0x000000, 0);   // the stage colour shows through, in light and dark themes
+renderer.setClearColor(0x000000, 0);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.localClippingEnabled = true;
 stage.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(32, 4 / 3, 1, 2000);
+const camera = new THREE.PerspectiveCamera(30, 4 / 3, 0.5, 3000);
 camera.up.set(0, 0, 1);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.target.set(0, 0, -3);
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f99, 1.6));
-const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(-60, -80, -40); scene.add(key);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8f99, 1.5));
+const key = new THREE.DirectionalLight(0xffffff, 1.7); key.position.set(-60, -80, -60); scene.add(key);
 const fill = new THREE.DirectionalLight(0xffffff, 0.8); fill.position.set(80, 40, 90); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffffff, 0.6); rim.position.set(90, -20, -30); scene.add(rim);
 
-const clip = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);   // keeps y < 0 half when section view is on
 const parts = {};
-function mat(color, opts = {}) {
-  return new THREE.MeshStandardMaterial({ color, metalness: 0.05, roughness: opts.rough ?? 0.65,
-    side: THREE.DoubleSide, transparent: !!opts.opacity, opacity: opts.opacity ?? 1, clippingPlanes: [] });
+function mat(color, o = {}) {
+  return new THREE.MeshStandardMaterial({ color, metalness: o.metal ?? 0.05, roughness: o.rough ?? 0.62,
+    side: THREE.DoubleSide, transparent: !!o.opacity, opacity: o.opacity ?? 1, depthWrite: !o.opacity, clippingPlanes: [] });
 }
+// name, file, colour, material options, toggle group
 const spec = [
-  ["dock", "dock.stl", 0x3d6fc4, {}],
-  ["pod", "pod.stl", 0xc9cdd3, {}],
-  ["cover", "cover.stl", 0x9aa0a8, {}],
-  ["pcb", "pcb_dummy.stl", 0x2e6b45, {}],
-  ["pcbparts", "pcb_parts_dummy.stl", 0x22262b, { rough: 0.4 }],
+  ["disc", "ref_disc", 0xd9a877, { opacity: 0.32 }, "disc"],
+  ["dock", "dock", 0x3d6fc4, {}, "dock"],
+  ["pod", "pod", 0xc9cdd3, {}, "pod"],
+  ["cover", "cover", 0x8f96a0, {}, "cover"],
+  ["board", "ref_board", 0x2e6b45, {}, "pcb"],
+  ["parts", "ref_parts", 0x22262b, { rough: 0.4 }, "pcb"],
+  ["xiao", "ref_xiao", 0x3a3f46, { rough: 0.35, metal: 0.4 }, "pcb"],
+  ["battery", "ref_battery", 0xc9a24a, { rough: 0.5 }, "pcb"],
+  ["jigf", "jig_frame", 0xe0e3e6, { rough: 0.7 }, "jig"],
+  ["jigp", "jig_plunger", 0xf2c14e, { rough: 0.6 }, "jig"],
 ];
-const explode = { dock: 9, pod: 0, cover: -12, pcb: -5, pcbparts: -5, plate: 18 };
-
-// flight plate: a slice of the disc's underside, for scale
-const plateGeo = new THREE.CylinderGeometry(48, 48, 2.2, 96);
-plateGeo.rotateX(Math.PI / 2); plateGeo.translate(0, 0, 1.1);
-const plate = new THREE.Mesh(plateGeo, mat(0xd9a877, { opacity: 0.55 }));
-scene.add(plate); parts.plate = plate;
+const explode = { disc: 26, dock: 13, pod: 0, board: -9, parts: -9, xiao: -9, battery: -9, cover: -20 };
 
 const loader = new STLLoader();
-// models.json bundles the STL meshes (base64); the separate .stl files are the fallback when opened from the repo
-let bundle = null;
-try { const r = await fetch("models.json"); if (r.ok) bundle = await r.json(); } catch (e) {}
+const bundle = await getJSON(["models.json"]);
 function b64ToBuf(s) { const bin = atob(s); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; }
 await Promise.all(spec.map(([name, file, color, o]) => new Promise((res, rej) => {
-  const add = g => { g.computeVertexNormals(); const m = new THREE.Mesh(g, mat(color, o)); scene.add(m); parts[name] = m; res(); };
-  const key = file.replace(".stl", "");
-  if (bundle && bundle[key]) add(loader.parse(b64ToBuf(bundle[key])));
-  else loader.load(file, add, undefined, rej);
-}))).catch(e => { document.getElementById("loading").textContent = "Couldn't load the 3D parts: " + e; throw e; });
+  const add = g => { g.computeVertexNormals(); const m = new THREE.Mesh(g, mat(color, o)); m.renderOrder = o.opacity ? 2 : 0; scene.add(m); parts[name] = m; res(); };
+  if (bundle && bundle[file]) add(loader.parse(b64ToBuf(bundle[file])));
+  else loader.load("../out/" + file + ".stl", add, undefined, rej);
+}))).catch(e => { document.getElementById("loading").textContent = "Couldn't load the 3D parts. Open this page through a web server or the published link."; throw e; });
 document.getElementById("loading").remove();
 
+const show = { disc: true, dock: true, pod: true, cover: true, pcb: true, jig: false };
+const cuts = {
+  usb:   new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),        // y = 0: USB-C, XIAO, battery
+  latch: new THREE.Plane(new THREE.Vector3(1, 0, 0), 0),        // x = 0: both latches, buzzer
+  reset: new THREE.Plane(new THREE.Vector3(0, 1, 0), 5.72),     // y = -5.72: reset switch, spring arm, plunger
+};
+const captions = {
+  assembled: "Pod clicked into the dock under the flight plate, seen from inside the rim.",
+  exploded: "Disc, dock, pod, board with XIAO and battery, cover. Three M2 screws through the lid clamp the board between the lid's bosses and the cover's posts.",
+  usb: "Section through the USB-C port. The cable's overmold fits the opening; the cover's posts flank the receptacle.",
+  latch: "Section through both latches. Each square hook sits 0.5 mm above the dock's sill, and the spring fingers hold the lid against the plate.",
+  reset: "Section through the reset switch. The plunger rides on a spring arm (force limiter). The tongue's thin strip stops on the USB-C shell.",
+  jig: "Gluing jig: the frame centres itself on the rim; the plunger, shaped like the pod's top, carries the dock down onto the plate.",
+};
 let view = "assembled", tExplode = 0, goal = 0;
 function applyView() {
   goal = view === "exploded" ? 1 : 0;
-  const planes = view === "section" ? [clip] : [];
+  const planes = cuts[view] ? [cuts[view]] : [];
   for (const m of Object.values(parts)) m.material.clippingPlanes = planes;
+  const jig = view === "jig";
+  for (const [name, , , , grp] of spec) {
+    parts[name].visible = jig ? (grp === "jig" || grp === "dock" || grp === "disc") : grp !== "jig" && show[grp];
+  }
+  document.getElementById("caption").textContent = captions[view];
 }
+const camPos = {
+  under: [[78, -98, -92], [0, 0, -4]],
+  cover: [[12, -18, -95], [6, 2, -8]],
+  usb:   [[92, -26, -16], [27, 0, -5]],
+  side:  [[0, -112, -6], [0, 0, -4]],
+  latch: [[16, 58, -16], [0, 32, -5]],
+  finger: [[44, 50, -13], [19, 26, -2.6]],
+  usbcut: [[16, -60, -8], [20, 0, -5]],
+  latchcut: [[-88, 10, -10], [0, 0, -5]],
+  resetcut: [[22, -42, -9], [22, -5.7, -5.5]],
+  jig: [[210, -250, -150], [0, 0, -18]],
+};
 function setCam(which) {
-  if (which === "side") camera.position.set(0, -105, -4);
-  else camera.position.set(75, -95, -85);
-  controls.target.set(0, 0, -3); controls.update();
+  const [p, t] = camPos[which]; camera.position.set(...p); controls.target.set(...t); controls.update();
 }
+function press(group, el) { for (const x of document.querySelectorAll(group + " button")) x.setAttribute("aria-pressed", x === el); }
 document.getElementById("views").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  view = b.dataset.view;
-  for (const x of document.querySelectorAll("#views button")) x.setAttribute("aria-pressed", x === b);
-  applyView();
+  view = b.dataset.view; press("#views", b); applyView();
+  const cam = { usb: "usbcut", latch: "latchcut", reset: "resetcut", jig: "jig" }[view];
+  if (cam) { setCam(cam); press("#cams", null); }
 });
 document.getElementById("cams").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  for (const x of document.querySelectorAll("#cams button")) x.setAttribute("aria-pressed", x === b);
-  setCam(b.dataset.cam);
+  press("#cams", b); setCam(b.dataset.cam);
 });
-for (const [id, names] of [["t-plate", ["plate"]], ["t-dock", ["dock"]], ["t-pod", ["pod"]], ["t-cover", ["cover"]], ["t-pcb", ["pcb", "pcbparts"]]]) {
-  document.getElementById(id).addEventListener("change", e => { for (const n of names) parts[n].visible = e.target.checked; });
+for (const [id, grp] of [["t-disc", "disc"], ["t-dock", "dock"], ["t-pod", "pod"], ["t-cover", "cover"], ["t-pcb", "pcb"]]) {
+  document.getElementById(id).addEventListener("change", e => { show[grp] = e.target.checked; applyView(); });
 }
 
 function resize() {
@@ -226,5 +294,10 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   controls.update(); renderer.render(scene, camera);
   requestAnimationFrame(loop);
 })();
-window.__setView = (v, cam) => { view = v; applyView(); tExplode = goal; if (cam) setCam(cam); };
+window.__setView = (v, cam) => {
+  view = v; applyView(); tExplode = goal; if (cam) setCam(cam);
+  press("#views", document.querySelector(`#views [data-view="${v}"]`));
+  press("#cams", document.querySelector(`#cams [data-cam="${cam}"]`));
+};
+window.__show = (name, on) => { if (parts[name]) parts[name].visible = on; };
 </script>
