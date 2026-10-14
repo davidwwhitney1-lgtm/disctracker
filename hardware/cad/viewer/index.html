@@ -29,7 +29,7 @@ h2 { font-size: 22px; margin-top: 40px; padding-top: 14px; border-top: 1px solid
 .stage { position: relative; background: var(--stage); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; aspect-ratio: 4 / 3; max-width: 100%; }
 .stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .hint { position: absolute; left: 12px; bottom: 10px; font: 12px var(--mono); color: var(--muted); pointer-events: none; }
-.caption { position: absolute; left: 12px; top: 10px; right: 12px; font: 13px var(--body); color: var(--ink); pointer-events: none; max-width: 52ch; }
+.caption { position: absolute; left: 10px; top: 8px; right: 10px; font: 13px var(--body); color: var(--ink); pointer-events: none; max-width: 52ch; width: fit-content; padding: 5px 9px; border-radius: 6px; background: color-mix(in srgb, var(--panel) 86%, transparent); }
 .loading { position: absolute; inset: 0; display: grid; place-items: center; font: 13px var(--mono); color: var(--muted); }
 .rail { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .group { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
@@ -62,9 +62,9 @@ code { font-family: var(--mono); font-size: .9em; }
 </style>
 
 <div class="wrap">
-  <div class="kicker">DiscTracker · housing · rev B</div>
+  <div class="kicker">DiscTracker · housing · rev C</div>
   <h1>DiscTracker Housing</h1>
-  <p class="lede">The pod clicks into a dock glued under the flight plate. To remove it, squeeze both latches through the dock's windows and pull. The cover has a reset button that can't be over-pressed, a window for the XIAO's charge and status lights, and a tuned sound port for the buzzer. Drag to turn, scroll to zoom.</p>
+  <p class="lede">The pod twists into a dock glued under the flight plate, a 30° turn that clicks as it tightens. Three lugs sit over a solid lip, so a hard landing can't pull it out, and the clicks stop it unscrewing. Every part prints flat on a Bambu P1S in PETG with no supports. Drag to turn, scroll to zoom.</p>
 
   <div class="studio">
     <div class="stage" id="stage">
@@ -78,9 +78,10 @@ code { font-family: var(--mono); font-size: .9em; }
         <div class="seg" id="views">
           <button type="button" id="v-assembled" data-view="assembled" aria-pressed="true">Assembled</button>
           <button type="button" id="v-exploded" data-view="exploded" aria-pressed="false">Exploded</button>
+          <button type="button" id="v-lock" data-view="lock" aria-pressed="false">How it locks</button>
           <button type="button" id="v-usb" data-view="usb" aria-pressed="false">Cut through USB-C</button>
-          <button type="button" id="v-latch" data-view="latch" aria-pressed="false">Cut through latches</button>
-          <button type="button" id="v-reset" data-view="reset" aria-pressed="false">Cut through reset</button>
+          <button type="button" id="v-lug" data-view="lug" aria-pressed="false">Cut through a lug</button>
+          <button type="button" id="v-ratchet" data-view="ratchet" aria-pressed="false">Cut through the clicks</button>
           <button type="button" id="v-jig" data-view="jig" aria-pressed="false">Gluing jig</button>
         </div>
       </div>
@@ -98,8 +99,8 @@ code { font-family: var(--mono); font-size: .9em; }
           <button type="button" id="c-under" data-cam="under" aria-pressed="true">Under the disc</button>
           <button type="button" id="c-cover" data-cam="cover" aria-pressed="false">Cover face</button>
           <button type="button" id="c-usb" data-cam="usb" aria-pressed="false">USB-C end</button>
-          <button type="button" id="c-latch" data-cam="latch" aria-pressed="false">Latch</button>
-          <button type="button" id="c-finger" data-cam="finger" aria-pressed="false">Dock finger</button>
+          <button type="button" id="c-lug" data-cam="lug" aria-pressed="false">Lug and ramp</button>
+          <button type="button" id="c-pawl" data-cam="pawl" aria-pressed="false">Click pawl</button>
           <button type="button" id="c-side" data-cam="side" aria-pressed="false">Side</button>
         </div>
       </div>
@@ -112,22 +113,22 @@ code { font-family: var(--mono); font-size: .9em; }
   </table>
 
   <h2>Fits and gaps</h2>
-  <p class="note">Each fit is checked at nominal, statistically (RSS, the normal way to qualify a printed part), and at the absolute worst case of every tolerance stacking the same way. Printed features are taken as ±0.1 mm (MJF nylon holds about ±0.2 mm on a diameter). Flexures absorb the rest.</p>
+  <p class="note">Each fit is checked at nominal, statistically (RSS, the normal way to qualify a printed part), and at the absolute worst case of every tolerance stacking the same way. Printed features are taken as ±0.1 mm, which a calibrated P1S holds in XY; the RSS check is repeated at ±0.2 mm in <code>report.json</code>. Height errors don't loosen the lock: they only change how far the pod turns before it's tight.</p>
   <div class="scroll"><table class="fits" id="fits"><tr><th>Fit</th><th>Nominal</th><th>RSS range</th><th>Worst case</th><th></th></tr></table></div>
 
   <h2>How it works</h2>
   <div class="cols">
-    <div class="col"><h3>Click in</h3><p>The flat by the USB-C port lines up with a flat in the dock, so the pod only goes in one way. Push it up. Four spring fingers in the dock snap over the ridge at the top of the pod and pull it flat against the disc with no rattle. At the same moment, both latches snap into the dock's windows.</p></div>
-    <div class="col"><h3>Take out</h3><p>Press both latch pads through the dock windows with thumb and finger, then pull. The latch hooks are square, so a hard landing can't pull the pod out. The springs alone would let go at about 14 N.</p></div>
-    <div class="col"><h3>Reset button</h3><p>Press the ring on the cover. A flexible tongue pushes a small spring arm onto the XIAO's reset switch at about 3.8 N. A strip on the tongue then lands on the USB-C shell, so pressing harder never reaches the switch.</p></div>
-    <div class="col"><h3>Lights and sound</h3><p>The slot over the XIAO's lights has a shroud, so the red charge light and the RGB status light show up sharp. The buzzer sits in a sealed chamber with two 1.6 mm holes, tuned near its 4 kHz tone.</p></div>
+    <div class="col"><h3>Twist in</h3><p>Hold the pod with its USB-C port at 11 o'clock to the gap in the dock. Push it up and the three lugs drop through the dock's notches. The wide lug only fits one notch, so it goes in one way. Turn it clockwise to 12 o'clock. It clicks every 3° as the lugs ride up ramps on the dock's lip, then stops: the lid is tight against the disc.</p></div>
+    <div class="col"><h3>Stays in</h3><p>The lugs sit over a solid lip, 1.9 mm deep, so nothing has to flex to hold the pod. A landing would have to break the lugs or the lip. Three spring pawls in the dock click over short racks on the pod and stop it unscrewing when a tree hit tries to spin it loose.</p></div>
+    <div class="col"><h3>Take out</h3><p>Grip the ribs below the dock and turn it back about 30°, counterclockwise from below. It clicks out more stiffly than it went in, then drops free.</p></div>
+    <div class="col"><h3>Lights, sound, reset</h3><p>The slot over the XIAO's lights has a shroud, so the red charge light and the RGB status light show up sharp. The buzzer sits in a sealed chamber with two 1.6 mm holes, tuned near its 4 kHz tone. Reset is a pinhole: press the switch with a paperclip.</p></div>
   </div>
 
   <h2>Files</h2>
   <div class="cols">
-    <div class="col"><h3>SolidWorks</h3><p>Open the <code>.step</code> files in <code>hardware/cad/out/</code>: <code>pod</code>, <code>cover</code>, <code>dock</code>, <code>jig_frame</code>, <code>jig_plunger</code>, plus <code>housing_assembly.step</code> with the board inside.</p></div>
-    <div class="col"><h3>Ordering</h3><p>Order the <code>.stl</code> files from JLC3DP in PA11-HP (MJF). The flexures need its 50 % elongation. Print the jig in PETG or PLA at home. You also need three M2 × 6 countersunk screws in nylon or brass, nothing steel near the magnetometer.</p></div>
-    <div class="col"><h3>Changing it</h3><p>Every size is a parameter at the top of <code>hardware/cad/housing.py</code>. Re-run it to rebuild the files and <code>report.json</code>, which lists every fit shown here.</p></div>
+    <div class="col"><h3>Printing (Bambu P1S)</h3><p>PETG, 0.4 mm nozzle, no supports, 4 walls and 100 % infill. Pod lid-down, dock with the tape face up, cover outer face down. Print the dock at 0.12 mm layers so the ramps are smooth. Print <code>test_ring</code> and one dock first and check the twist.</p></div>
+    <div class="col"><h3>SolidWorks</h3><p>Open the <code>.step</code> files in <code>hardware/cad/out/</code>: <code>pod</code>, <code>cover</code>, <code>dock</code>, <code>test_ring</code>, <code>jig_frame</code>, <code>jig_plunger</code>, plus <code>housing_assembly.step</code> with the board inside.</p></div>
+    <div class="col"><h3>Changing it</h3><p>Every size is a parameter at the top of <code>hardware/cad/housing.py</code>. If the test print turns too stiffly or too loosely, rebuild with <code>--fit-adjust 0.05</code> or <code>-0.05</code>. <code>--process mjf</code> builds the version for ordering in PA11 from JLC3DP.</p></div>
   </div>
 </div>
 
@@ -150,24 +151,28 @@ async function getJSON(paths) {
 const rep = await getJSON(["report.json", "../out/report.json"]);
 const fmt = (x, d = 2) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d);
 if (rep) {
-  const m = rep.mechanics, g = rep.mass_g;
+  const m = rep.mechanics, g = rep.mass_g, r = m.ratchet, c = m["ramp clamp"], po = m["pull-out"], tc = m["torque check"];
+  const fdm = rep.process === "fdm";
+  const reset = m.reset.type === "pinhole"
+    ? `pinhole, <span class="num">${fmt(m.reset.hole_d, 1)} mm</span>; the switch is <span class="num">${fmt(m.reset.depth_to_switch_mm, 1)} mm</span> in. Use a paperclip`
+    : `<span class="num">${fmt(m.reset.switch_force_at_stop_N_min_nom_max[1], 1)} N</span> on the switch (rated ${m.reset.switch_rated_N} N), hard stop on the USB-C shell`;
   const rows = [
     ["Depth below the flight plate", `<span class="num">${fmt(rep.depth_below_plate_mm, 2)} mm</span>. The shallowest drivers have about 11 mm of rim, which leaves about ${fmt(11 - rep.depth_below_plate_mm, 1)} mm.`],
-    ["Pod", `<span class="num">${rep.pod_mm.wall_od} mm</span> body, <span class="num">${rep.pod_mm.diameter_over_ridge} mm</span> over the top ridge, <span class="num">${rep.pod_mm.over_latches} mm</span> across the latches`],
-    ["Dock", `<span class="num">${rep.dock_mm.od} mm</span> across, glued with 0.25 mm VHB or 300LSE tape`],
-    ["Weight, PA11", `pod <span class="num">${g.pod["PA11-HP"]} g</span> + cover <span class="num">${g.cover["PA11-HP"]} g</span> + dock <span class="num">${g.dock["PA11-HP"]} g</span> = <span class="num">${fmt(g.pod["PA11-HP"] + g.cover["PA11-HP"] + g.dock["PA11-HP"], 1)} g</span>, plus about 0.1 g of nylon screws`],
-    ["Click in", `about <span class="num">${fmt(m["dock fingers"].insert_force_total_N, 0)} N</span> for the four fingers and <span class="num">${fmt(m["pod latches"].insert_force_total_N, 0)} N</span> for the two latches`],
-    ["Hold-down (no rattle)", `<span class="num">${fmt(m["dock fingers"].preload_total_N_min_nom_max[1], 1)} N</span> nominal (${fmt(m["dock fingers"].preload_total_N_min_nom_max[0], 1)}–${fmt(m["dock fingers"].preload_total_N_min_nom_max[2], 1)} N across tolerances)`],
-    ["Remove", `squeeze each latch with <span class="num">${fmt(m["pod latches"].squeeze_force_each_N, 1)} N</span>, then pull about <span class="num">${fmt(m["dock fingers"].pull_off_force_total_N, 0)} N</span>`],
-    ["Impact hold", `the latches hold about <span class="num">${fmt(m["pod latches"]["pull_out_capacity_total_N (sill yield, 48 MPa)"], 0)} N</span> before the dock's sill yields, roughly ${Math.round(m["pod latches"]["pull_out_capacity_total_N (sill yield, 48 MPa)"] / 0.196 / 100) * 100} g on a 20 g pod. A shoulder above each hook takes the load off the latch arm`],
-    ["Reset button", `<span class="num">${fmt(m["reset flexure"].switch_force_at_stop_N_min_nom_max[1], 1)} N</span> on the switch (rated ${m["reset flexure"].switch_rated_N} N), <span class="num">${fmt(m["reset flexure"].travel_to_stop_mm, 2)} mm</span> of travel, hard stop on the USB-C shell`],
+    ["Pod", `<span class="num">${rep.pod_mm.wall_od} mm</span> body, <span class="num">${fmt(rep.pod_mm.over_lugs, 1)} mm</span> across the lugs`],
+    ["Dock", `<span class="num">${rep.dock_mm.od} mm</span> across, <span class="num">${fmt(rep.dock_mm.height, 1)} mm</span> deep, glued with 0.25 mm VHB or 300LSE tape`],
+    [`Weight, ${fdm ? "PETG" : "PA11"}`, `pod <span class="num">${g.pod} g</span> + cover <span class="num">${g.cover} g</span> + dock <span class="num">${g.dock} g</span> = <span class="num">${fmt(g.pod + g.cover + g.dock, 1)} g</span>, plus about 0.1 g of nylon screws`],
+    ["Twist in", `<span class="num">${rep.lock.twist_deg}°</span> clockwise seen from below. A click every <span class="num">${r.pitch_deg}°</span> (about ${fmt(r.tighten_torque_per_click_Nm, 2)} N·m each)`],
+    ["Hold-down (no rattle)", `the ramps turn a <span class="num">0.4 N·m</span> twist into about <span class="num">${fmt(c["clamp_N_for_twist_0.2_0.4_0.6_Nm"][1], 0)} N</span> holding the lid on the plate. At ${fmt(c.helix_deg, 1)}° they can't push the lugs back on their own`],
+    ["Stays locked", `about <span class="num">${fmt(tc["hold_Nm (ratchet + clamp, 0.4 N.m twist)"], 2)} N·m</span> to turn it back, and the clicks alone hold <span class="num">${fmt(tc["hold_Nm (ratchet only, low friction)"], 2)} N·m</span>. A tree hit that stops the spin dead puts about 0.35 N·m on the pod`],
+    ["Impact hold", `about <span class="num">${po["total_N (weakest path x 3)"]} N</span> before a lug or the dock wall breaks, roughly ${Math.round(po["g_to_pull_out_a_20_g_pod"] / 100) * 100} g on a 20 g pod. The tape lets go first, at about ${po["tape_N (VHB about 0.5 MPa)"]} N`],
+    ["Reset", reset],
     ["Buzzer port", `Helmholtz resonance about <span class="num">${fmt(m["buzzer chamber"].helmholtz_Hz / 1000, 1)} kHz</span> for a 4 kHz buzzer`],
-    ["Bend in the springs", `fingers <span class="num">${fmt(m["dock fingers"].strain_at_full_deflection_pct, 1)} %</span>, latches <span class="num">${fmt(m["pod latches"].strain_at_squeeze_stop_pct, 1)} %</span>, reset spring arm <span class="num">${fmt(m["reset flexure"].springboard_strain_pct_max, 1)} %</span>. PA11 allows 6.7 %; PA12 allows 2.7 %, which the reset arm exceeds`],
-    ["Fit check", Object.keys(rep.interference_mm3).length ? `<span class="tag bad">overlap</span> ${Object.keys(rep.interference_mm3).join(", ")}` : `<span class="tag ok">clear</span> No overlap between any housing part and the board, XIAO, battery or buzzer models, and none against Seeed's own XIAO 3D model`],
+    ["Bend in the springs", `the click arms bend <span class="num">${fmt(r.strain_pct_at_engagement, 2)} %</span> per click, along the print layers. ${fdm ? "PETG" : "PA11"} allows ${rep.strain_check_pct.allowable} %`],
+    ["Fit check", Object.keys(rep.interference_mm3).length ? `<span class="tag bad">overlap</span> ${Object.keys(rep.interference_mm3).join(", ")}` : `<span class="tag ok">clear</span> No overlap between any housing part and the board, XIAO, battery or buzzer models, none against Seeed's own XIAO 3D model, and the pod clears the dock at the insertion angle`],
   ];
   document.getElementById("specs").innerHTML = rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("");
-  const unit = k => k.endsWith(", N") ? " N" : " mm";
-  const label = k => k.replace(/ \(>-0\.15 = <1\.6 N, not actuated\)/, " (a little preload is fine)").replace(/, N$/, "");
+  const unit = k => k.endsWith(", N") ? " N" : k.includes(", deg") ? "°" : " mm";
+  const label = k => k.replace(/ \(>-0\.15 = <1\.6 N, not actuated\)/, " (a little preload is fine)").replace(/, N$/, "").replace(/, deg past nominal$/, " (past nominal)");
   const fits = Object.entries(rep.stackups).map(([k, v]) => {
     const u = unit(k);
     const st = v.ok_rss && v.ok_wc ? `<span class="tag ok">OK</span>` : v.ok_rss ? `<span class="tag warn">RSS OK</span>` : `<span class="tag bad">check</span>`;
@@ -226,18 +231,20 @@ await Promise.all(spec.map(([name, file, color, o]) => new Promise((res, rej) =>
 document.getElementById("loading").remove();
 
 const show = { disc: true, dock: true, pod: true, cover: true, pcb: true, jig: false };
+const LUG = 142.5 * Math.PI / 180;                              // the narrow lug at 142.5 deg, locked
 const cuts = {
-  usb:   new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),        // y = 0: USB-C, XIAO, battery
-  latch: new THREE.Plane(new THREE.Vector3(1, 0, 0), 0),        // x = 0: both latches, buzzer
-  reset: new THREE.Plane(new THREE.Vector3(0, 1, 0), 5.72),     // y = -5.72: reset switch, spring arm, plunger
+  usb:     new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),                                   // y = 0: USB-C, XIAO, battery
+  lug:     new THREE.Plane(new THREE.Vector3(-Math.sin(LUG), Math.cos(LUG), 0), 0),         // radial plane through a lug
+  ratchet: new THREE.Plane(new THREE.Vector3(0, 0, 1), 3.5),                                 // z = -3.5: lip, pawls, racks
 };
 const captions = {
-  assembled: "Pod clicked into the dock under the flight plate, seen from inside the rim.",
+  assembled: "Pod locked in the dock under the flight plate, seen from inside the rim.",
   exploded: "Disc, dock, pod, board with XIAO and battery, cover. Three M2 screws through the lid clamp the board between the lid's bosses and the cover's posts.",
-  usb: "Section through the USB-C port. The cable's overmold fits the opening; the cover's posts flank the receptacle.",
-  latch: "Section through both latches. Each square hook sits 0.5 mm above the dock's sill, and the spring fingers hold the lid against the plate.",
-  reset: "Section through the reset switch. The plunger rides on a spring arm (force limiter). The tongue's thin strip stops on the USB-C shell.",
-  jig: "Gluing jig: the frame centres itself on the rim; the plunger, shaped like the pod's top, carries the dock down onto the plate.",
+  lock: "Lugs up through the dock's notches, then a 30° turn clockwise (seen from below). The lugs ride up ramps on the lip until the lid is tight against the plate.",
+  usb: "Section through the USB-C port. The cable's overmold fits the opening, and the dock is cut away under the port, so it charges in the disc.",
+  lug: "Section through a lug. It sits over the dock's solid lip with 1.9 mm of overlap. The ramp under its leading edge holds the lid tight against the plate.",
+  ratchet: "Section through the lip, from below. A spring arm in the dock carries a pawl that clicks over a rack on the pod. The slot behind the arm stops it bending too far.",
+  jig: "Gluing jig: the frame centres itself on the rim. The plunger's keys sit in the dock's notches and its ridges grip the pawls, so it carries the dock down onto the plate.",
 };
 let view = "assembled", tExplode = 0, goal = 0;
 function applyView() {
@@ -246,31 +253,32 @@ function applyView() {
   for (const m of Object.values(parts)) m.material.clippingPlanes = planes;
   const jig = view === "jig";
   for (const [name, , , , grp] of spec) {
-    parts[name].visible = jig ? (grp === "jig" || grp === "dock" || grp === "disc") : grp !== "jig" && show[grp];
+    parts[name].visible = jig ? (grp === "jig" || grp === "dock" || grp === "disc") : grp !== "jig" && show[grp] && !(view === "ratchet" && grp === "pcb");
   }
   document.getElementById("caption").textContent = captions[view];
 }
+const lugT = [31 * Math.cos(LUG), 31 * Math.sin(LUG), -2.5];
 const camPos = {
   under: [[78, -98, -92], [0, 0, -4]],
   cover: [[12, -18, -95], [6, 2, -8]],
   usb:   [[92, -26, -16], [27, 0, -5]],
   side:  [[0, -112, -6], [0, 0, -4]],
-  latch: [[16, 58, -16], [0, 32, -5]],
-  finger: [[44, 50, -13], [19, 26, -2.6]],
+  lug:   [[lugT[0] + 58 * Math.sin(LUG) + 14 * Math.cos(LUG), lugT[1] - 58 * Math.cos(LUG) + 14 * Math.sin(LUG), -22], [lugT[0] - 2 * Math.cos(LUG), lugT[1] - 2 * Math.sin(LUG), -3]],
+  pawl:  [[-2.5, 16, -40], [-2.5, 29.5, -3.5]],
+  lockcam: [[70, -92, -78], [0, 0, -5]],
   usbcut: [[16, -60, -8], [20, 0, -5]],
-  latchcut: [[-88, 10, -10], [0, 0, -5]],
-  resetcut: [[22, -42, -9], [22, -5.7, -5.5]],
   jig: [[210, -250, -150], [0, 0, -18]],
 };
 function setCam(which) {
   const [p, t] = camPos[which]; camera.position.set(...p); controls.target.set(...t); controls.update();
 }
 function press(group, el) { for (const x of document.querySelectorAll(group + " button")) x.setAttribute("aria-pressed", x === el); }
+const viewCam = { lock: "lockcam", usb: "usbcut", lug: "lug", ratchet: "pawl", jig: "jig" };
 document.getElementById("views").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   view = b.dataset.view; press("#views", b); applyView();
-  const cam = { usb: "usbcut", latch: "latchcut", reset: "resetcut", jig: "jig" }[view];
-  if (cam) { setCam(cam); press("#cams", null); }
+  const cam = viewCam[view];
+  if (cam) { setCam(cam); press("#cams", document.querySelector(`#cams [data-cam="${cam}"]`)); }
 });
 document.getElementById("cams").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
@@ -287,10 +295,21 @@ function resize() {
 new ResizeObserver(resize).observe(stage);
 resize(); setCam("under"); applyView();
 
+// "How it locks": rise into the dock at the insertion angle, turn 30 deg, hold
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-(function loop() {
+const podGroup = ["pod", "cover", "board", "parts", "xiao", "battery"];
+const ease = x => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x);
+window.__lockT = null;                                           // set 0..1 to freeze the animation
+function lockPose(now) {
+  if (view !== "lock") return [0, 0];
+  const t = window.__lockT ?? (reduce ? 0.5 : (now % 7000) / 7000);
+  return [-14 * (1 - ease(t / 0.3)), -30 * (1 - ease((t - 0.38) / 0.34))];
+}
+(function loop(now) {
   tExplode += (goal - tExplode) * (reduce ? 1 : 0.12);
-  for (const [n, dz] of Object.entries(explode)) if (parts[n]) parts[n].position.z = dz * tExplode;
+  const [rise, turn] = lockPose(now || 0);
+  for (const [n, dz] of Object.entries(explode)) if (parts[n]) parts[n].position.z = dz * tExplode + (podGroup.includes(n) ? rise : 0);
+  for (const n of podGroup) if (parts[n]) parts[n].rotation.z = turn * Math.PI / 180;
   controls.update(); renderer.render(scene, camera);
   requestAnimationFrame(loop);
 })();

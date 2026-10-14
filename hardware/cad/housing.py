@@ -1,52 +1,81 @@
 #!/usr/bin/env python3
-"""DiscTracker housing, rev B (CadQuery): click-in pod, glued dock, dock-gluing jig.
+"""DiscTracker housing, rev C (CadQuery): twist-lock pod, glued dock, dock-gluing jig.
 
-usage: python housing.py [out_dir] [--xiao-step PATH]
+usage: python housing.py [out_dir] [--process fdm|mjf] [--fit-adjust MM] [--xiao-step PATH]
+
+  --process     fdm (default): Bambu P1S, PETG, 0.4 mm nozzle, no supports. mjf: JLC3DP PA11.
+  --fit-adjust  added to every sliding fit after a test print (+0.05 looser, -0.05 tighter).
+  --xiao-step   also checks the parts against Seeed's XIAO nRF52840 STEP model (not redistributed here).
 
 Writes STEP (for SolidWorks) and STL (for printing) per part, an assembly STEP, and report.json with
-every fit, gap, stack-up, snap force and mass. --xiao-step additionally checks the parts against Seeed's
-XIAO nRF52840 STEP model (not redistributed here).
+every fit, gap, stack-up, force, torque, strain and mass.
 
 Frame (same as the PCB): origin on the spin axis, +X toward the XIAO's USB-C flat, +Y up as seen from the
 sensor face. +Z points toward the disc's flight plate; z = 0 is the plate underside, which the pod's lid
-touches. All dimensions in mm.
+touches. Angles are about +Z. All dimensions in mm.
 
 How it fits together
-  pod    lid + wall around the board; a ridge at the top for the dock's spring fingers; a flat with a
-         USB-C port; two press-to-release latch arms at +/-90 deg. Board, XIAO and battery inside.
-  cover  closes the bottom. Carries the reset-button flexure (force-limited plunger + hard stop), the
-         LED window with a light shroud, and the buzzer's front chamber. 3 x M2 countersunk screws from
-         the lid side pass through the board's alignment holes into the cover's columns and clamp the
-         board between the lid bosses and the columns.
-  dock   ring glued under the disc. Its flat keys the pod one way round, four spring fingers snap under
-         the pod's ridge (click, zero-play preload, centering), and two window posts catch the pod's
-         latches (positive lock). Squeeze both latches through the windows and pull to remove.
-  jig    frame that self-centres on the disc rim + sliding plunger shaped like the pod's top; the dock
-         clips onto the plunger, which places it on the plate centred and keyed.
+  pod    lid + wall around the board, a flat with the USB-C port. Three lugs flush with the lid, three short
+         ratchet racks on the wall, grip ribs below the dock. Board, XIAO and battery inside.
+  cover  closes the bottom: reset access, LED window with a light shroud, the buzzer's front chamber.
+         3 x M2 countersunk screws from the lid side pass through the board's alignment holes into the
+         cover's columns and clamp the board between the lid bosses and the columns.
+  dock   ring glued under the disc. The pod goes in with its lugs through three notches (the wide lug keys
+         it one way round) and turns 30 deg clockwise as seen from below. The lugs ride up ramps on the
+         dock's lip and pull the lid tight against the plate; three spring pawls click over the racks and
+         stop it unscrewing. To remove: turn it back (it clicks out) and pull.
+  jig    frame that self-centres on the disc rim + sliding plunger whose keys carry the dock to the plate.
+
+Strength comes from the lugs sitting over a solid lip, not from anything that bends, so print tolerances
+change how far it turns, not how well it holds. The pod, cover and dock print flat with no supports.
 """
 import json, math, os, sys
 import cadquery as cq
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 args = [a for a in sys.argv[1:]]
-XIAO_STEP = None
-if "--xiao-step" in args:
-    i = args.index("--xiao-step"); XIAO_STEP = args[i + 1]; del args[i:i + 2]
+
+
+def _opt(name, default=None):
+    if name in args:
+        i = args.index(name); v = args[i + 1]; del args[i:i + 2]
+        return v
+    return default
+
+
+XIAO_STEP = _opt("--xiao-step")
+PROCESS = _opt("--process", "fdm")
+FIT_ADJ = float(_opt("--fit-adjust", "0"))
 OUT = args[0] if args else os.path.join(HERE, "out")
 BOARD = json.load(open(os.path.join(HERE, "board_parts.json")))
+assert PROCESS in ("fdm", "mjf"), PROCESS
 
-# =============================================================== process and fit classes (JLC3DP MJF)
-MATERIAL = "PA11-HP (MJF)"       # recommended: 50 % elongation, takes the flexures' strain. PA12-HP fits but see report
-E_MOD = 1800.0                   # MPa, HP PA11/PA12 (XY and Z)
-EPS_ALLOW = {"PA11-HP": 6.7, "PA12-HP": 2.7}   # %, 1/3 of Z elongation at yield (HP snap-fit handbook)
-DENSITY = {"PA11-HP": 1.05, "PA12-HP": 1.01}   # g/cm3
-MU = 0.3                         # nylon on nylon
-TOL = 0.10                       # +/- per printed feature (radius or height) used in the stack-ups:
-                                 # MJF holds ~+/-0.2 % (>=0.2 mm on diameters); JLC quotes +/-0.3 worst case
-C_LOC = 0.30                     # radial clearance where a part only needs to locate (ridge, key, posts)
-C_BOARD = 0.40                   # board edge to pod wall: board is located by the screws, never by the wall
-C_MOVE = 0.60                    # slot width around flexures (JLC: >= 0.6 for moving parts)
-REVEAL = 0.20                    # visible cover-to-wall gap
+# =============================================================== process, material and fit classes
+if PROCESS == "fdm":
+    MATERIAL = "PETG (FDM: Bambu P1S, 0.4 mm nozzle)"
+    E_MOD = 1900.0               # MPa, printed PETG bent along its layers
+    EPS_ALLOW = 1.5              # %, repeated bending along the layers (about 1/3 of PETG's yield strain)
+    SIG_XY, SIG_Z = 40.0, 15.0   # MPa, design strength along / across the layers (PETG ~50 / ~20-30)
+    DENSITY = 1.27               # g/cm3, solid (4 walls + 100 % infill)
+    MU = 0.35                    # PETG on PETG
+    REVEAL = 0.30                # cover to wall: FDM outer walls run ~0.1 over, holes ~0.1 under
+    PILOT_D = 1.7                # M2 thread-forming into PETG
+    ARM_T = 1.5                  # ratchet arm thickness
+else:
+    MATERIAL = "PA11-HP (MJF, JLC3DP)"
+    E_MOD = 1800.0
+    EPS_ALLOW = 6.7              # %, 1/3 of Z elongation at yield (HP snap-fit handbook)
+    SIG_XY, SIG_Z = 40.0, 40.0   # MJF is nearly isotropic
+    DENSITY = 1.05
+    MU = 0.30
+    REVEAL = 0.30
+    PILOT_D = 1.6
+    ARM_T = 1.7                  # PA11 is softer than PETG; it takes the extra strain easily
+TOL = 0.10                       # +/- per printed feature (radius or height) in the stack-ups; rerun at 0.2 too
+C_LOC = 0.30 + FIT_ADJ           # radial / side clearance of every sliding fit (lip bore, groove, notches)
+C_BOARD = 0.40                   # board edge to pod wall: the screws locate the board, never the wall
+C_MOVE = 0.60                    # gaps around flexures: 1.5 line widths, so they never fuse
+MIN_GAP = 0.40                   # smallest gap a 0.4 nozzle keeps open
 
 # =============================================================== board and parts
 BOARD_R, BOARD_FLAT_X, BOARD_T = BOARD["board_r"], BOARD["flat_x"], BOARD["thickness"]
@@ -95,12 +124,18 @@ R_OUT = R_IN + WALL                             # 29.4
 X_FIN = BOARD_FLAT_X + C_BOARD                  # 26.9 inner flat
 X_FOUT = X_FIN + WALL                           # 27.9 outer flat
 CH_BOT = 0.4                                    # bottom outer chamfer
-# ridge the dock fingers hold: lead-in from the lid edge, apex, 40 deg underside
-R_RIDGE = R_OUT + 1.3                           # 30.7
-RIDGE_R0 = R_OUT - 0.05                         # lead-in starts here on the lid edge
-Z_APEX = (-1.45, -1.65)
-BETA = 40.0                                     # underside angle from the axis (preload vs pull-off force)
-Z_RIDGE_FOOT = Z_APEX[1] - (R_RIDGE - R_OUT) / math.tan(math.radians(BETA))
+CH_TOP = 0.4                                    # lid edge chamfer: lies on the print bed, takes the elephant's foot
+# twist-lock lugs, flush with the lid (printed on the bed). Locked angles; they go in TWIST deg earlier.
+R_LUG = R_OUT + 2.2                             # 31.6
+Z_LUG_BOT = -1.8
+LUGS = [(22.5, 24.0), (142.5, 16.0), (262.5, 16.0)]   # (centre, width) deg. Only the wide lug fits the wide notch: one way in
+TWIST = 30.0                                    # clockwise seen from below (+ about +Z), like a jar lid
+# ratchet racks on the wall at the lip's height, one per dock pawl. Valleys sit on the pawls when locked.
+RACK_H, RACK_PITCH, RACK_N = 0.60, 3.0, 7       # tooth height, pitch (deg), teeth: big enough to print crisply
+RACK_LEAD, RACK_HOLD = 30.0, 55.0               # flank angles from the tangent: tightening side, holding side
+Z_RACK = (-4.65, -2.45)
+# grip ribs on the wall below the dock, for turning the pod with wet or cold fingers
+RIB_H, RIB_W, RIB_PITCH, RIB_FLAT = 0.40, 1.2, 7.5, 25.0
 # M2 x 6 countersunk screws (nylon or brass - nothing magnetic near the magnetometer)
 SCREW_CLR, CSK_D = 2.3, 4.1
 BOSS_R = 2.3
@@ -110,16 +145,6 @@ POST_GAP = 0.05
 # plus 0.25 per side for print and XIAO position). The receptacle face sits 0.8 behind the outer flat.
 USB_OPEN_W, USB_OPEN_H = 13.10, 7.20
 BEZEL_T, BEZEL_C = 1.0, 0.30                    # cover posts beside the receptacle (close the side gaps)
-# latch arms (press to release), circumferential cantilevers at +/-90 deg
-R_ARM = (R_OUT + 0.9, R_OUT + 2.5)              # 0.9 gap to the wall = squeeze stop; 1.6 thick
-Z_ARM = (-8.00, -5.00)
-ARM_L = 10.0                                    # root to block, arc length at the arm's mid radius
-BLOCK_W = 5.0
-R_BLOCK = R_ARM[1] + 0.9                        # catch face 0.6 over the sill
-Z_SHOULDER = -2.30                              # flat underside of the ridge above each latch block
-SHOULDER_GAP = 0.60                             # block top to shoulder: overload backstop, wide enough not to fuse in MJF
-Z_BLOCK = (-6.00, Z_SHOULDER - SHOULDER_GAP)    # catch face at the bottom, 35 deg lead-in on top
-ROOT_W = 3.0
 TEXT = "DISCTRACKER"
 
 # =============================================================== cover
@@ -127,7 +152,9 @@ R_COV = R_IN - REVEAL
 X_COV = X_FIN - REVEAL
 CH_COV = 0.4
 COL_R = 1.9
-PILOT_D, PILOT_DEPTH = 1.6, 3.6                 # M2 x 6 thread-forming into nylon: 3 mm of thread, shallow enough to depowder
+PILOT_DEPTH = 3.6                               # M2 x 6 thread-forming: 3 mm of thread (shallow enough to depowder MJF)
+RESET = "pin" if PROCESS == "fdm" else "tongue" # FDM: pinhole (the tongue's spring arm would be an overhang); MJF: press ring
+PIN_D = 1.6                                     # pinhole for a paperclip, countersunk outside
 # reset flexure: tongue (main spring) + springboard plunger (force limiter); the tongue's strip under the
 # USB-C shell is the hard stop, so the stop and the switch share one reference (the XIAO) and a hard press
 # goes into the shell, not the switch
@@ -149,29 +176,27 @@ BUZ_HOLES = [(-1.6, 21.5), (1.6, 21.5)]
 BUZ_HOLE_D = 1.6
 BAT_RIB_T, BAT_RIB_C, BAT_RIB_UP = 0.8, 0.5, 0.8
 
-# =============================================================== dock
-T_GLUE = 0.25                                   # VHB / 300LSE tape; the fingers absorb 0.1-0.4
+# =============================================================== dock (printed lip-down, glue face up)
+T_GLUE = 0.25                                   # VHB 4914-025 (0.25) or 9495LE (0.17); the ramps take the difference
 Z_DTOP = -T_GLUE
-R_D_IN = R_RIDGE + C_LOC                        # 31.0
-R_D_OUT = 34.5
-Z_FLANGE = (-1.50, Z_DTOP)
-X_DKEY = X_FOUT + C_LOC                         # 28.2 flat key face
-R_KEY, Z_KEY_BOT = 32.0, -2.05                  # key block stays above a 7.0 mm USB-C overmold
-# spring fingers: circumferential cantilevers under the flange, bump at the tip
-R_FING = (R_D_IN, R_D_IN + 1.13)
-FING_H = 3.0                                    # axial height: stiff against the pod's push, radial stiffness from the 1.13 thickness
-R_BUMP = R_RIDGE - 1.0                          # bump tip, free state (engagement 1.0)
-DELTA0 = 0.50                                   # nominal finger deflection when seated (engagement 1.0)
-Z_BUMP = Z_APEX[1] - (R_RIDGE - R_BUMP - DELTA0) / math.tan(math.radians(BETA))   # bump top edge
-Z_FING = (Z_BUMP - FING_H, Z_BUMP)
-FINGERS = [(35, 55), (-35, -55), (145, 125), (-145, -125)]   # (root, tip) deg, mirror-symmetric
-BUMP_W = 3.0
-# window posts for the latches
-R_POST = (R_BLOCK - 0.6, R_BLOCK - 0.6 + 1.0)  # sill inner face 0.6 inside the block's catch, 0.3 past the arm
-WIN_W = BLOCK_W + 2 * 0.3
-BAR_W = 1.5
-PLAY = 0.50                                     # latch catch to sill when the lid sits on the plate
-Z_SILL = (Z_BOT + 0.02, Z_BLOCK[0] - PLAY)
+R_LIP_IN = R_OUT + C_LOC                        # 29.7 lip bore: centres the pod
+R_GROOVE = R_LUG + C_LOC                        # 31.9 wall around the lugs
+R_D_OUT = R_GROOVE + 2.6                        # 34.5 (69 mm, as rev B): tape face 2.6 wide
+Z_LIP = Z_LUG_BOT - 0.40                        # lip top: 0.4 under the lugs while they turn
+Z_DOCK_BOT = -4.85
+NOTCH_C = C_LOC + 0.30                          # lug to notch side, per side: easy to find by feel
+# helical ramp under each lug's leading edge: the lug meets it mid-way at nominal, +/-0.3 mm of Z
+# tolerance moves the lock angle +/-6 deg. Then a short dwell and a hard end stop.
+RAMP_H, RAMP_A = 0.80, 16.0
+DWELL_A, STOP_A = 2.0, 3.0
+PHI_MAX = RAMP_A / 2 + DWELL_A                  # furthest the pod can turn past nominal
+# ratchet: in-plane cantilever arms in the lip (they bend along the layers), one pawl at each tip
+PAWLS = [97.5, 217.5, 331.0]                    # pawl angles, deg (clear of the ramps, notches and the USB-C notch)
+R_REL = R_OUT + RACK_H + 0.30                   # 30.30 bore relief where the racks sweep
+ARM_L, ARM_GAP = 11.0, 0.85                     # ratchet arm length to the pawl, slot behind it (= overtravel stop)
+PAWL_H = 0.80                                   # tip at 29.50: 0.5 over the rack teeth
+TIP_GAP = 0.80
+USB_NOTCH_HW, Z_USB_NOTCH = 6.8, Z_LIP          # under the dock, room for a 12.35 x 6.5 mm USB-C overmold
 
 # =============================================================== jig
 DISC_OD = 211.0                                 # for the preview only; the cone fits 205-219 mm discs
@@ -179,6 +204,8 @@ RIM_DEPTH = 11.0                                # plate underside to rim bottom,
 SHAFT_R, JIG_CLR = 6.0, 0.25
 CONE_R = (102.0, 110.0)
 SPOKES = (90, 210, 330)
+JIG_KEY_C = 0.30                                # plunger keys to the dock's notches, per side
+JIG_RIDGE_H = 0.40                              # ridges the pawls grip, so the dock stays on the plunger
 
 
 # =============================================================== helpers
@@ -223,21 +250,83 @@ def cant(b, t, L, d):
     return k, k * d, 150.0 * t * d / L ** 2
 
 
-def wedge(P, beta):
-    """axial force to push a face at beta (deg from the axis) past a spring of radial force P"""
-    t = math.tan(math.radians(beta))
-    return P * (MU + t) / (1 - MU * t)
+def tri_prism(theta, pts_ru, z0, z1):
+    """prism along Z from points given as (radius, tangential offset) about the radial line at theta deg"""
+    t = math.radians(theta)
+    c, s = math.cos(t), math.sin(t)
+    return prism([(r * c - u * s, r * s + u * c) for r, u in pts_ru], z0, z1)
+
+
+def ramp(a0, a1, z0, z1, r0, r1, zb, n=8):
+    """helical wedge on a lip: top rises linearly from z0 at a0 to z1 at a1 (deg), bottom flat at zb"""
+    ws = []
+    for k in range(n + 1):
+        t = math.radians(a0 + (a1 - a0) * k / n)
+        z = z0 + (z1 - z0) * k / n
+        c, s = math.cos(t), math.sin(t)
+        ws.append(cq.Wire.makePolygon([cq.Vector(r0 * c, r0 * s, zb), cq.Vector(r1 * c, r1 * s, zb),
+                                       cq.Vector(r1 * c, r1 * s, z), cq.Vector(r0 * c, r0 * s, z)], close=True))
+    return cq.Workplane("XY").add(cq.Solid.makeLoft(ws, True))
+
+
+def fuse(lst):
+    out = lst[0]
+    for s in lst[1:]:
+        out = out.union(s)
+    return out
+
+
+def chamfer_top(shape, z_top, r_base, h):
+    """45 deg lead-in on the +Z end of features standing off a wall at r_base (also their print overhang)"""
+    return shape.intersect(sector([(0, z_top - 30), (r_base + h + 2, z_top - 30), (r_base + h + 2, z_top - h - 2),
+                                   (r_base, z_top), (0, z_top)]))
 
 
 # =============================================================== pod
-def pod():
-    prof = [(0, 0), (RIDGE_R0, 0), (R_RIDGE, Z_APEX[0]), (R_RIDGE, Z_APEX[1]), (R_OUT, Z_RIDGE_FOOT),
-            (R_OUT, Z_BOT + CH_BOT), (R_OUT - CH_BOT, Z_BOT), (0, Z_BOT)]
+def lugs(phi=0.0, z0=Z_LUG_BOT, z1=0.0, r0=None):
+    """the three lugs at a turn of phi deg from locked (phi = -TWIST: lined up with the notches)"""
+    r0 = R_OUT - 0.3 if r0 is None else r0
+    return fuse([sector([(r0, z0), (R_LUG, z0), (R_LUG, z1 - CH_TOP), (R_LUG - CH_TOP, z1), (r0, z1)],
+                        a + phi - w / 2, a + phi + w / 2) for a, w in LUGS])
+
+
+def rack_fit():
+    """tooth phase (deg) that centres each pawl in a valley when locked, and the flank clearance there (mm)"""
+    r_t, r_p = R_OUT + RACK_H, R_REL - PAWL_H
+    e, rm = r_t - r_p, (r_t + r_p) / 2
+    p = math.radians(RACK_PITCH) * rm
+    a1, a2 = math.radians(RACK_LEAD), math.radians(RACK_HOLD)
+    s = ((0.5 * p * math.tan(a1) - e) * math.cos(a1) - (0.5 * p * math.tan(a2) - e) * math.cos(a2)) / (math.sin(a1) + math.sin(a2))
+    g = (math.tan(a1) * (0.5 * p - s) - e) * math.cos(a1)
+    return deg(s, rm), g
+
+
+def racks(phi=0.0):
+    """sawtooth racks; the tightening flank leads (+theta), valleys centred on the pawls when locked"""
+    tl, th = math.tan(math.radians(RACK_LEAD)), math.tan(math.radians(RACK_HOLD))
+    hb = RACK_H + 0.1
+    ph = rack_fit()[0]
+    teeth = [tri_prism(ap + phi + ph + (k + 0.5) * RACK_PITCH, [(R_OUT - 0.1, -hb / th), (R_OUT + RACK_H, 0), (R_OUT - 0.1, hb / tl)],
+                       Z_RACK[0], Z_RACK[1]) for ap in PAWLS for k in range(-4, RACK_N - 4)]
+    return chamfer_top(fuse(teeth), Z_RACK[1], R_OUT, RACK_H)
+
+
+def grip_ribs():
+    z0, z1 = Z_BOT + CH_BOT + 0.3, Z_DOCK_BOT - 0.4
+    n = int((360 - 2 * RIB_FLAT) / RIB_PITCH) + 1
+    ribs = [tri_prism(RIB_FLAT + i * RIB_PITCH, [(R_OUT - 0.1, -RIB_W / 2), (R_OUT + RIB_H, -RIB_W / 2 + 0.25),
+                                                 (R_OUT + RIB_H, RIB_W / 2 - 0.25), (R_OUT - 0.1, RIB_W / 2)], z0, z1)
+            for i in range(n)]
+    return chamfer_top(fuse(ribs), z1, R_OUT, RIB_H)
+
+
+def pod(phi=0.0):
+    prof = [(0, 0), (R_OUT - CH_TOP, 0), (R_OUT, -CH_TOP), (R_OUT, Z_BOT + CH_BOT), (R_OUT - CH_BOT, Z_BOT), (0, Z_BOT)]
     p = sector(prof)
     p = p.cut(box(X_FOUT, 40, -40, 40, Z_BOT - 1, 1))                          # USB-C flat
     yv = math.sqrt(R_OUT ** 2 - X_FOUT ** 2)
     try:
-        p = p.edges(cq.selectors.BoxSelector((X_FOUT - 0.05, -yv - 0.05, Z_BOT), (X_FOUT + 0.05, yv + 0.05, Z_RIDGE_FOOT))).edges("|Z").fillet(0.8)
+        p = p.edges(cq.selectors.BoxSelector((X_FOUT - 0.05, -yv - 0.05, Z_BOT), (X_FOUT + 0.05, yv + 0.05, -CH_TOP))).edges("|Z").fillet(0.8)
     except Exception:
         pass
     cav = cyl(0, 0, R_IN, Z_BOT - 1, -LID_T).cut(box(X_FIN, 40, -40, 40, Z_BOT - 2, 1))
@@ -255,45 +344,17 @@ def pod():
     p = p.cut(stadium_x(0, Z_USB, USB_OPEN_W, USB_OPEN_H, X_FIN - 1, 40))
     p = p.cut(cq.Workplane("YZ").workplane(offset=X_FOUT + 0.01).center(0, Z_USB).slot2D(USB_OPEN_W + 0.8, USB_OPEN_H + 0.8)
               .workplane(offset=-0.41).slot2D(USB_OPEN_W, USB_OPEN_H).loft())
-    # latch arms, with a flat-bottomed shoulder in the ridge above each hook (overload backstop)
-    rm = (R_ARM[0] + R_ARM[1]) / 2
-    a_sh = deg(BLOCK_W / 2 + 0.6, rm)
-    for a in (90, -90):
-        p = p.cut(sector([(R_OUT, Z_SHOULDER), (R_RIDGE + 1, Z_SHOULDER), (R_RIDGE + 1, Z_RIDGE_FOOT - 0.1), (R_OUT, Z_RIDGE_FOOT - 0.1)],
-                         a - a_sh, a + a_sh))
-        p = p.union(sector([(R_OUT - 0.1, Z_APEX[0]), (R_RIDGE, Z_APEX[0]), (R_RIDGE, Z_SHOULDER), (R_OUT - 0.1, Z_SHOULDER)],
-                           a - a_sh, a + a_sh))
-    p = p.union(latch()).union(latch().mirror("XZ"))
-    # lid: name and a front mark (engraved 0.4)
+    p = p.union(lugs()).union(racks()).union(grip_ribs())
+    # lid: name and a front mark pointing at the USB-C port (engraved 0.4)
     p = p.cut(cq.Workplane("XY").workplane(offset=-0.4).center(-1.5, -4.5)
               .text(TEXT, 4.6, 0.5, kind="bold", font="DejaVu Sans", halign="center", valign="center"))
     p = p.cut(prism([(18.5, -2.4), (18.5, 2.4), (22.5, 0)], -0.4, 0.1))
-    return p
+    return p.rotate((0, 0, 0), (0, 0, 1), phi) if phi else p
 
 
-def latch():
-    """+90 deg latch: arm from the root (toward +X) to the hook block at 90 deg"""
-    rm = (R_ARM[0] + R_ARM[1]) / 2
-    a_blk = deg(BLOCK_W / 2, rm)
-    a_root = 90 - a_blk - deg(ARM_L, rm)
-    arm = sector([(R_ARM[0], Z_ARM[0]), (R_ARM[1], Z_ARM[0]), (R_ARM[1], Z_ARM[1]), (R_ARM[0], Z_ARM[1])], a_root, 90 + a_blk)
-    root = sector([(R_OUT - 0.3, Z_ARM[0]), (R_ARM[1], Z_ARM[0]), (R_ARM[1], Z_ARM[1]), (R_OUT - 0.3, Z_ARM[1])],
-                  a_root - deg(ROOT_W, rm), a_root)
-    # root fillet (R ~0.8) in the gap behind the arm
-    t0 = math.radians(a_root)
-    def xy(r, a):
-        return (r * math.cos(a), r * math.sin(a))
-    fil = prism([xy(R_OUT - 0.1, t0), xy(R_ARM[0] + 0.05, t0), xy(R_ARM[0] + 0.05, t0 + 0.8 / rm)], Z_ARM[0], Z_ARM[1])
-    blk = sector([(R_ARM[0], Z_BLOCK[1]), (R_BLOCK - 0.7, Z_BLOCK[1]), (R_BLOCK, Z_BLOCK[1] - 1.0),
-                  (R_BLOCK, Z_BLOCK[0]), (R_ARM[1], Z_BLOCK[0]), (R_ARM[1], Z_ARM[0]), (R_ARM[0], Z_ARM[0])],
-                 90 - a_blk, 90 + a_blk)
-    # two finger grooves across the block face
-    g = None
-    for zc in ((Z_BLOCK[0] + Z_BLOCK[1] - 1.0) / 2,):
-        s = sector([(R_BLOCK - 0.25, zc - 0.22), (R_BLOCK + 0.1, zc - 0.22), (R_BLOCK + 0.1, zc + 0.22),
-                    (R_BLOCK - 0.25, zc + 0.22)], 90 - a_blk - 1, 90 + a_blk + 1)
-        g = s if g is None else g.union(s)
-    return arm.union(root).union(fil).union(blk.cut(g))
+def test_ring():
+    """top of the pod only (lugs, racks, wall): a 20-minute print to check the twist and the clicks"""
+    return pod().intersect(cyl(0, 0, 40, -5.6, 1)).cut(cyl(0, 0, 26.0, -10, 2))
 
 
 # =============================================================== cover
@@ -301,22 +362,27 @@ def cover():
     c = sector([(0, Z_BOT), (R_COV - CH_COV, Z_BOT), (R_COV, Z_BOT + CH_COV), (R_COV, Z_CI), (0, Z_CI)])
     c = c.cut(box(X_COV, 40, -40, 40, Z_BOT - 1, 1))
     c = c.edges(cq.selectors.BoxSelector((X_COV - 0.05, -30, Z_BOT - 0.05), (X_COV + 0.05, 30, Z_BOT + 0.05))).chamfer(CH_COV)
-    # reset tongue: U slot (0.6) with round reliefs at the root; strip under the USB-C shell = stop
-    (tx0, tx1), (ty0, ty1) = TONGUE_X, TONGUE_Y
-    slot = box(tx0, tx1 + C_MOVE, ty0 - C_MOVE, ty1 + C_MOVE, Z_BOT - 1, Z_CI + 1).cut(box(tx0 - 1, tx1, ty0, ty1, Z_BOT - 2, Z_CI + 2))
-    for y in (ty0 - C_MOVE / 2, ty1 + C_MOVE / 2):
-        slot = slot.union(cyl(tx0, y, 0.45, Z_BOT - 1, Z_CI + 1))
-    c = c.cut(slot)
-    c = c.cut(box(STRIP_X, tx1 + 0.1, STRIP_Y0, ty1 + 0.1, Z_USB_BOT - G_STOP, Z_CI + 0.1))
-    # springboard + plunger (force limiter)
-    x0, x1, xt = SB_X
-    yc = SW_C[1]
-    c = c.union(box(SB_COL_X0, x1, yc - SB_HW, yc + SB_HW, Z_CI - 0.01, Z_CI + SB_GAP))
-    c = c.union(box(x0, x1, yc - SB_HW, yc + SB_HW, Z_CI + SB_GAP - 0.01, Z_CI + SB_GAP + SB_T))
-    c = c.union(box(x1 - 0.01, xt, yc - SB_HW, yc + SB_HW, Z_CI + SB_GAP, Z_CI + SB_GAP + SB_T))
-    z_pt = Z_SW - S_PRE
-    zb = Z_CI + SB_GAP + SB_T
-    c = c.union(cq.Workplane("XY").add(cq.Solid.makeCone(1.0, 0.7, z_pt - zb, cq.Vector(SW_C[0], yc, zb - 0.01))))
+    if RESET == "tongue":
+        # reset tongue: U slot (0.6) with round reliefs at the root; strip under the USB-C shell = stop
+        (tx0, tx1), (ty0, ty1) = TONGUE_X, TONGUE_Y
+        slot = box(tx0, tx1 + C_MOVE, ty0 - C_MOVE, ty1 + C_MOVE, Z_BOT - 1, Z_CI + 1).cut(box(tx0 - 1, tx1, ty0, ty1, Z_BOT - 2, Z_CI + 2))
+        for y in (ty0 - C_MOVE / 2, ty1 + C_MOVE / 2):
+            slot = slot.union(cyl(tx0, y, 0.45, Z_BOT - 1, Z_CI + 1))
+        c = c.cut(slot)
+        c = c.cut(box(STRIP_X, tx1 + 0.1, STRIP_Y0, ty1 + 0.1, Z_USB_BOT - G_STOP, Z_CI + 0.1))
+        # springboard + plunger (force limiter)
+        x0, x1, xt = SB_X
+        yc = SW_C[1]
+        c = c.union(box(SB_COL_X0, x1, yc - SB_HW, yc + SB_HW, Z_CI - 0.01, Z_CI + SB_GAP))
+        c = c.union(box(x0, x1, yc - SB_HW, yc + SB_HW, Z_CI + SB_GAP - 0.01, Z_CI + SB_GAP + SB_T))
+        c = c.union(box(x1 - 0.01, xt, yc - SB_HW, yc + SB_HW, Z_CI + SB_GAP, Z_CI + SB_GAP + SB_T))
+        z_pt = Z_SW - S_PRE
+        zb = Z_CI + SB_GAP + SB_T
+        c = c.union(cq.Workplane("XY").add(cq.Solid.makeCone(1.0, 0.7, z_pt - zb, cq.Vector(SW_C[0], yc, zb - 0.01))))
+    else:
+        # pinhole over the reset switch (a paperclip reaches it 2.8 mm in), countersunk outside
+        c = c.cut(cyl(SW_C[0], SW_C[1], PIN_D / 2, Z_BOT - 1, Z_CI + 1))
+        c = c.cut(cone(SW_C[0], SW_C[1], PIN_D / 2, PIN_D / 2 + 0.5, Z_BOT + 0.5, 0.51))
     # columns (board clamp) with pilot holes for M2 thread-forming screws
     for hx, hy in HOLES:
         c = c.union(cyl(hx, hy, COL_R, Z_CI - 0.01, Z_BB))
@@ -356,59 +422,80 @@ def cover():
     for r in ribs:
         c = c.union(r)
     # press mark on the tongue (engraved ring, 0.3 deep, clear of the thin stop strip)
-    c = c.cut(cyl(22.6, -6.1, 1.4, Z_BOT - 0.1, Z_BOT + 0.3).cut(cyl(22.6, -6.1, 0.6, Z_BOT - 1, Z_BOT + 1)))
+    if RESET == "tongue":
+        c = c.cut(cyl(22.6, -6.1, 1.4, Z_BOT - 0.1, Z_BOT + 0.3).cut(cyl(22.6, -6.1, 0.6, Z_BOT - 1, Z_BOT + 1)))
     return c
 
 
 # =============================================================== dock
+def rack_span():
+    """angular extent of a rack about its pawl when locked (deg, -/+)"""
+    hb = RACK_H + 0.1
+    ph = rack_fit()[0]
+    lo = ph + (-4 + 0.5) * RACK_PITCH - deg(hb / math.tan(math.radians(RACK_HOLD)), R_OUT)
+    hi = ph + (RACK_N - 5 + 0.5) * RACK_PITCH + deg(hb / math.tan(math.radians(RACK_LEAD)), R_OUT)
+    return lo, hi
+
+
+def pawl_tip_deg():
+    return deg((PAWL_H + 0.1) / math.tan(math.radians(RACK_HOLD)), R_REL)
+
+
 def dock():
-    zf0, zf1 = Z_FLANGE
-    d = sector([(R_D_IN, zf1), (R_D_OUT - 0.3, zf1), (R_D_OUT, zf1 - 0.3), (R_D_OUT, zf0 + 0.4),
-                (R_D_OUT - 0.4, zf0), (R_D_IN + 0.3, zf0), (R_D_IN, zf0 + 0.3)])
-    # flat key (one way in); bottom stays above a 7 mm USB-C overmold
-    key = box(X_DKEY, R_KEY + 1, -20, 20, Z_KEY_BOT, zf1).intersect(cyl(0, 0, R_KEY, Z_KEY_BOT, zf1))
-    key = key.cut(prism([(29.0, -1.6), (29.0, 1.6), (30.8, 0)], Z_KEY_BOT - 0.1, Z_KEY_BOT + 0.3))   # "front" mark
-    d = d.union(key)
-    # spring fingers
-    rm = (R_FING[0] + R_FING[1]) / 2
-    for a_root, a_tip in FINGERS:
-        s = 1 if a_tip > a_root else -1
-        lo, hi = sorted((a_root, a_tip))
-        d = d.union(sector([(R_FING[0], Z_FING[0]), (R_FING[1], Z_FING[0]), (R_FING[1], Z_FING[1]), (R_FING[0], Z_FING[1])], lo, hi))
-        r0, r1 = sorted((a_root, a_root - s * deg(3.0, rm)))      # solid root block across the flange (no twist)
-        d = d.union(sector([(R_FING[0], Z_FING[0]), (R_D_OUT - 0.5, Z_FING[0]), (R_D_OUT - 0.5, zf0 + 0.01), (R_FING[0], zf0 + 0.01)], r0, r1))
-        b0, b1 = sorted((a_tip, a_tip - s * deg(BUMP_W, R_D_IN)))
-        zb = Z_BUMP
-        zt = zb + 0.4 / math.tan(math.radians(BETA))
-        bump = [(R_D_IN + 0.1, zt), (R_BUMP + 0.4, zt), (R_BUMP, zb), (R_BUMP, zb - 0.3),
-                (R_D_IN, Z_FING[0] + 0.0), (R_D_IN + 0.1, Z_FING[0])]
-        d = d.union(sector(bump, b0, b1))
-    # window posts for the latches
-    pm = (R_POST[0] + R_POST[1]) / 2
-    for s in (1, -1):
-        a = 90 * s
-        hw, ww = deg(WIN_W / 2 + BAR_W, pm), deg(WIN_W / 2, pm)
-        post = sector([(R_POST[0], Z_SILL[0]), (R_POST[1], Z_SILL[0]), (R_POST[1], zf0 + 0.01), (R_POST[0], zf0 + 0.01)], a - hw, a + hw)
-        post = post.cut(sector([(R_POST[0] - 1, Z_SILL[1]), (R_POST[1] + 1, Z_SILL[1]), (R_POST[1] + 1, zf0 + 0.5),
-                                (R_POST[0] - 1, zf0 + 0.5)], a - ww, a + ww))
-        post = post.cut(sector([(R_POST[0] - 0.01, Z_SILL[0] - 0.01), (R_POST[0] + 0.4, Z_SILL[0] - 0.01),
-                                (R_POST[0] - 0.01, Z_SILL[0] + 0.4)], a - hw - 1, a + hw + 1))   # lead-in under the sill
-        d = d.union(post)
+    zb, zt = Z_DOCK_BOT, Z_DTOP
+    band = lambda r0, r1, z0, z1: [(r0, z0), (r1, z0), (r1, z1), (r0, z1)]
+    d = sector([(R_LIP_IN + 0.4, zb), (R_D_OUT - 0.4, zb), (R_D_OUT, zb + 0.4), (R_D_OUT, zt - 0.3), (R_D_OUT - 0.3, zt),
+                (R_GROOVE, zt), (R_GROOVE, Z_LIP), (R_LIP_IN, Z_LIP), (R_LIP_IN, zb + 0.4)])
+    # under each lug's leading edge: helical ramp, dwell, end stop
+    for a, w in LUGS:
+        le = a + w / 2
+        blk = ramp(le - RAMP_A / 2, le + RAMP_A / 2, Z_LIP, Z_LIP + RAMP_H, R_LIP_IN, R_GROOVE + 0.05, Z_LIP - 0.2)
+        blk = blk.union(sector(band(R_LIP_IN, R_GROOVE + 0.05, Z_LIP - 0.2, Z_LIP + RAMP_H), le + RAMP_A / 2 - 0.1, le + PHI_MAX + 0.1))
+        d = d.union(blk.union(sector(band(R_LIP_IN, R_GROOVE + 0.05, Z_LIP - 0.2, zt), le + PHI_MAX, le + PHI_MAX + STOP_A)))
+    # notches the lugs go in through; the wide one keys the pod
+    for a, w in LUGS:
+        hw = w / 2 + deg(NOTCH_C, R_LUG)
+        d = d.cut(sector(band(R_LIP_IN - 1, R_GROOVE + 0.01, zb - 1, Z_LIP + 0.01), a - TWIST - hw, a - TWIST + hw))
+    # USB-C: room under the dock for the plug's overmold, so the pod charges in the disc
+    d = d.cut(box(R_LIP_IN - 2, R_D_OUT + 1, -USB_NOTCH_HW, USB_NOTCH_HW, zb - 1, Z_USB_NOTCH))
+    # ratchet: bore relief where each rack sweeps, a cantilever arm with a slot behind it, the pawl at its tip
+    lo, hi = rack_span()
+    rm = R_REL + ARM_T / 2
+    for ap in PAWLS:
+        d = d.cut(sector(band(R_LIP_IN - 1, R_REL, zb - 1, Z_LIP + 0.01), ap + lo - TWIST - 1, ap + hi + PHI_MAX + 1))
+        a_root, a_end = ap - deg(ARM_L, rm), ap + pawl_tip_deg() + deg(0.1, R_REL)
+        a_gap = a_end + deg(TIP_GAP, rm)
+        r_s0, r_s1 = R_REL + ARM_T, R_REL + ARM_T + ARM_GAP
+        d = d.cut(sector(band(r_s0, r_s1, zb - 1, Z_LIP + 0.01), a_root, a_gap))
+        d = d.cut(sector(band(R_LIP_IN - 1, r_s1, zb - 1, Z_LIP + 0.01), a_end, a_gap))
+        t = math.radians(a_root)
+        rc = (r_s0 + r_s1) / 2
+        d = d.cut(cyl(rc * math.cos(t), rc * math.sin(t), ARM_GAP / 2, zb - 1, Z_LIP + 0.01))      # round slot end at the root
+        tl, th = math.tan(math.radians(RACK_LEAD)), math.tan(math.radians(RACK_HOLD))
+        hb = PAWL_H + 0.1
+        d = d.union(tri_prism(ap, [(R_REL + 0.1, -hb / tl), (R_REL - PAWL_H, 0), (R_REL + 0.1, hb / th)], zb, Z_LIP))
     return d
 
 
 # =============================================================== jig
 def jig_plunger():
-    zr = Z_RIDGE_FOOT
-    prof = [(0, 0), (RIDGE_R0, 0), (R_RIDGE, Z_APEX[0]), (R_RIDGE, Z_APEX[1]), (R_OUT, zr), (R_OUT, zr - 1.0),
-            (R_OUT - 0.6, zr - 1.6), (SHAFT_R + 2.0, zr - 1.6), (SHAFT_R, zr - 3.6), (SHAFT_R, -62.0), (0, -62.0)]
-    p = sector(prof).cut(box(X_FOUT, 40, -40, 40, -70, 1))
-    # lighten the head from behind, keep three ribs
-    pocket = sector([(SHAFT_R + 2.5, -1.6), (R_OUT - 1.4, -1.6), (R_OUT - 1.4, zr - 2.0), (SHAFT_R + 2.5, zr - 2.0)])
-    for a in (90, 210, 330):
-        pocket = pocket.cut(box(0, 40, -0.75, 0.75, -10, 0).rotate((0, 0, 0), (0, 0, 1), a))
-    p = p.cut(pocket.cut(box(X_FOUT - 1.2, 40, -40, 40, -10, 1)))
-    return p
+    """plunger printed head-down. Keys sit in the dock's notches (one way round), ridges under the pawls hold
+    the dock by friction; slide the dock on until its taped face is flush with the head"""
+    zh = Z_DOCK_BOT - 1.6
+    prof = [(0, 0), (R_OUT - 0.4, 0), (R_OUT, -0.4), (R_OUT, zh), (SHAFT_R + 2.0, zh), (SHAFT_R, zh - 2.0),
+            (SHAFT_R, -62.0), (0, -62.0)]
+    p = sector(prof)
+    pocket = sector([(SHAFT_R + 2.5, -1.6), (R_OUT - 1.4, -1.6), (R_OUT - 1.4, zh - 1), (SHAFT_R + 2.5, zh - 1)])
+    for a in (60, 180, 300):
+        pocket = pocket.cut(box(0, 40, -0.75, 0.75, -20, 0).rotate((0, 0, 0), (0, 0, 1), a))
+    p = p.cut(pocket)
+    for a, w in LUGS:
+        hw = w / 2 + deg(NOTCH_C - JIG_KEY_C, R_LUG)
+        p = p.union(sector([(R_OUT - 0.3, Z_DOCK_BOT - 1.0), (R_LUG, Z_DOCK_BOT - 1.0), (R_LUG, -CH_TOP), (R_LUG - CH_TOP, 0),
+                            (R_OUT - 0.3, 0)], a - TWIST - hw, a - TWIST + hw))
+    ridges = fuse([tri_prism(ap, [(R_OUT - 0.1, -0.6), (R_OUT + JIG_RIDGE_H, -0.3), (R_OUT + JIG_RIDGE_H, 0.3), (R_OUT - 0.1, 0.6)],
+                             Z_DOCK_BOT - 1.0, -0.6) for ap in PAWLS])
+    return p.union(chamfer_top(ridges, -0.6, R_OUT, JIG_RIDGE_H))
 
 
 def jig_frame():
@@ -485,20 +572,32 @@ def stackups(TOL=TOL):
     s["lid to tallest sensor part"] = rec(CLR_TOP, [TOL, 0.04, 0.05, 0.10], need_min=0.0)           # boss height, part, lid flatness, board bow
     s["cover to USB-C shell"] = rec(CLR_BOT, [TOL, 0.05, 0.05, 0.03], need_min=0.0)                 # column, XIAO pcb, shell, solder
     s["cover to battery (after 0.4 swell)"] = rec(Z_BB - BAT_TAPE - BAT_T - BAT_SWELL - Z_CI, [TOL, 0.2, 0.05], need_min=0.0)
-    s["pod ridge to dock flange (radial)"] = rec(C_LOC, [TOL, TOL, 0.05], need_min=0.0)
-    s["pod flat to dock key"] = rec(C_LOC, [TOL, TOL], need_min=0.0)
-    s["finger deflection when seated"] = rec(DELTA0, [TOL, TOL, 0.10, TOL, 0.05], need_min=0.0, need_max=R_RIDGE - R_BUMP)
-    s["latch catch to sill (play)"] = rec(PLAY, [TOL, TOL, 0.10, 0.05], need_min=0.0)
-    s["latch block to window side"] = rec(0.3, [TOL, TOL], need_min=0.0)
-    s["latch block to its overload shoulder (same part)"] = rec(SHOULDER_GAP, [0.05, 0.05], need_min=0.5)
-    s["latch arm to sill inner face (radial)"] = rec(R_POST[0] - R_ARM[1], [TOL, TOL, 0.05], need_min=0.0)
+    s["cover to pod wall (reveal)"] = rec(REVEAL, [TOL, TOL], need_min=0.0)
+    # twist-lock
+    s["pod wall to dock lip bore (radial)"] = rec(R_LIP_IN - R_OUT, [TOL, TOL, 0.05], need_min=0.0)
+    s["lug to groove wall (radial)"] = rec(R_GROOVE - R_LUG, [TOL, TOL, 0.05], need_min=0.0)
+    s["lug to notch side (per side)"] = rec(NOTCH_C, [TOL, TOL, 0.05], need_min=0.0)
+    s["lug over the lip while turning (Z)"] = rec(Z_LUG_BOT - Z_LIP, [TOL, TOL, 0.08], need_min=0.0)  # lug, dock height, tape
+    s["lug overlap on the lip (radial, holds the pod)"] = rec(R_LUG - R_LIP_IN, [TOL, TOL, 0.10], need_min=1.0)
+    s["lock angle on the ramp, deg past nominal"] = rec(0.0, [c * RAMP_A / RAMP_H for c in (TOL, TOL, 0.08)],
+                                                        need_min=-RAMP_A / 2, need_max=PHI_MAX)
+    eng = R_OUT + RACK_H - (R_REL - PAWL_H)
+    s["rack tips to bore relief (radial)"] = rec(R_REL - R_OUT - RACK_H, [TOL, TOL, 0.05], need_min=0.0)
+    s["pawl tip to pod wall (radial)"] = rec(R_REL - PAWL_H - R_OUT, [TOL, TOL, 0.05], need_min=-(ARM_GAP - eng))
+    s["ratchet engagement (pawl over a tooth; 0.15 still clicks)"] = rec(eng, [TOL, TOL, 0.10], need_min=0.15, need_max=ARM_GAP)
+    s["pawl flank clearance when locked"] = rec(rack_fit()[1], [0.05, 0.05], need_min=0.0)
+    s["ratchet arm slot (same part, stays open)"] = rec(ARM_GAP, [0.05, 0.05], need_min=MIN_GAP)
+    s["USB-C 12.35x6.5 overmold to dock notch (per side, Y)"] = rec(USB_NOTCH_HW - 12.35 / 2, [TOL, 0.10, 0.10], need_min=0.0)
+    s["USB-C overmold top to dock notch (Z)"] = rec(Z_USB_NOTCH - (Z_USB + 6.5 / 2), [TOL, 0.05, 0.10, 0.08], need_min=0.0)
     s["USB-C 12.35x6.5 overmold to opening (per side, Y)"] = rec((USB_OPEN_W - 12.35) / 2, [TOL, 0.10, 0.075, 0.10], need_min=0.0)
     s["USB-C 12.35x6.5 overmold to opening (per side, Z)"] = rec((USB_OPEN_H - 6.50) / 2, [TOL, 0.05, 0.10, 0.05], need_min=0.0)
     s["USB-C receptacle to bezel posts"] = rec(BEZEL_C, [TOL, 0.10, 0.075], need_min=0.0)
-    s["reset plunger to switch at rest (>-0.15 = <1.6 N, not actuated)"] = rec(S_PRE, [TOL, 0.05, 0.05, 0.03, SW_H_TOL], need_min=-0.15)
-    s["reset switch force at the stop, N"] = rec(cant(2 * SB_HW, SB_T, SW_C[0] - SB_X[1], 1)[0] * X_SB_NOM,
-                                                 [cant(2 * SB_HW, SB_T, SW_C[0] - SB_X[1], 1)[0] * c for c in (SW_H_TOL, 0.07, 0.05)],
-                                                 need_min=1.3 * SW_FORCE, need_max=6.5)
+    if RESET == "tongue":
+        s["reset plunger to switch at rest (>-0.15 = <1.6 N, not actuated)"] = rec(S_PRE, [TOL, 0.05, 0.05, 0.03, SW_H_TOL], need_min=-0.15)
+        k = cant(2 * SB_HW, SB_T, SW_C[0] - SB_X[1], 1)[0]
+        s["reset switch force at the stop, N"] = rec(k * X_SB_NOM, [k * c for c in (SW_H_TOL, 0.07, 0.05)], need_min=1.3 * SW_FORCE, need_max=6.5)
+    else:
+        s["reset pinhole to USB-C shell (edge, Y)"] = rec(-SW_C[1] - PIN_D / 2 - USB_HW, [TOL, 0.10, 0.075], need_min=0.0)
     s["LED shroud to LEDs"] = rec(SHROUD_GAP, [TOL, 0.05, 0.05], need_min=0.0)
     s["buzzer chamber rim to buzzer"] = rec(BUZ_GAP, [TOL, 0.10, 0.05], need_min=0.0)
     return s
@@ -506,52 +605,74 @@ def stackups(TOL=TOL):
 
 def mechanics():
     out = {}
-    rm = (R_FING[0] + R_FING[1]) / 2
-    Lf = math.radians(abs(FINGERS[0][1] - FINGERS[0][0])) * rm - BUMP_W / 2
-    tf = R_FING[1] - R_FING[0]
-    eng = R_RIDGE - R_BUMP
-    kf, _, _ = cant(FING_H, tf, Lf, 1)
-    # on the way in, the ridge's apex rides up the bump's long lower face
-    lead = math.degrees(math.atan((R_D_IN - R_BUMP) / ((Z_BUMP - 0.3) - Z_FING[0])))
-    pre = [kf * d * (math.tan(math.radians(BETA)) - MU) / (1 + MU * math.tan(math.radians(BETA))) * 4
-           for d in (DELTA0 - 0.30, DELTA0, DELTA0 + 0.30)]
-    out["dock fingers"] = {"count": 4, "length": round(Lf, 2), "thickness": tf, "height": FING_H,
-                           "stiffness_N_per_mm": round(kf, 2), "engagement": round(eng, 2),
-                           "strain_at_full_deflection_pct": round(cant(FING_H, tf, Lf, eng + TOL)[2], 2),
-                           "preload_total_N_min_nom_max": [round(x, 2) for x in pre],
-                           "insert_lead_deg": round(lead, 1),
-                           "insert_force_total_N": round(4 * wedge(kf * eng, lead), 1),
-                           "pull_off_force_total_N": round(4 * wedge(kf * eng, BETA), 1),
-                           "vertical_stiffness_N_per_mm": round(E_MOD * tf * FING_H ** 3 / (4 * Lf ** 3), 1),
-                           "sag_at_pull_off_mm": round(wedge(kf * eng, BETA) / (E_MOD * tf * FING_H ** 3 / (4 * Lf ** 3)), 2),
-                           "vertical_stress_at_pull_off_MPa": round(wedge(kf * eng, BETA) * Lf / (tf * FING_H ** 2 / 6), 0)}
-    ra = (R_ARM[0] + R_ARM[1]) / 2
-    ta = R_ARM[1] - R_ARM[0]
-    ba = Z_ARM[1] - Z_ARM[0]
-    eng_l = R_BLOCK - R_POST[0]
-    kl, Pl, el = cant(ba, ta, ARM_L, eng_l + 0.05)
-    span = WIN_W
-    zmod = (R_POST[1] - R_POST[0]) * (Z_SILL[1] - Z_SILL[0]) ** 2 / 6
-    kv = E_MOD * ta * ba ** 3 / (4 * ARM_L ** 3)              # arm bending up toward the shoulder
-    out["pod latches"] = {"count": 2, "length": ARM_L, "thickness": ta, "height": ba, "stiffness_N_per_mm": round(kl, 2),
-                          "overload_backstop": f"hook rises {SHOULDER_GAP} mm then bears on the ridge shoulder; arm carries {kv * SHOULDER_GAP:.1f} N each up to then, strain {150 * ba * SHOULDER_GAP / ARM_L ** 2:.1f} %",
-                          "engagement": round(eng_l, 2), "squeeze_force_each_N": round(Pl, 1),
-                          "strain_at_squeeze_stop_pct": round(cant(ba, ta, ARM_L, R_ARM[0] - R_OUT)[2], 2),
-                          "insert_force_total_N": round(2 * wedge(Pl, 35), 1),
-                          "pull_out_capacity_total_N (sill yield, 48 MPa)": round(2 * 48 * zmod * 8 / span, 0),
-                          "shoulder_bearing_capacity_total_N (60 MPa)": round(2 * 60 * BLOCK_W * (R_RIDGE - R_ARM[0]), 0),
-                          "catch": "90 deg (positive): cannot be pulled out without squeezing"}
-    Lsb = SB_X[2] - SB_X[1] - (SB_X[2] - SW_C[0])
-    ksb = cant(2 * SB_HW, SB_T, Lsb, 1)[0]
-    xr = [X_SB_NOM - 0.15, X_SB_NOM, X_SB_NOM + 0.15]
-    kt = cant(TONGUE_Y[1] - TONGUE_Y[0], COVER_T, SW_C[0] - TONGUE_X[0], 1)[0]
-    out["reset flexure"] = {"tongue_stiffness_N_per_mm": round(kt, 2), "springboard_stiffness_N_per_mm": round(ksb, 2),
-                            "switch_force_at_stop_N_min_nom_max": [round(ksb * x, 2) for x in xr],
-                            "switch_rated_N": SW_FORCE, "finger_force_at_stop_N": round(kt * G_PLUNGER + ksb * X_SB_NOM, 1),
-                            "travel_to_stop_mm": round(G_PLUNGER, 2), "stop_strip_thickness": round(Z_USB_BOT - G_STOP - Z_BOT, 2),
-                            "springboard_strain_pct_max": round(cant(2 * SB_HW, SB_T, Lsb, xr[2])[2], 2),
-                            "tongue_strain_pct": round(cant(TONGUE_Y[1] - TONGUE_Y[0], COVER_T, SW_C[0] - TONGUE_X[0], G_PLUNGER)[2], 2),
-                            "stop": "tongue strip lands on the USB-C shell; plunger and stop both reference the XIAO"}
+    fa = lambda mu: math.degrees(math.atan(mu))
+    mus = (MU - 0.10, MU, MU + 0.10)
+    # ratchet: cantilever arms in the dock's lip, pawl at the tip, racks on the pod
+    h = Z_LIP - Z_DOCK_BOT
+    eng = R_OUT + RACK_H - (R_REL - PAWL_H)
+    k, P, eps = cant(h, ARM_T, ARM_L, eng)
+    r_c = R_OUT + RACK_H / 2
+    n = len(PAWLS)
+    tq = lambda face, mu, p=P: n * p * math.tan(math.radians(face + fa(mu))) * r_c / 1000.0
+    out["ratchet"] = {"pawls": n, "arm_length": ARM_L, "arm_thickness": ARM_T, "arm_height": round(h, 2),
+                      "stiffness_N_per_mm": round(k, 2), "engagement": round(eng, 2),
+                      "pawl_force_N_min_nom_max": [round(cant(h, ARM_T, ARM_L, eng + d)[1], 2) for d in (-0.15, 0, 0.15)],
+                      "strain_pct_at_engagement": round(eps, 2),
+                      "strain_pct_at_overtravel_stop": round(cant(h, ARM_T, ARM_L, ARM_GAP)[2], 2),
+                      "pitch_deg": RACK_PITCH, "teeth_per_rack": RACK_N,
+                      "tighten_torque_per_click_Nm": round(tq(RACK_LEAD, MU), 3),
+                      "hold_torque_Nm_mu_low_nom_high": [round(tq(RACK_HOLD, m), 3) for m in mus],
+                      "play_if_preload_lost_mm": round(RACK_PITCH * RAMP_H / RAMP_A, 3)}
+    # ramp clamp: lugs wedge up the helical ramps, the lid bears on the plate
+    r_r = (R_LIP_IN + R_LUG) / 2
+    alpha = math.degrees(math.atan(RAMP_H / (math.radians(RAMP_A) * r_r)))
+    r_lid = 2 * R_OUT / 3                        # friction radius of the lid on the plate
+    clamp = lambda T, mu: T * 1000 / (r_r * math.tan(math.radians(alpha + fa(mu))) + mu * r_lid)
+    untwist = lambda F, mu: F * (r_r * math.tan(math.radians(fa(mu) - alpha)) + mu * r_lid) / 1000
+    F4 = clamp(0.4, MU)
+    out["ramp clamp"] = {"helix_deg": round(alpha, 2), "friction_angle_deg": round(fa(MU), 1),
+                         "self_locking (helix < friction angle at low mu)": alpha < fa(MU - 0.10),
+                         "clamp_N_for_twist_0.2_0.4_0.6_Nm": [round(clamp(T, MU), 1) for T in (0.2, 0.4, 0.6)],
+                         "untwist_torque_from_clamp_Nm (after 0.4 N.m)": round(untwist(F4, MU), 3),
+                         "lock_angle_deg_per_mm_of_Z": round(RAMP_A / RAMP_H, 1)}
+    hold = tq(RACK_HOLD, MU) + untwist(F4, MU)
+    out["torque check"] = {"tree_hit_spin_stop_Nm (2,500 rpm stopped in ~6 ms)": 0.35,
+                           "hold_Nm (ratchet + clamp, 0.4 N.m twist)": round(hold, 2),
+                           "hold_Nm (ratchet only, low friction)": round(tq(RACK_HOLD, MU - 0.10), 2),
+                           "ok": tq(RACK_HOLD, MU - 0.10) >= 0.35}
+    # pull-out (rim-down landing): rigid lugs over a solid lip, three load paths
+    w_min = min(w for _, w in LUGS)
+    lever = r_r - R_OUT
+    F_lug = SIG_XY * math.radians(w_min) * R_OUT * Z_LUG_BOT ** 2 / 6 / lever
+    lever2 = R_GROOVE - r_r
+    F_lip = SIG_XY * math.radians(w_min) * R_GROOVE * h ** 2 / 6 / lever2
+    wt = R_D_OUT - R_GROOVE
+    bw = 2 * math.radians(w_min) * (R_GROOVE + R_D_OUT) / 2      # the lip spreads a lug's load over about twice its width
+    ecc = (R_GROOVE + R_D_OUT) / 2 - r_r
+    F_wall = SIG_Z / (1 / (bw * wt) + 6 * ecc / (bw * wt ** 2))
+    per = min(F_lug, F_lip, F_wall)
+    tape = math.pi * (R_D_OUT ** 2 - R_GROOVE ** 2)
+    out["pull-out"] = {"per_lug_N": {"lug root (bending)": round(F_lug), "lip root (bending)": round(F_lip),
+                                     "dock wall (tension across layers)": round(F_wall)},
+                       "total_N (weakest path x 3)": round(3 * per),
+                       "g_to_pull_out_a_20_g_pod": round(3 * per / (0.020 * 9.81)),
+                       "tape_area_mm2": round(tape), "tape_N (VHB about 0.5 MPa)": round(0.5 * tape),
+                       "note": "the tape is the weakest link; nothing in the lock relies on a flexure"}
+    if RESET == "tongue":
+        Lsb = SB_X[2] - SB_X[1] - (SB_X[2] - SW_C[0])
+        ksb = cant(2 * SB_HW, SB_T, Lsb, 1)[0]
+        xr = [X_SB_NOM - 0.15, X_SB_NOM, X_SB_NOM + 0.15]
+        kt = cant(TONGUE_Y[1] - TONGUE_Y[0], COVER_T, SW_C[0] - TONGUE_X[0], 1)[0]
+        out["reset"] = {"tongue_stiffness_N_per_mm": round(kt, 2), "springboard_stiffness_N_per_mm": round(ksb, 2),
+                                "switch_force_at_stop_N_min_nom_max": [round(ksb * x, 2) for x in xr],
+                                "switch_rated_N": SW_FORCE, "finger_force_at_stop_N": round(kt * G_PLUNGER + ksb * X_SB_NOM, 1),
+                                "travel_to_stop_mm": round(G_PLUNGER, 2), "stop_strip_thickness": round(Z_USB_BOT - G_STOP - Z_BOT, 2),
+                                "springboard_strain_pct_max": round(cant(2 * SB_HW, SB_T, Lsb, xr[2])[2], 2),
+                                "tongue_strain_pct": round(cant(TONGUE_Y[1] - TONGUE_Y[0], COVER_T, SW_C[0] - TONGUE_X[0], G_PLUNGER)[2], 2),
+                                "stop": "tongue strip lands on the USB-C shell; plunger and stop both reference the XIAO"}
+    else:
+        out["reset"] = {"type": "pinhole", "hole_d": PIN_D, "depth_to_switch_mm": round(Z_SW - Z_BOT, 2),
+                        "tool": "paperclip, 0.8-1.2 mm wire"}
     vol = (2 * BUZ_IN) ** 2 * (Z_BF - Z_CI)
     area = len(BUZ_HOLES) * math.pi * (BUZ_HOLE_D / 2) ** 2
     leff = COVER_T + 0.85 * BUZ_HOLE_D
@@ -582,83 +703,63 @@ def gap(a, b):
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     P, C, D = pod(), cover(), dock()
-    JF, JP = jig_frame(), jig_plunger()
+    JF, JP, TR = jig_frame(), jig_plunger(), test_ring()
     M = board_models()
-    for name, part in (("pod", P), ("cover", C), ("dock", D), ("jig_frame", JF), ("jig_plunger", JP)):
+    parts = (("pod", P), ("cover", C), ("dock", D), ("jig_frame", JF), ("jig_plunger", JP), ("test_ring", TR))
+    for name, part in parts:
         sol = part.solids().vals()
         assert len(sol) == 1 and part.val().isValid(), f"{name}: {len(sol)} solids, valid={part.val().isValid()}"
-    rep = {"rev": "B", "material": MATERIAL,
+    rep = {"rev": "C", "process": PROCESS, "material": MATERIAL, "fit_adjust_mm": FIT_ADJ,
            "depth_below_plate_mm": round(-Z_BOT, 2),
-           "pod_mm": {"diameter_over_ridge": 2 * R_RIDGE, "wall_od": 2 * R_OUT, "over_latches": 2 * R_BLOCK,
-                      "flat_to_centre": X_FOUT},
-           "dock_mm": {"od": 2 * R_D_OUT, "lowest_point": round(Z_SILL[0], 2)},
+           "pod_mm": {"wall_od": 2 * R_OUT, "over_lugs": 2 * R_LUG, "flat_to_centre": X_FOUT},
+           "dock_mm": {"od": 2 * R_D_OUT, "bore": 2 * R_LIP_IN, "height": round(Z_DTOP - Z_DOCK_BOT, 2), "lowest_point": Z_DOCK_BOT},
+           "lock": {"twist_deg": TWIST, "direction": "clockwise seen from below (USB-C port from 11 to 12 o'clock)",
+                    "lugs_locked_deg_width": LUGS, "pawls_deg": PAWLS, "furthest_turn_past_nominal_deg": PHI_MAX},
            "z_stack_mm": {"lid_top": 0, "lid_underside": -LID_T, "board_top": round(Z_BT, 3), "board_bottom": round(Z_BB, 3),
                           "xiao_face": round(Z_XT, 3), "usb_c_centre": round(Z_USB, 3), "cover_inner": round(Z_CI, 3),
                           "pod_bottom": round(Z_BOT, 3)},
            "mass_g": {}, "stackups": stackups(), "mechanics": mechanics(),
            "stackups_at_tol_0.2 (robustness)": {k: {"rss": v["rss"], "ok_rss": v["ok_rss"]} for k, v in stackups(0.2).items()}}
-    mech = rep["mechanics"]
-    worst = max(mech["dock fingers"]["strain_at_full_deflection_pct"], mech["pod latches"]["strain_at_squeeze_stop_pct"],
-                mech["reset flexure"]["springboard_strain_pct_max"])
-    rep["strain_check_pct"] = {"worst_flexure": worst, **{m: {"allowable": a, "ok": worst <= a} for m, a in EPS_ALLOW.items()}}
-    rep["balance"] = {"note": "off-centre mass of each part (PA11); trim with solder on TP1-TP4 (r = 22 mm) after weighing"}
-    for name, part in (("pod", P), ("cover", C), ("dock", D), ("jig_frame", JF), ("jig_plunger", JP)):
+    rat = rep["mechanics"]["ratchet"]
+    rep["strain_check_pct"] = {"worst_flexure (ratchet arm, each click)": rat["strain_pct_at_engagement"],
+                               "at_overtravel_stop": rat["strain_pct_at_overtravel_stop"], "allowable": EPS_ALLOW,
+                               "ok": rat["strain_pct_at_engagement"] <= EPS_ALLOW}
+    rep["balance"] = {"note": "off-centre mass of each part; trim with solder on TP1-TP4 (r = 22 mm) after weighing"}
+    for name, part in parts:
         vol = part.val().Volume() / 1000.0
-        rep["mass_g"][name] = {k: round(vol * d, 2) for k, d in DENSITY.items()}
+        rep["mass_g"][name] = round(vol * DENSITY, 2)
         if name in ("pod", "cover", "dock"):
             cg = part.val().Center()
-            m = vol * DENSITY["PA11-HP"]
-            rep["balance"][name] = {"cg_xy_mm": [round(cg.x, 3), round(cg.y, 3)], "g_mm": [round(m * cg.x, 2), round(m * cg.y, 2)]}
+            rep["balance"][name] = {"cg_xy_mm": [round(cg.x, 3), round(cg.y, 3)],
+                                    "g_mm": [round(vol * DENSITY * cg.x, 2), round(vol * DENSITY * cg.y, 2)]}
         cq.exporters.export(part, f"{OUT}/{name}.step")
         cq.exporters.export(part, f"{OUT}/{name}.stl", tolerance=0.01, angularTolerance=0.1)
     # reference models for the viewer
     ref = {"board": M["pcb"]}
-    parts_top = [M[k] for k in M if k not in ("pcb", "battery") and not k.startswith(("XIAO", "USB", "shield", "reset", "LED", "mic", "IC"))]
-    xiao = [M[k] for k in ("XIAO pcb", "USB-C", "shield", "reset", "LED rgb", "LED chg", "mic", "IC")]
-    def fuse(lst):
-        out = lst[0]
-        for s in lst[1:]:
-            out = out.union(s)
-        return out
-    ref["parts"] = fuse(parts_top)
-    ref["xiao"] = fuse(xiao)
+    ref["parts"] = fuse([M[k] for k in M if k not in ("pcb", "battery") and not k.startswith(("XIAO", "USB", "shield", "reset", "LED", "mic", "IC"))])
+    ref["xiao"] = fuse([M[k] for k in ("XIAO pcb", "USB-C", "shield", "reset", "LED rgb", "LED chg", "mic", "IC")])
     ref["battery"] = M["battery"]
     ref["disc"] = disc_model()
     for k, v in ref.items():
         cq.exporters.export(v, f"{OUT}/ref_{k}.stl", tolerance=0.02, angularTolerance=0.15)
-    # checks
+    # interference: housing vs board models, housing parts with each other (locked, and at the insertion angle)
     housing = {"pod": P, "cover": C, "dock": D}
     inter = report_shapes(housing, M)
-    bumps = None
-    for a_root, a_tip in FINGERS:
-        lo, hi = sorted((a_tip, a_tip - (1 if a_tip > a_root else -1) * deg(BUMP_W + 0.2, R_D_IN)))
-        sec = sector([(R_BUMP - 0.2, Z_FING[0] - 0.1), (R_D_IN + 0.2, Z_FING[0] - 0.1), (R_D_IN + 0.2, Z_FLANGE[0]),
-                      (R_BUMP - 0.2, Z_FLANGE[0])], lo, hi)
-        bumps = sec if bumps is None else bumps.union(sec)
-    rep["designed_preload_overlap_mm3 (finger bumps on the ridge)"] = round(P.intersect(D).val().Volume(), 3)
-    for a, b in (("pod", "cover"), ("pod", "dock (bumps excluded)"), ("cover", "dock")):
-        if b.startswith("dock (b"):
-            try:
-                v = P.intersect(D.cut(bumps)).val().Volume()
-            except Exception:
-                v = 0.0
-            if v > 1e-3:
-                inter[f"{a} x {b}"] = round(v, 4)
-            continue
+    def vol(a, b):
         try:
-            v = housing[a].intersect(housing[b]).val().Volume()
+            return a.intersect(b).val().Volume()
         except Exception:
-            v = 0.0
+            return 0.0
+    for a_, b_ in (("pod", "cover"), ("pod", "dock"), ("cover", "dock")):
+        v = vol(housing[a_], housing[b_])
         if v > 1e-3:
-            inter[f"{a} x {b}"] = round(v, 4)
-    jp = JP.intersect(D.cut(bumps))
-    try:
-        v = jp.val().Volume()
-    except Exception:
-        v = 0.0
+            inter[f"{a_} x {b_}"] = round(v, 4)
+    P_in = pod(-TWIST)
+    v = vol(P_in, D)
     if v > 1e-3:
-        inter["jig_plunger x dock"] = round(v, 4)
+        inter["pod at insertion angle x dock"] = round(v, 4)
     rep["interference_mm3"] = inter
+    rep["designed_contact_mm3 (plunger ridges on the dock's pawls)"] = round(vol(JP, D), 3)
     rep["min_gap_mm"] = {
         "lid to U1 (centre IMU)": gap(P, M["U1"]),
         "lid to U2": gap(P, M["U2"]),
@@ -666,11 +767,11 @@ if __name__ == "__main__":
         "cover to USB-C shell": gap(C, M["USB-C"]),
         "cover to battery": gap(C, M["battery"]),
         "cover to shield": gap(C, M["shield"]),
-        "plunger to reset switch": gap(C, M["reset"]),
-        "stop strip to USB-C shell (designed)": round(G_STOP, 3),
+        "cover to reset switch": gap(C, M["reset"]),
         "LED shroud to LEDs": min(gap(C, M["LED rgb"]), gap(C, M["LED chg"])),
         "buzzer chamber to buzzer": gap(C, M["BZ1"]),
-        "pod to dock (bumps excluded)": gap(P, D.cut(bumps)),
+        "pod to dock, locked (lugs on the ramps)": gap(P, D),
+        "pod to dock, insertion angle": gap(P_in, D),
         "cover to dock": gap(C, D),
     }
     if XIAO_STEP:
@@ -678,7 +779,7 @@ if __name__ == "__main__":
         Xc = cq.Compound.makeCompound(X.vals())
         rep["xiao_step_check"] = {n: {"interference_mm3": round(h.val().intersect(Xc).Volume(), 4),
                                       "min_gap_mm": round(h.val().distance(Xc), 3)} for n, h in housing.items()}
-    asm = (cq.Assembly(name="disctracker_housing_revB")
+    asm = (cq.Assembly(name="disctracker_housing_revC")
            .add(D, name="dock", color=cq.Color(0.16, 0.42, 0.85, 1))
            .add(P, name="pod", color=cq.Color(0.80, 0.81, 0.84, 1))
            .add(C, name="cover", color=cq.Color(0.55, 0.56, 0.60, 1))

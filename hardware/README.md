@@ -15,7 +15,7 @@ The XIAO nRF52840 Sense is soldered flat on top and keeps BLE, charging and firm
 | `kicad/README.md` | KiCad project setup, sheet plan, layout rules, pre-fab checklist |
 
 ## Decided / recommended (revision 2)
-- **Dock + pod housing**: a light dock glued under every disc; one pod clicks in and comes out by squeezing two latches. See `housing.md` and `cad/README.md` (rev B CAD).
+- **Dock + pod housing**: a dock glued under every disc; one pod twists in with a 30° clicking turn and twists back out. Prints in PETG on a Bambu P1S with no supports. See `housing.md` and `cad/README.md` (rev C CAD).
 - **56 mm round board** (was 48), 4 layers, 0.8 mm. Pod 8.72 mm below the plate vs ~11 mm shallowest rim.
 - Sensors on one face (factory assembled), XIAO + battery + buzzer on the other (hand-soldered).
   U1 stays at the exact center; the XIAO only computes, so its position doesn't affect the measurements.

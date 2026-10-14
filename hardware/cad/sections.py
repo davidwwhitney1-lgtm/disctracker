@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Cross-section drawings of the rev B housing (true scale, filled sections).
+"""Cross-section drawings of the rev C housing (true scale, filled sections).
 
-usage: python sections.py [out_png]
+usage: python sections.py [out_png] [--process fdm|mjf]
 Builds the parts from housing.py and slices them through the features that need checking:
-the stack at the USB-C port, a latch, a dock finger, the reset mechanism, and the cover seen from below.
+the stack at the USB-C port, a lug over the dock's lip, a lug on its ramp, the ratchet, the reset, and the
+cover seen from below.
 """
 import math, os, sys
 import numpy as np
@@ -17,7 +18,7 @@ from matplotlib.path import Path
 from matplotlib.patches import PathPatch
 import housing as H
 
-OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "renders", "sections.png")
+OUT = next((a for a in sys.argv[1:] if a.endswith(".png")), os.path.join(HERE, "renders", "sections.png"))
 
 COL = {"pod": "#c9cdd3", "cover": "#8f96a0", "dock": "#3d6fc4", "pcb": "#2e6b45", "xiao": "#3a3f46",
        "parts": "#22262b", "battery": "#c9a24a", "disc": "#d9a877"}
@@ -99,7 +100,7 @@ if __name__ == "__main__":
             ("pod", P, COL["pod"], 1), ("cover", C, COL["cover"], 1), ("dock", D, COL["dock"], 1)]
 
     fig = plt.figure(figsize=(11.7, 12.2), dpi=170)
-    gs = fig.add_gridspec(4, 2, height_ratios=[0.4, 1, 0.78, 1.15], hspace=0.3, wspace=0.12)
+    gs = fig.add_gridspec(4, 2, height_ratios=[0.4, 1, 0.72, 1.15], hspace=0.3, wspace=0.12)
 
     # A: full section through the USB-C port (y = 0), looking from -Y
     ax = fig.add_subplot(gs[0, :])
@@ -108,56 +109,69 @@ if __name__ == "__main__":
                      (H.Z_XT, f"XIAO face  {H.Z_XT:.2f}"), (H.Z_CI, f"cover inner  {H.Z_CI:.2f}"), (H.Z_BOT, f"pod bottom  {H.Z_BOT:.2f}")):
             ax.axhline(z, lw=0.3, ls=":", color="#5c6a65")
             ax.text(37.6, z, t, fontsize=5.5, color="#5c6a65", va="center", clip_on=False)
-        note(ax, (27.0, H.Z_USB), "USB-C receptacle face X 27.0, opening 13.1 x 7.2 for the overmold", (-26.0, -3.9))
+        note(ax, (27.0, H.Z_USB), "USB-C receptacle face X 27.0, opening 13.1 x 7.2 for the overmold; the dock is cut away below the port", (-55.0, -3.75))
     panel(ax, "A  Section y = 0: stack-up and USB-C port (mm)", ((0, 0, 0), (0, -1, 0), (1, 0, 0)), (-37, 37), (-10.5, 4.5), base, a_extra)
 
-    # B: latch (x = 0 plane, +Y side)
+    def radial(adeg):
+        a = math.radians(adeg)
+        return ((0, 0, 0), (math.sin(a), -math.cos(a), 0), (math.cos(a), math.sin(a), 0))
+
+    # B: radial section through the middle of a lug (142.5 deg)
     ax = fig.add_subplot(gs[1, 0])
     def b_extra(ax):
-        gapmark(ax, (H.R_BLOCK - 0.3, H.Z_SILL[1]), (H.R_BLOCK - 0.3, H.Z_BLOCK[0]), f" play {H.PLAY:.2f}", (0.15, 0))
-        gapmark(ax, (H.R_OUT, -7.6), (H.R_ARM[0], -7.6), f"squeeze\nstop {H.R_ARM[0] - H.R_OUT:.1f}", (-0.6, -0.9))
-        note(ax, (H.R_BLOCK, -5.5), "latch hook\n(square catch)", (1.2, 1.5))
-        note(ax, (H.R_POST[1], -8.0), "dock sill", (1.0, -1.3))
-    panel(ax, "B  Section x = 0: latch at +90 deg in the dock window", ((0, 0, 0), (1, 0, 0), (0, 1, 0)), (25.5, 36.5), (-10.0, 1.5), base, b_extra)
+        gapmark(ax, (31.2, H.Z_LIP), (31.2, H.Z_LUG_BOT), f"{H.Z_LUG_BOT - H.Z_LIP:.1f} gap while turning", (3.5, -0.05))
+        note(ax, (30.8, -0.9), f"lug, {H.R_LUG - H.R_LIP_IN:.1f} over the lip", (3.9, 1.7))
+        note(ax, (31.0, -3.6), "dock lip: holds the pod", (2.4, -2.6))
+        note(ax, (34.3, H.Z_DTOP - 0.3), "tape face", (0.6, -2.9))
+    panel(ax, "B  Radial section through a lug (142.5 deg): lug over the solid lip", radial(142.5), (25.5, 36.5), (-10.0, 1.5), base, b_extra)
 
-    # C: dock finger at its bump (radial plane through 54 deg)
+    # C: radial section just inside the same lug's leading edge: lug on its ramp
     ax = fig.add_subplot(gs[1, 1])
-    a = math.radians(54 - 1.5 * 180 / math.pi / H.R_D_IN)    # through the middle of the bump
-    u = (math.cos(a), math.sin(a), 0)
-    nrm = (math.sin(a), -math.cos(a), 0)
+    le = 142.5 + 8.0
     def c_extra(ax):
-        note(ax, (H.R_RIDGE, H.Z_APEX[1]), f"pod ridge, {H.BETA:.0f} deg underside", (1.5, 1.6))
-        note(ax, (H.R_BUMP + H.DELTA0, H.Z_BUMP), f"finger bump (free shape drawn:\n{H.DELTA0:.2f} overlap = preload)", (2.2, -2.8))
-        note(ax, (32.5, H.Z_FLANGE[1]), f"glue face (tape {H.T_GLUE})", (0.8, 1.2))
-    panel(ax, "C  Radial section through a dock finger (54 deg)", ((0, 0, 0), nrm, u), (25.5, 36.5), (-10.0, 1.5), base, c_extra)
+        note(ax, (30.6, H.Z_LUG_BOT), f"lug meets the ramp ({H.RAMP_H} rise over {H.RAMP_A:.0f} deg)", (1.6, -3.4))
+        note(ax, (29.6, -6.0), "pod wall", (-3.4, -1.6))
+    panel(ax, "C  Radial section at the lug's leading edge (150 deg): locked on the ramp", radial(le - 0.3), (25.5, 36.5), (-10.0, 1.5), base, c_extra)
+
+    # E: plan section through the lip (z = -3.5) at one pawl, seen from the plate side
+    ax = fig.add_subplot(gs[2, :])
+    ap = math.radians(H.PAWLS[0])
+    def e_extra(ax):
+        px, py = (H.R_REL - H.PAWL_H) * math.cos(ap), (H.R_REL - H.PAWL_H) * math.sin(ap)
+        note(ax, (px, py), "pawl", (-1.8, -1.6))
+        aa = math.radians(H.PAWLS[0] - 10)
+        rr = H.R_REL + H.ARM_T / 2
+        note(ax, (rr * math.cos(aa), rr * math.sin(aa)), f"spring arm, {H.ARM_T} x {H.ARM_L:.0f} mm, bends along the layers", (-9.0, 3.6))
+        ab = math.radians(H.PAWLS[0] + 5)
+        note(ax, ((H.R_OUT + 0.3) * math.cos(ab), (H.R_OUT + 0.3) * math.sin(ab)), f"rack on the pod ({H.RACK_PITCH:.0f} deg pitch)", (-3.0, -2.2))
+        ac = math.radians(H.PAWLS[0] - 16)
+        rs = H.R_REL + H.ARM_T + H.ARM_GAP / 2
+        note(ax, (rs * math.cos(ac), rs * math.sin(ac)), f"slot {H.ARM_GAP} = overtravel stop", (-0.5, 2.9))
+    panel(ax, "E  Plan section z = -3.5 through the lip at a pawl (97.5 deg), seen from the plate side. Locking moves the rack to the left", ((0, 0, -3.5), (0, 0, 1), (1, 0, 0)),
+          (-12.8, 9.8), (25.6, 35.4), base, e_extra)
 
     # D: reset (y = -5.72), looking from -Y
-    ax = fig.add_subplot(gs[2, :])
-    def d_extra(ax):
-        gapmark(ax, (H.SW_C[0] + 1.6, H.Z_SW), (H.SW_C[0] + 1.6, H.Z_SW - H.S_PRE), f" {H.S_PRE:.2f} at rest", (0.1, 0))
-        note(ax, (H.SW_C[0], H.Z_SW), "reset switch", (2.5, 1.3))
-        note(ax, (21.5, H.Z_CI + H.SB_GAP + H.SB_T), f"spring arm ({H.mechanics()['reset flexure']['springboard_stiffness_N_per_mm']:.0f} N/mm)", (-9.5, 0.9))
-        note(ax, (14.0, H.Z_BOT), "tongue (pressed from below)", (-5.5, 1.6))
-    panel(ax, "D  Section y = -5.72: reset switch, plunger, spring arm and tongue", ((0, -5.72, 0), (0, -1, 0), (1, 0, 0)), (8, 30), (-9.6, -1.4), base, d_extra)
-
-    # E: the same tongue, section y = -3.5 through the stop strip under the USB-C shell
     ax = fig.add_subplot(gs[3, 0])
-    def e_extra(ax):
-        gapmark(ax, (23.0, H.Z_USB_BOT), (23.0, H.Z_USB_BOT - H.G_STOP), f" stop gap {H.G_STOP:.2f}", (0.1, 0))
-        note(ax, (21.0, H.Z_USB_BOT - H.G_STOP - 0.3), "thin strip lands on the shell", (-12, 1.15))
-    panel(ax, "E  Section y = -3.5: overtravel stop under the USB-C shell", ((0, -3.5, 0), (0, -1, 0), (1, 0, 0)), (8, 30), (-9.6, -1.4), base, e_extra)
+    def d_extra(ax):
+        note(ax, (H.SW_C[0], H.Z_SW), "reset switch", (2.5, 1.3))
+        if H.RESET == "tongue":
+            gapmark(ax, (H.SW_C[0] + 1.6, H.Z_SW), (H.SW_C[0] + 1.6, H.Z_SW - H.S_PRE), f" {H.S_PRE:.2f} at rest", (0.1, 0))
+            note(ax, (14.0, H.Z_BOT), "tongue (pressed from below)", (-5.5, 1.6))
+        else:
+            note(ax, (H.SW_C[0], H.Z_BOT), f"pinhole {H.PIN_D} (paperclip)", (-9.0, 1.2))
+    panel(ax, "D  Section y = -5.72: reset", ((0, -5.72, 0), (0, -1, 0), (1, 0, 0)), (12, 30), (-9.6, -1.4), base, d_extra)
 
     # F: cover seen from below (slice 0.15 above its outer face)
     ax = fig.add_subplot(gs[3, 1])
     def f_extra(ax):
-        note(ax, (22.6, 6.1), "press ring (reset)", (-14, 6))
+        note(ax, (H.SW_C[0], -H.SW_C[1]), "reset", (-12, 6))
         note(ax, (23.7, -5.7), "LED window", (-12, -6))
         note(ax, (1.6, -21.5), "buzzer ports 2 x 1.6", (-14, 6))
         ax.text(-29, -30.5, "seen from below: +Y points down", fontsize=6, color="#5c6a65")
     panel(ax, "F  Cover from below", ((0, 0, H.Z_BOT + 0.15), (0, 0, -1), (1, 0, 0)), (-31, 31), (-31, 31),
           [("cover", C, COL["cover"], 1)], f_extra)
 
-    fig.suptitle("DiscTracker housing rev B: sections (true scale, mm). Frame: +Z toward the flight plate, z = 0 at the plate.",
+    fig.suptitle(f"DiscTracker housing rev C ({H.MATERIAL}): sections, true scale, mm. Frame: +Z toward the flight plate, z = 0 at the plate.",
                  fontsize=9, x=0.05, ha="left", y=0.93)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     fig.savefig(OUT, bbox_inches="tight")
