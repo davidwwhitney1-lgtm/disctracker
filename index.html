@@ -159,6 +159,7 @@
   #recCard.full { box-shadow: 0 0 0 2px var(--bad) inset; }
   .tab, .tab > .card { min-width: 0; }          /* let wide tables scroll inside their card */
   .recList { gap: 6px; }
+  a.tdLink { text-decoration: none; font-weight: 600; padding: 2px 6px; }
   .zoomRow { gap: 6px; flex-wrap: nowrap; }
   .zoomRow button { flex: 1 1 0; min-width: 0; padding: 8px 0; }
   .recList button { font-size: 13px; padding: 8px 10px; }
@@ -235,6 +236,8 @@
       <div class="tile"><div class="label">Wobble</div><div class="v"><span id="rWobble">–</span><small>°</small></div></div>
     </div>
     <button id="copyBtn" class="wide" style="margin-top:12px" disabled>Copy numbers for the simulator</button>
+    <button id="tdBtn" class="primary wide" style="margin-top:8px" disabled>Open this throw in TechDisc's simulator ↗</button>
+    <p class="note" id="tdNote" style="margin:6px 0 0">Uses the disc set up in the Simulate tab. TechDisc has no wobble setting, so wobble isn't sent.</p>
     <div class="chips" id="rChips"></div>
     <p class="note" id="resultEmpty">Hold the disc still for a moment, then throw with snap. Results are ready ~0.3 s
       after release (needs ~¼ s of clean flight – stand 3–5 m from a net). Out of range? It reconnects and the
@@ -340,7 +343,7 @@
     </div>
     <div id="histEmpty" class="empty">No throws yet.</div>
     <table id="histTable" class="hidden">
-      <thead><tr><th>#</th><th>mph</th><th>rpm</th><th>hyz</th><th>nose</th><th>lau</th><th>wob</th></tr></thead>
+      <thead><tr><th>#</th><th>mph</th><th>rpm</th><th>hyz</th><th>nose</th><th>lau</th><th>wob</th><th>TD</th></tr></thead>
       <tbody id="histBody"></tbody>
     </table>
   </section>
@@ -437,7 +440,7 @@
     <button id="clearBoard" disabled>Erase throws stored on disc</button>
   </div>
 
-  <p class="note">Version 2026-10-09a. Roll/pitch are only accurate while the disc is still.
+  <p class="note">Version 2026-10-21a. Roll/pitch are only accurate while the disc is still.
     Spin above ~333 rpm exceeds the gyro's range; the board then estimates it from the accelerometer.</p>
   </div>
 
@@ -742,6 +745,7 @@ function showResult(t, isNew) {
   if (t.sens && t.sens < 5) chips.unshift(`Test reading (sensitivity ${t.sens}) – not a full throw measurement`);
   $("rChips").innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join("");
   $("copyBtn").disabled = false;
+  $("tdBtn").disabled = false;
   if (isNew) {
     const card = $("resultCard");
     card.classList.remove("flash"); void card.offsetWidth; card.classList.add("flash");
@@ -753,6 +757,26 @@ function simulatorText(t) {
   return `Speed ${fmt(t.speed, 1)} mph, Spin ${fmt(t.spin)} rpm, Hyzer ${signed(t.hyzer)}°, ` +
          `Nose ${signed(t.nose)}°, Launch ${signed(t.launch)}°, Wobble ${fmt(t.wobble, 1)}°`;
 }
+
+// TechDisc's public simulator (techdisc.com/simulate) reads a throw from its link:
+//   v = speed (m/s), spin = rad/s (negative = clockwise from above, e.g. RH backhand),
+//   uphill_degrees = launch, hyzer_degrees, nose_up_degrees,
+//   speed / glide / turn / weight (kg) = the simulated disc. It has no wobble input.
+function techdiscUrl(t) {
+  // the disc chosen in the Simulate tab; before that tab has been set up, the first disc in the bag
+  let d = (typeof bag !== "undefined" && bag[0]) || { speed: 12, glide: 5, turn: -1 };
+  try { if ($("dSpeed").value !== "") d = readDisc(); } catch {}
+  const q = new URLSearchParams({
+    v: (t.speed * 0.44704).toFixed(2),
+    spin: ((t.ccw ? 1 : -1) * t.spin * 2 * Math.PI / 60).toFixed(2),
+    uphill_degrees: (+t.launch).toFixed(1),
+    hyzer_degrees: (+t.hyzer).toFixed(1),
+    nose_up_degrees: (+t.nose).toFixed(1),
+    speed: d.speed, glide: d.glide, turn: d.turn, weight: "0.175",
+  });
+  return "https://techdisc.com/simulate?" + q.toString();
+}
+$("tdBtn").onclick = () => { if (lastShown) window.open(techdiscUrl(lastShown), "_blank", "noopener"); };
 
 async function copyResult() {
   if (!lastShown) return;
@@ -773,9 +797,9 @@ async function copyResult() {
 function renderHistory() {
   const body = $("histBody");
   body.innerHTML = history.slice().reverse().map(t =>
-    `<tr class="hrow" data-key="${t.key}"><td>${t.seq}${t.sens && t.sens < 5 ? "ᵗ" : ""}</td><td>${fmt(t.speed, 1)}</td><td>${fmt(t.spin)}</td><td>${signed(t.hyzer)}</td><td>${signed(t.nose)}</td><td>${signed(t.launch)}</td><td>${fmt(t.wobble, 1)}</td></tr>`
+    `<tr class="hrow" data-key="${t.key}"><td>${t.seq}${t.sens && t.sens < 5 ? "ᵗ" : ""}</td><td>${fmt(t.speed, 1)}</td><td>${fmt(t.spin)}</td><td>${signed(t.hyzer)}</td><td>${signed(t.nose)}</td><td>${signed(t.launch)}</td><td>${fmt(t.wobble, 1)}</td><td><a class="tdLink" href="${techdiscUrl(t)}" target="_blank" rel="noopener">↗</a></td></tr>`
   ).join("");
-  body.querySelectorAll(".hrow").forEach(r => r.onclick = () => { simThrowKey = r.dataset.key; showTab("sim"); });
+  body.querySelectorAll(".hrow").forEach(r => r.onclick = e => { if (e.target.closest("a")) return; simThrowKey = r.dataset.key; showTab("sim"); });
   $("histEmpty").classList.toggle("hidden", history.length > 0);
   $("histTable").classList.toggle("hidden", history.length === 0);
 }
@@ -1892,12 +1916,14 @@ async function openRec(id) {
     `${fmtTime(info.streamS)} of full recording · ${info.captures} captures (${info.counted} counted as throws)` +
     (info.tests.length ? ` · tests: ${info.tests.join(", ")}` : "") + ` · ${(item.size / 1024).toFixed(0)} KB`;
   const caps = recs.filter(r => r.type === 1);
-  $("capTable").innerHTML = `<thead><tr><th>#</th><th>time</th><th>test</th><th>counted</th><th>mph</th><th>rpm</th><th>hyzer</th><th>nose</th><th>launch</th><th>peak g</th><th>notes</th></tr></thead><tbody>` +
+  $("capTable").innerHTML = `<thead><tr><th>#</th><th>time</th><th>test</th><th>counted</th><th>mph</th><th>rpm</th><th>hyzer</th><th>nose</th><th>launch</th><th>peak g</th><th>notes</th><th>TD</th></tr></thead><tbody>` +
     caps.map(r => `<tr data-no="${r.no}"><td>${r.no}</td><td>${r.t.toFixed(1)} s</td><td>${TEST_NAMES[r.test] || ""}</td><td>${r.counted ? "yes" : "no"}</td>` +
       `<td>${r.speed.toFixed(1)}</td><td>${r.spin.toFixed(0)}</td><td>${r.hyzer.toFixed(1)}</td><td>${r.nose.toFixed(1)}</td><td>${r.launch.toFixed(1)}</td>` +
-      `<td>${r.peak.toFixed(1)}</td><td>${flagText(r.flags)}</td></tr>`).join("") + `</tbody>`;
+      `<td>${r.peak.toFixed(1)}</td><td>${flagText(r.flags)}</td>` +
+      `<td><a class="tdLink" target="_blank" rel="noopener" href="${techdiscUrl({ speed: r.speed, spin: r.spin, launch: r.launch, hyzer: r.hyzer, nose: r.nose, ccw: !!(r.flags & 128) })}">↗</a></td></tr>`).join("") + `</tbody>`;
   if (!caps.length) $("capTable").innerHTML = `<tbody><tr><td>No captures in this recording.</td></tr></tbody>`;
-  $("capTable").querySelectorAll("tbody tr[data-no]").forEach(tr => tr.onclick = () => {
+  $("capTable").querySelectorAll("tbody tr[data-no]").forEach(tr => tr.onclick = e => {
+    if (e.target.closest("a")) return;
     const r = caps.find(c => c.no === +tr.dataset.no);
     view.selCap = r.no; view.v0 = r.t - 0.5; view.v1 = r.t + r.n / r.odr + 0.5;
     $("capTable").querySelectorAll("tr").forEach(x => x.classList.toggle("sel", x === tr));
