@@ -225,3 +225,24 @@ Plan: side-by-side test (both trackers on one disc) with radar gun, laser tachom
 3. Add a 16 MB flash (W25Q128) to the board? (Recommended; needs SPI CS → pin pressure again; could share CS lines with a DNP position or use a step-2 board.)
 4. KiCad schematic: 5 footprints, 3 populated, buzzer; then Gerbers/BOM/CPL for JLCPCB.
 5. Firmware side: in-firmware junk filters, then drivers for the new board.
+
+## 8. Updates 2026-10-21
+
+- **Computer simulator page: `sim.html`** (same GitHub Pages site). Connects to the disc over Web Bluetooth
+  (Chrome/Edge on Windows/Mac), flies every throw automatically in a three.js 3D fairway (follow / behind-thrower /
+  overhead cameras), session list, disc bag, wind, units, Excel export. Display modes: our 3D sim, side-by-side
+  with TechDisc (iframe), TechDisc only, or a second TechDisc window that is updated per throw.
+- **TechDisc link format** (techdisc.com/simulate, no login): `v` (m/s), `spin` (rad/s, negative = clockwise from
+  above), `uphill_degrees` (launch), `hyzer_degrees`, `nose_up_degrees`, `speed`/`glide`/`turn`/`weight` (kg),
+  `wind_speed`, `wind_angle`, `runup`. No wobble input. Their page allows being framed (no X-Frame-Options/CSP).
+- **Flight model moved to `flight.js`**, shared by `index.html` and `sim.html`. Wobble is now modelled physically:
+  the disc axis cones at the wobble angle, so the angle of attack swings +-wobble; lift/moment average out and drag
+  rises by cdAlpha*wobble^2/2, decaying with tau = 0.5 s (estimate from Weizman, Tan & Fuss 2020). Reference check:
+  our model reads ~11 % shorter than TechDisc's on two test throws (324 vs 364 ft, 271 vs 302 ft) - calibrate later.
+- **Wobble definition fixed (firmware + disclab):** wobble = half-angle of the cone the disc axis traces around the
+  angular momentum (TechDisc's definition): tan(cone) = |in-plane rate (window mean removed)| / (2 * spin), using
+  I_axial/I_diameter = 2 for a flat disc. The old code reported the rate-vector angle (~2x the cone) and counted a
+  tilted board as wobble. Verified on a simulated torque-free disc (true 5.00 deg -> new 4.92-5.01, old 9.9).
+  Summary byte 19 bit 7 = new definition; log header version 2 (`ver=` in export). Older values are converted
+  approximately with tan(cone) = tan(old)/2. New firmware is built (`build/disc_tracker_v2.uf2`) but must be
+  flashed when the disc is next on USB.

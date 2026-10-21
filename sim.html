@@ -1,0 +1,855 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DiscTracker Sim</title>
+<meta name="description" content="Big-screen disc golf simulator: connects to the DiscTracker disc over Bluetooth and flies every throw automatically.">
+<style>
+  :root {
+    --hud: rgba(11, 15, 21, 0.74); --hud2: rgba(11, 15, 21, 0.55); --line: rgba(255, 255, 255, 0.14);
+    --text: #f3f6fa; --muted: #a7b2c0; --accent: #ff8a1f; --good: #34d399; --bad: #f87171; --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0b0f14; color: var(--text); overflow: hidden;
+               font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  #stage { position: fixed; inset: 0; display: flex; }
+  #view { flex: 1 1 100%; min-width: 0; height: 100%; display: block; }
+  #tdFrame { flex: 1 1 50%; min-width: 0; height: 100%; border: 0; background: #14181e; display: none; }
+  body.mode-split #view { flex-basis: 50%; }
+  body.mode-split #tdFrame { display: block; border-left: 2px solid #000; }
+  body.mode-techdisc #view { display: none; }
+  body.mode-techdisc #tdFrame { display: block; flex-basis: 100%; }
+  body.mode-techdisc #stats, body.mode-techdisc #centerMsg, body.mode-techdisc #flightInfo { display: none; }
+  body.mode-split #stats { right: calc(50% + 12px); grid-template-columns: 1.25fr repeat(3, minmax(0, 1fr)); gap: 6px; }
+  body.mode-split #stats .tile.big { grid-row: span 2; }
+  body.mode-split .tile { padding: 6px 10px; }
+  body.mode-split .tile .v { font-size: clamp(18px, 1.7vw, 30px); }
+  body.mode-split .tile.big .v { font-size: clamp(34px, 3.6vw, 64px); }
+  body.mode-split .tile:not(.big) .s { display: none; }
+  body.mode-split #welcome .card { margin-right: 50%; }
+  body.mode-split #session { display: none; }
+
+  button, select, input { font: inherit; color: var(--text); }
+  button { background: var(--hud); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; cursor: pointer; }
+  button:hover { border-color: rgba(255, 255, 255, 0.4); }
+  button.primary { background: var(--accent); color: #1c0e00; border-color: transparent; font-weight: 700; }
+  button.small { padding: 5px 10px; font-size: 13px; }
+  select, input { background: #1a212b; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  input[type=number] { width: 72px; }
+  a { color: #9fd3ff; }
+
+  header#top { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; gap: 8px; align-items: center; pointer-events: none; z-index: 4; }
+  header#top > * { pointer-events: auto; }
+  .brand { background: var(--hud); border: 1px solid var(--line); border-radius: 12px; padding: 7px 14px; font-weight: 800; letter-spacing: .02em; }
+  .brand span { color: var(--accent); }
+  .pill { display: inline-flex; gap: 8px; align-items: center; background: var(--hud); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #6b7280; }
+  .pill.on .dot { background: var(--good); box-shadow: 0 0 10px var(--good); }
+  .pill.busy .dot { background: var(--warn); }
+  .pill.bad .dot { background: var(--bad); }
+  .spacer { flex: 1; }
+
+  #stats { position: fixed; left: 12px; right: 12px; bottom: 12px; display: grid; gap: 8px; z-index: 3;
+           grid-template-columns: minmax(230px, 1.5fr) repeat(6, minmax(0, 1fr)); }
+  .tile { background: var(--hud); border: 1px solid var(--line); border-radius: 14px; padding: 9px 14px; min-width: 0; }
+  .tile .k { font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .tile .v { font-size: clamp(22px, 2.5vw, 44px); font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap; }
+  .tile .u { font-size: 0.45em; color: var(--muted); font-weight: 600; margin-left: 3px; }
+  .tile .s { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile.big .v { font-size: clamp(44px, 5.4vw, 96px); color: var(--accent); }
+
+  #flightInfo { position: fixed; left: 12px; top: 64px; background: var(--hud2); border: 1px solid var(--line); border-radius: 12px;
+                padding: 8px 12px; font-size: 13px; color: var(--muted); z-index: 2; max-width: 46%; }
+  #flightInfo b { color: var(--text); }
+
+  #session { position: fixed; top: 64px; right: 12px; width: 300px; max-height: calc(100% - 64px - 150px); overflow: auto;
+             background: var(--hud); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; z-index: 2; }
+  #session.hidden { display: none; }
+  #session h3, #panel h3 { margin: 2px 0 8px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  #sessSummary { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  #sessList { list-style: none; margin: 0; padding: 0; }
+  #sessList li { display: grid; grid-template-columns: 34px 1fr auto; gap: 6px; align-items: baseline; padding: 6px 4px; border-top: 1px solid var(--line); cursor: pointer; }
+  #sessList li:hover { background: rgba(255, 255, 255, 0.05); }
+  #sessList li.sel { background: rgba(255, 138, 31, 0.16); }
+  #sessList .n { color: var(--muted); font-size: 12px; }
+  #sessList .d { font-weight: 750; font-size: 18px; font-variant-numeric: tabular-nums; }
+  #sessList .m { color: var(--muted); font-size: 12px; display: block; font-weight: 400; }
+  #sessList a { text-decoration: none; font-size: 12px; }
+  .best { color: var(--accent); }
+  .tag { font-size: 10px; border: 1px solid var(--line); border-radius: 6px; padding: 0 4px; color: var(--muted); margin-left: 4px; }
+
+  #panel { position: fixed; top: 64px; right: 12px; width: 380px; max-height: calc(100% - 76px); overflow: auto; z-index: 5;
+           background: rgba(11, 15, 21, 0.94); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  #panel.hidden { display: none; }
+  .sec { border-top: 1px solid var(--line); padding: 10px 0; }
+  .sec:first-of-type { border-top: 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+  .row label { color: var(--muted); font-size: 13px; }
+  .note { color: var(--muted); font-size: 12.5px; margin: 4px 0; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .grid4 label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 2px; }
+  .grid4 input { width: 100%; }
+  kbd { background: #222a35; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; font-size: 12px; }
+
+  #centerMsg { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; z-index: 2;
+               font-size: clamp(22px, 3vw, 46px); font-weight: 800; text-shadow: 0 3px 16px rgba(0, 0, 0, .55); transition: opacity .4s; }
+  #centerMsg small { display: block; font-size: 0.42em; font-weight: 600; opacity: .9; margin-top: 6px; }
+  body.mode-split #centerMsg { left: 25%; }
+
+  #welcome { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 6; background: rgba(6, 9, 13, 0.55); }
+  #welcome.hidden { display: none; }
+  #welcome .card { background: rgba(11, 15, 21, 0.95); border: 1px solid var(--line); border-radius: 18px; padding: 26px 30px; width: min(560px, 92vw); }
+  #welcome h1 { margin: 0 0 6px; font-size: 28px; }
+  #welcome h1 span { color: var(--accent); }
+  #welcome ol { margin: 10px 0 18px 20px; padding: 0; color: #d6dde6; }
+  #welcome li { margin: 4px 0; }
+
+  #toast { position: fixed; left: 50%; top: 70px; transform: translateX(-50%); z-index: 7; max-width: min(720px, 90vw);
+           background: var(--hud); border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px; font-weight: 600; display: none; }
+  #toast.show { display: block; }
+  #toast.bad { border-color: var(--bad); }
+  #toast.warn { border-color: var(--warn); }
+  #toast.good { border-color: var(--good); }
+</style>
+<script type="importmap">{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }</script>
+</head>
+<body class="mode-ours">
+<div id="stage">
+  <canvas id="view" aria-label="3D view of the throw"></canvas>
+  <iframe id="tdFrame" title="TechDisc simulator" allow="fullscreen"></iframe>
+</div>
+
+<header id="top">
+  <div class="brand">Disc<span>Tracker</span> Sim</div>
+  <div class="pill" id="connPill" title="Bluetooth connection to the disc"><span class="dot"></span><span id="connText">Not connected</span></div>
+  <div class="pill" id="discPill" title="Simulated disc – click to change"><span id="discText">–</span></div>
+  <div class="pill" id="battPill" style="display:none"><span id="battText"></span></div>
+  <div class="spacer"></div>
+  <select id="modeSel" title="What the screen shows (M)">
+    <option value="ours">Our 3D simulator</option>
+    <option value="split">Side by side with TechDisc</option>
+    <option value="techdisc">TechDisc only</option>
+  </select>
+  <button id="replayBtn" title="Replay the last throw (R or Space)">↻ Replay</button>
+  <button id="sessBtn" title="Show or hide the session list (S)">Session</button>
+  <button id="setBtn" title="Settings">⚙ Settings</button>
+  <button id="fsBtn" title="Full screen (F)">⛶</button>
+</header>
+
+<div id="flightInfo"></div>
+<div id="centerMsg"></div>
+<div id="toast"></div>
+
+<aside id="session">
+  <h3>This session</h3>
+  <div id="sessSummary">No throws yet.</div>
+  <ul id="sessList"></ul>
+</aside>
+
+<aside id="panel" class="hidden">
+  <div class="sec">
+    <h3>Disc</h3>
+    <div class="row"><select id="bagSel" style="flex:1"></select></div>
+    <div class="grid4">
+      <label>Speed<input id="dSpeed" type="number" step="0.5" min="1" max="15"></label>
+      <label>Glide<input id="dGlide" type="number" step="0.5" min="1" max="7"></label>
+      <label>Turn<input id="dTurn" type="number" step="0.5" min="-5" max="2"></label>
+      <label>Fade<input id="dFade" type="number" step="0.5" min="0" max="6"></label>
+    </div>
+    <div class="row"><label>Name</label><input id="dName" style="flex:1"><label>Weight</label><input id="dWeight" type="number" min="120" max="200"> g</div>
+    <div class="row"><button class="small" id="bagSave">Save to bag</button><button class="small" id="bagDel">Remove</button>
+      <button class="small" id="reflyBtn">Re-fly last throw with this disc</button></div>
+  </div>
+  <div class="sec">
+    <h3>Thrower &amp; conditions</h3>
+    <div class="row"><label>Throwing hand</label>
+      <select id="handSel"><option value="right">Right</option><option value="left">Left</option></select>
+      <span class="note">Backhand or forehand comes from the measured spin direction.</span></div>
+    <div class="row"><label>Wind</label><input id="windMph" type="number" min="0" max="40" step="1"> mph from
+      <select id="windFrom"><option value="0">ahead (headwind)</option><option value="180">behind (tailwind)</option>
+        <option value="270">the left</option><option value="90">the right</option></select></div>
+    <div class="row"><label>Release height</label><input id="relHeight" type="number" min="0" max="10" step="0.5"> ft</div>
+  </div>
+  <div class="sec">
+    <h3>Display</h3>
+    <div class="row"><label>Camera (C)</label><select id="camSel">
+      <option value="follow">Follow the disc</option><option value="tee">Behind the thrower</option><option value="top">Overhead</option></select></div>
+    <div class="row"><label>Playback</label><select id="speedSel"><option value="1">Real time</option><option value="1.5">1.5×</option><option value="2">2×</option></select>
+      <label>Units</label><select id="unitSel"><option value="ft">feet</option><option value="m">meters</option></select></div>
+    <div class="row"><label>Disc size on screen</label><select id="scaleSel"><option value="1">Real size</option><option value="3">3×</option><option value="5">5×</option></select></div>
+  </div>
+  <div class="sec">
+    <h3>TechDisc</h3>
+    <p class="note">Every throw can also be flown in TechDisc's own simulator: pick <b>Side by side</b> or <b>TechDisc only</b> at the top,
+      or open it in its own window (for a second screen). TechDisc has no wobble input, so it flies every throw as if wobble were 0.</p>
+    <div class="row"><button class="small" id="tdWinBtn">Open TechDisc in a second window</button><span class="note" id="tdWinNote"></span></div>
+  </div>
+  <div class="sec">
+    <h3>Session &amp; tools</h3>
+    <div class="row"><button class="small" id="exportBtn">Export session (Excel)</button><button class="small" id="clearBtn">Clear session</button></div>
+    <div class="row"><button class="small" id="testBtn">Test throw (no disc needed)</button><button class="small" id="discBtn">Disconnect</button></div>
+    <p class="note">Keys: <kbd>F</kbd> full screen · <kbd>R</kbd>/<kbd>Space</kbd> replay · <kbd>C</kbd> camera · <kbd>M</kbd> display ·
+      <kbd>S</kbd> session list · <kbd>Esc</kbd> close.</p>
+    <p class="note">The disc can be connected to one device at a time – disconnect the phone first.
+      <a href="./">Phone app</a></p>
+  </div>
+</aside>
+
+<div id="welcome">
+  <div class="card">
+    <h1>Disc<span>Tracker</span> Sim</h1>
+    <p class="note" style="font-size:14px">Every throw flies on this screen automatically.</p>
+    <ol>
+      <li>Wake the disc (pick it up or give it a shake). Close the phone app if it's connected.</li>
+      <li>Click <b>Connect</b> and choose <b>DiscTracker</b>.</li>
+      <li>Throw. Stand at least about 3 m (10 ft) from the net so the disc flies freely for a moment –
+        spin and wobble are measured in that free flight.</li>
+    </ol>
+    <div class="row"><button class="primary" id="welcomeConnect">Connect to the disc</button>
+      <button id="welcomeSkip">Look around first</button></div>
+    <p class="note" id="btNote"></p>
+  </div>
+</div>
+
+<div id="stats">
+  <div class="tile big"><div class="k">Distance</div><div class="v"><span id="vDist">–</span><span class="u" id="uDist">ft</span></div><div class="s" id="sDist"></div></div>
+  <div class="tile"><div class="k">Speed</div><div class="v"><span id="vSpeed">–</span><span class="u">mph</span></div><div class="s" id="sSpeed"></div></div>
+  <div class="tile"><div class="k">Spin</div><div class="v"><span id="vSpin">–</span><span class="u">rpm</span></div><div class="s" id="sSpin"></div></div>
+  <div class="tile"><div class="k">Hyzer</div><div class="v"><span id="vHyzer">–</span><span class="u">°</span></div><div class="s" id="sHyzer"></div></div>
+  <div class="tile"><div class="k">Nose</div><div class="v"><span id="vNose">–</span><span class="u">°</span></div><div class="s" id="sNose"></div></div>
+  <div class="tile"><div class="k">Launch</div><div class="v"><span id="vLaunch">–</span><span class="u">°</span></div><div class="s" id="sLaunch"></div></div>
+  <div class="tile"><div class="k">Wobble</div><div class="v"><span id="vWobble">–</span><span class="u">°</span></div><div class="s" id="sWobble"></div></div>
+</div>
+
+<script src="flight.js?v=2026-10-21b"></script>
+<script type="module">
+import * as THREE from "three";
+import { Line2 } from "three/addons/lines/Line2.js";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
+import { LineGeometry } from "three/addons/lines/LineGeometry.js";
+const { simulateFlight, wobbleFromRateAngle, techdiscSimUrl } = window.DiscFlight;
+const $ = id => document.getElementById(id);
+const FT_PER_M = 3.28084;
+const frontDeg = (() => { try { return parseFloat(localStorage.getItem("disctracker.front.v1")) || 0; } catch { return 0; } })();
+
+// ---------------------------------------------------------------- storage
+const loadJSON = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+const saveJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const BKEY = "disctracker.bag.v1", SETK = "disctracker.sim.settings.v1", SESK = "disctracker.sim.session.v1";
+const DEFAULT_BAG = [
+  { name: "Distance driver", speed: 12, glide: 5, turn: -1, fade: 3 },
+  { name: "Fairway driver", speed: 7, glide: 5, turn: 0, fade: 2 },
+  { name: "Midrange", speed: 5, glide: 5, turn: 0, fade: 1 },
+  { name: "Putter", speed: 2, glide: 3, turn: 0, fade: 1 },
+  { name: "Understable driver", speed: 9, glide: 5, turn: -3, fade: 1 },
+];
+let bag = loadJSON(BKEY, DEFAULT_BAG);
+const settings = Object.assign({ disc: bag[0], hand: "right", windMph: 0, windFrom: 0, heightFt: 4, camera: "follow",
+  speedX: 1, units: "ft", scale: 3, mode: "ours", showSession: true }, loadJSON(SETK, {}));
+let session = loadJSON(SESK, []);
+const saveSettings = () => saveJSON(SETK, settings);
+const saveSession = () => saveJSON(SESK, session.slice(-300));
+
+// ---------------------------------------------------------------- formatting
+const fmt = (v, d = 0) => Number.isFinite(v) ? v.toFixed(d) : "–";
+const signed = (v, d = 1) => Number.isFinite(v) ? (v > 0 ? "+" : "") + v.toFixed(d) : "–";
+const dist = ft => settings.units === "m" ? ft / FT_PER_M : ft;
+const unit = () => settings.units === "m" ? "m" : "ft";
+const styleName = t => {
+  const r = settings.hand === "right";
+  return t.ccw ? (r ? "RH forehand" : "LH backhand") : (r ? "RH backhand" : "LH forehand");
+};
+let toastTimer = 0;
+function toast(text, kind = "", ms = 4500) {
+  const el = $("toast"); el.textContent = text; el.className = "show " + kind;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.className = "", ms);
+}
+let msgTimer = 0;
+function centerMsg(html, ms = 0) {
+  $("centerMsg").innerHTML = html; $("centerMsg").style.opacity = html ? 1 : 0;
+  clearTimeout(msgTimer); if (ms) msgTimer = setTimeout(() => centerMsg(""), ms);
+}
+
+// ================================================================ Bluetooth
+const SVC = "19b10000-e8f2-537e-4f6c-d104768a1214", SUMMARY = "19b10001-e8f2-537e-4f6c-d104768a1214",
+      CMD = "19b10002-e8f2-537e-4f6c-d104768a1214", LIVE = "19b10004-e8f2-537e-4f6c-d104768a1214",
+      STATUS = "19b10005-e8f2-537e-4f6c-d104768a1214";
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timed out")), ms))]);
+let device = null, looping = false, userStop = false, connected = false, liveUp = null, capturingSince = 0;
+
+function setConn(state, n = 0) {
+  connected = state === "on";
+  const pill = $("connPill");
+  pill.className = "pill " + ({ on: "on", connecting: "busy", retry: "busy", lost: "busy", bad: "bad" }[state] || "");
+  $("connText").textContent = { on: "Disc connected", connecting: "Connecting…", retry: `Looking for the disc (${n})…`,
+    lost: "Connection lost – reconnecting…", bad: "Bluetooth unavailable", off: "Not connected" }[state] || "Not connected";
+  $("discBtn").textContent = device ? "Disconnect" : "Connect";
+  if (connected) { $("welcome").classList.add("hidden"); if (!animating) idleMsg(); }
+}
+
+async function pickDisc() {
+  if (!navigator.bluetooth) {
+    setConn("bad");
+    toast("This browser can't use Bluetooth. Open this page in Chrome or Edge on the computer.", "bad", 9000);
+    return;
+  }
+  try {
+    const d = await navigator.bluetooth.requestDevice({ filters: [{ services: [SVC] }, { name: "DiscTracker" }], optionalServices: [SVC] });
+    if (device && device !== d) { userStop = true; try { device.gatt.disconnect(); } catch {} }
+    device = d; hookDevice(d);
+  } catch (e) {
+    if (e && e.name === "NotFoundError") return;              // picker cancelled
+    toast("Bluetooth: " + (e && e.message ? e.message : e), "bad"); return;
+  }
+  userStop = false; connectLoop();
+}
+function hookDevice(d) {
+  if (d._hooked) return; d._hooked = true;
+  d.addEventListener("gattserverdisconnected", () => {
+    if (d !== device) return;
+    setConn(userStop ? "off" : "lost");
+    if (!userStop) connectLoop();
+  });
+}
+async function connectLoop() {
+  if (looping || !device) return;
+  looping = true; let n = 0;
+  while (device && !userStop && !device.gatt.connected) {
+    n++; setConn(n === 1 ? "connecting" : "retry", n);
+    try { await withTimeout(setupGatt(), 12000); }
+    catch (e) { console.warn("connect attempt failed", e); try { device.gatt.disconnect(); } catch {} await sleep(Math.min(1000 * n, 3000)); }
+  }
+  looping = false;
+}
+async function setupGatt() {
+  const server = await device.gatt.connect();
+  const svc = await server.getPrimaryService(SVC);
+  try {
+    const st = await svc.getCharacteristic(STATUS);
+    st.addEventListener("characteristicvaluechanged", e => onStatus(parseStatus(e.target.value)));
+    await st.startNotifications();
+    onStatus(parseStatus(await st.readValue()));
+  } catch (e) { console.warn("no status channel", e); }
+  try {
+    const lv = await svc.getCharacteristic(LIVE);
+    lv.addEventListener("characteristicvaluechanged", e => onLive(e.target.value));
+    await lv.startNotifications();
+  } catch (e) { console.warn("no live channel", e); }
+  const sm = await svc.getCharacteristic(SUMMARY);            // last: the disc then sends throws it stored
+  sm.addEventListener("characteristicvaluechanged", e => onSummary(e.target.value));
+  await sm.startNotifications();
+  setConn("on");
+}
+async function disconnect() {
+  userStop = true;
+  if (device) { try { device.gatt.disconnect(); } catch {} }
+  device = null; setConn("off");
+}
+// Chrome remembers discs this page was allowed to use: reconnect after a reload without asking again.
+if (navigator.bluetooth && navigator.bluetooth.getDevices) {
+  navigator.bluetooth.getDevices().then(list => {
+    const d = list.find(x => (x.name || "").startsWith("Disc"));
+    if (d && !device) { device = d; hookDevice(d); userStop = false; connectLoop(); }
+  }).catch(() => {});
+}
+
+function parseSummary(dv) {
+  if (dv.byteLength < 20 || dv.getUint8(0) !== 3) return null;
+  const b19 = dv.getUint8(19);
+  const t = {
+    flags: dv.getUint8(1), seq: dv.getUint16(2, true), boot: dv.getUint16(4, true),
+    speed: dv.getUint16(6, true) / 10, spin: dv.getUint16(8, true), hyzer: dv.getInt16(10, true) / 10,
+    nose: dv.getInt16(12, true) / 10, launch: dv.getInt16(14, true) / 10, wobble: dv.getUint16(16, true) / 10,
+    peak: dv.getUint8(18) / 4, ccw: !!(dv.getUint8(1) & 128), spinSrc: b19 & 0x7f, wobbleOld: !(b19 & 0x80),
+  };
+  if (t.wobbleOld) { t.wobbleRaw = t.wobble; t.wobble = wobbleFromRateAngle(t.wobble); }   // older firmware: ~2x
+  return t;
+}
+function parseStatus(dv) {
+  const n = dv.byteLength;
+  return { battery: dv.getUint8(3), charging: !!(dv.getUint8(6) & 2), sens: (dv.getUint8(6) >> 3) & 7,
+           lastCapture: dv.getUint8(7), throws: dv.getUint16(8, true), rejectPeak: dv.getUint16(10, true) / 10,
+           rejectSpin: dv.getUint16(12, true), captures: n >= 20 ? dv.getUint16(14, true) : 0,
+           rejectFlags: n >= 20 ? dv.getUint8(18) : 0, mode: n >= 20 ? dv.getUint8(19) : 0 };
+}
+
+let lastRejectKey = null, lastMode = 0;
+function onStatus(st) {
+  const b = st.battery;
+  if (b !== 0xFF && b <= 100) { $("battPill").style.display = ""; $("battText").textContent = `🔋 ${b}%${st.charging ? " ⚡" : ""}`; }
+  if (st.mode === 1 && lastMode !== 1) toast("The disc went to standby. Pick it up or shake it to wake it.", "warn", 7000);
+  lastMode = st.mode;
+  if (st.lastCapture === 2) {
+    const key = `${st.captures}-${st.rejectPeak}-${st.rejectSpin}`;
+    if (key !== lastRejectKey && lastRejectKey !== null) {
+      const why = (st.rejectFlags & 8) ? "no clean release" : st.rejectPeak < 3.5 ? `too gentle (${st.rejectPeak.toFixed(1)} g)`
+        : st.rejectSpin <= 60 ? `not enough spin (${st.rejectSpin} rpm)` : `peak ${st.rejectPeak.toFixed(1)} g, spin ${st.rejectSpin} rpm`;
+      toast(`Movement detected but not counted as a throw: ${why}.`, "warn");
+      capturingSince = 0; if (!animating) idleMsg();
+    }
+    lastRejectKey = key;
+  } else if (lastRejectKey === null) lastRejectKey = "";
+}
+function onLive(dv) {
+  if (dv.byteLength < 10 || dv.getUint8(0) < 2) return;
+  const flags = dv.getUint8(1);
+  liveUp = [dv.getInt16(4, true) / 1e4, dv.getInt16(6, true) / 1e4, dv.getInt16(8, true) / 1e4];
+  if ((flags & 2) && !capturingSince) { capturingSince = performance.now(); centerMsg("Reading the throw…"); }
+  if (!(flags & 2) && capturingSince && performance.now() - capturingSince > 4000) { capturingSince = 0; if (!animating) idleMsg(); }
+}
+
+// Throws arrive one by one; after a reconnect the disc may send several it stored
+// at once. Every one goes in the session list; only the newest is flown.
+let pending = [], pendTimer = 0;
+function onSummary(dv) {
+  const t = parseSummary(dv);
+  if (!t) { toast(`A throw arrived in an unknown format (${dv.byteLength} bytes) – update the disc's firmware.`, "bad"); return; }
+  if (!(t.flags & 1)) return;
+  t.key = `b${t.boot}-${t.seq}`;
+  if (session.some(e => e.key === t.key)) return;
+  pending.push(t); capturingSince = 0;
+  clearTimeout(pendTimer);
+  pendTimer = setTimeout(() => {
+    const batch = pending; pending = [];
+    let last = null;
+    for (const x of batch) last = addThrow(x, false);
+    if (batch.length > 1) toast(`${batch.length - 1} earlier throw${batch.length > 2 ? "s" : ""} from while the disc was away added to the list.`, "", 5000);
+    if (last) play(last, true);
+  }, 300);
+}
+
+// ================================================================ throws
+function currentDisc() { return { ...settings.disc, weightG: settings.disc.weightG || 175 }; }
+function addThrow(t, test) {
+  const e = {
+    key: t.key || `test-${Date.now()}`, at: Date.now(), test: !!test,
+    t: { speed: t.speed, spin: t.spin, hyzer: t.hyzer, nose: t.nose, launch: t.launch, wobble: t.wobble, ccw: t.ccw,
+         wobbleOld: !!t.wobbleOld, spinSrc: t.spinSrc || 0, flags: t.flags || 0 },
+    disc: currentDisc(), cond: { windMph: settings.windMph, windFrom: settings.windFrom, heightFt: settings.heightFt },
+  };
+  const fl = flightFor(e);
+  e.res = { distFt: fl.distFt, lateralFt: fl.lateralFt, maxHFt: fl.maxHFt, timeS: fl.timeS };
+  session.push(e); saveSession(); renderSession();
+  sendToTechDisc(e);
+  return e;
+}
+function flightFor(e) {
+  return simulateFlight({ speedMph: e.t.speed, spinRpm: e.t.spin, hyzer: e.t.hyzer, nose: e.t.nose, launch: e.t.launch,
+    wobble: e.t.wobble, ccw: e.t.ccw, disc: e.disc, windMph: e.cond.windMph, windFrom: e.cond.windFrom, heightFt: e.cond.heightFt });
+}
+function testThrow() {
+  const r = (a, b) => a + Math.random() * (b - a);
+  const t = { speed: r(44, 64), spin: Math.round(r(700, 1150)), hyzer: r(-4, 10), nose: r(-3, 2), launch: r(5, 13), wobble: r(0.5, 6),
+              ccw: false, flags: 1, key: `test-${Date.now()}` };
+  play(addThrow(t, true), true);
+}
+
+function renderSession() {
+  const real = session.filter(e => !e.test);
+  const list = $("sessList");
+  const best = real.length ? Math.max(...real.map(e => e.res.distFt)) : 0;
+  list.innerHTML = session.slice().reverse().slice(0, 60).map((e, i) => {
+    const n = session.length - i;
+    return `<li data-key="${e.key}" class="${current && current.key === e.key ? "sel" : ""}">
+      <span class="n">#${n}</span>
+      <span><span class="d ${!e.test && e.res.distFt === best ? "best" : ""}">${fmt(dist(e.res.distFt))} ${unit()}</span>${e.test ? '<span class="tag">TEST</span>' : ""}
+        <span class="m">${fmt(e.t.speed, 1)} mph · ${fmt(e.t.spin)} rpm · ${e.disc.name}</span></span>
+      <a href="${techdiscSimUrl(e.t, e.disc)}" target="_blank" rel="noopener" title="Open this throw in TechDisc's simulator">TD ↗</a></li>`;
+  }).join("");
+  list.querySelectorAll("li").forEach(li => li.onclick = ev => {
+    if (ev.target.closest("a")) return;
+    const e = session.find(x => x.key === li.dataset.key); if (e) play(e, false);
+  });
+  if (!real.length) { $("sessSummary").textContent = session.length ? "Only test throws so far." : "No throws yet."; return; }
+  const avg = k => real.reduce((a, e) => a + e.t[k], 0) / real.length;
+  const avgD = real.reduce((a, e) => a + e.res.distFt, 0) / real.length;
+  $("sessSummary").innerHTML = `${real.length} throw${real.length > 1 ? "s" : ""} · best <b class="best">${fmt(dist(best))} ${unit()}</b> · ` +
+    `average ${fmt(dist(avgD))} ${unit()}, ${fmt(avg("speed"), 1)} mph, ${fmt(avg("spin"))} rpm`;
+}
+
+function showNumbers(e) {
+  const t = e.t;
+  $("vSpeed").textContent = fmt(t.speed, 1); $("sSpeed").textContent = `${fmt(t.speed * 1.609, 0)} km/h`;
+  $("vSpin").textContent = fmt(t.spin);
+  $("sSpin").textContent = `${t.ccw ? "counter-clockwise" : "clockwise"}${t.spinSrc ? " · from accel" : ""}`;
+  $("vHyzer").textContent = signed(t.hyzer); $("sHyzer").textContent = Math.abs(t.hyzer) < 3 ? "flat" : t.hyzer > 0 ? "hyzer" : "anhyzer";
+  $("vNose").textContent = signed(t.nose); $("sNose").textContent = t.nose > 0.5 ? "nose up" : t.nose < -0.5 ? "nose down" : "neutral";
+  $("vLaunch").textContent = signed(t.launch); $("sLaunch").textContent = "above horizontal";
+  $("vWobble").textContent = (t.wobbleOld ? "≈" : "") + fmt(t.wobble, 1);
+  $("sWobble").textContent = t.wobbleOld ? "converted (old firmware)" : t.wobble < 2 ? "clean" : t.wobble < 5 ? "some" : "a lot";
+  $("uDist").textContent = unit();
+  $("flightInfo").innerHTML = `<b>${e.test ? "Test throw" : styleName(t)}</b> · ${e.disc.name} (${e.disc.speed}/${e.disc.glide}/${e.disc.turn}/${e.disc.fade})` +
+    (e.cond.windMph ? ` · wind ${e.cond.windMph} mph ${({ 0: "headwind", 180: "tailwind", 270: "from the left", 90: "from the right" })[e.cond.windFrom] || ""}` : "");
+}
+function showResult(e) {
+  const r = e.res;
+  $("vDist").textContent = fmt(dist(r.distFt));
+  const lat = dist(Math.abs(r.lateralFt));
+  $("sDist").textContent = `${lat < 1 ? "dead center" : fmt(lat) + " " + unit() + (r.lateralFt > 0 ? " left" : " right")} · ` +
+    `peak ${fmt(dist(r.maxHFt))} ${unit()} · ${fmt(r.timeS, 1)} s in the air`;
+}
+function idleMsg() {
+  if (!connected) { centerMsg(""); return; }
+  centerMsg("Ready – throw!<small>The result appears here automatically</small>", 0);
+}
+
+// ================================================================ TechDisc
+let tdWin = null;
+function sendToTechDisc(e) {
+  const url = techdiscSimUrl(e.t, e.disc);
+  if (settings.mode !== "ours") $("tdFrame").src = url;
+  if (tdWin && !tdWin.closed) { try { tdWin.location.href = url; } catch {} }
+}
+$("tdWinBtn").onclick = () => {
+  const last = session[session.length - 1];
+  const url = last ? techdiscSimUrl(last.t, last.disc) : "https://techdisc.com/simulate";
+  tdWin = window.open(url, "disctracker-techdisc");          // keep the handle (no noopener) to update it per throw
+  $("tdWinNote").textContent = tdWin ? "Open – every throw goes there too." : "Your browser blocked the window – allow pop-ups for this page.";
+};
+
+// ================================================================ 3D scene (units: feet)
+// Simulator axes x = downrange, y = left, z = up  ->  three.js X = right, Y = up, Z = toward the thrower.
+const toV = (x, y, z) => new THREE.Vector3(-y, z, -x);
+let renderer = null, scene, camera, discGroup, discBody, blob, tube = null, ghostTube = null, landRing, landLabel, markers = [];
+const UP = new THREE.Vector3(0, 1, 0);
+const camPos = new THREE.Vector3(0, 8, 24), camLook = new THREE.Vector3(0, 6, -160);
+
+function labelSprite(text, color = "#ffffff", scale = 1) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 128;
+  const g = c.getContext("2d");
+  g.font = "bold 76px system-ui, Segoe UI, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.lineWidth = 12; g.strokeStyle = "rgba(0,0,0,0.55)"; g.strokeText(text, 256, 66);
+  g.fillStyle = color; g.fillText(text, 256, 66);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthWrite: false, transparent: true }));
+  s.scale.set(32 * scale, 8 * scale, 1);
+  return s;
+}
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+function init3D() {
+  try {
+    renderer = new THREE.WebGLRenderer({ canvas: $("view"), antialias: true });
+  } catch (e) { toast("3D graphics are not available in this browser – numbers only.", "bad", 9000); return; }
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  scene = new THREE.Scene();
+  const sky = new THREE.Color(0x9fd0f5);
+  scene.background = sky; scene.fog = new THREE.Fog(sky, 600, 2600);
+  camera = new THREE.PerspectiveCamera(50, 16 / 9, 0.3, 6000);
+  scene.add(new THREE.HemisphereLight(0xeef7ff, 0x3a5a2c, 1.6));
+  const sun = new THREE.DirectionalLight(0xfff4e0, 2.2); sun.position.set(-300, 600, 250); scene.add(sun);
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), new THREE.MeshLambertMaterial({ color: 0x3e7a34 }));
+  ground.rotation.x = -Math.PI / 2; scene.add(ground);
+  const fair = new THREE.Mesh(new THREE.PlaneGeometry(110, 760), new THREE.MeshLambertMaterial({ color: 0x5aa046 }));
+  fair.rotation.x = -Math.PI / 2; fair.position.set(0, 0.04, -360); scene.add(fair);
+  const tee = new THREE.Mesh(new THREE.BoxGeometry(5, 0.4, 12), new THREE.MeshLambertMaterial({ color: 0x9a9a92 }));
+  tee.position.set(0, 0.2, 2); scene.add(tee);
+
+  // trees along both sides, for depth
+  const R = rng(7), N = 140;
+  const cone = new THREE.InstancedMesh(new THREE.ConeGeometry(1, 1, 8), new THREE.MeshLambertMaterial({ color: 0x2c5e2a }), N);
+  const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.12, 0.16, 1, 6), new THREE.MeshLambertMaterial({ color: 0x5a3d22 }), N);
+  const m = new THREE.Matrix4(), q = new THREE.Quaternion();
+  for (let i = 0; i < N; i++) {
+    const side = i % 2 ? 1 : -1, x = side * (75 + R() * 230), z = 60 - R() * 900, h = 24 + R() * 30, w = h * (0.28 + R() * 0.1);
+    m.compose(new THREE.Vector3(x, h * 0.62, z), q, new THREE.Vector3(w, h * 0.8, w)); cone.setMatrixAt(i, m);
+    m.compose(new THREE.Vector3(x, h * 0.12, z), q, new THREE.Vector3(w * 0.9, h * 0.25, w * 0.9)); trunk.setMatrixAt(i, m);
+  }
+  scene.add(cone, trunk);
+
+  buildMarkers();
+  discGroup = new THREE.Group();
+  discBody = new THREE.Group();
+  const R0 = 0.346, H0 = 0.07;                                  // real disc: 21.1 cm across, ~2 cm tall (ft)
+  const shell = new THREE.Mesh(new THREE.CylinderGeometry(R0, R0 * 0.9, H0, 48), new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.4 }));
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(R0 * 1.7, H0 * 0.25, R0 * 0.22), new THREE.MeshStandardMaterial({ color: 0x1b1b1b, roughness: 0.6 }));
+  stripe.position.y = H0 / 2 + 0.002;
+  discBody.add(shell, stripe); discGroup.add(discBody); scene.add(discGroup);
+  blob = new THREE.Mesh(new THREE.CircleGeometry(R0, 32), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false }));
+  blob.rotation.x = -Math.PI / 2; scene.add(blob);
+  landRing = new THREE.Mesh(new THREE.RingGeometry(3, 4.2, 48), new THREE.MeshBasicMaterial({ color: 0xffd34d, side: THREE.DoubleSide }));
+  landRing.rotation.x = -Math.PI / 2; landRing.visible = false; scene.add(landRing);
+  applyScale();
+  resize(); window.addEventListener("resize", resize);
+  placeIdleDisc();
+  requestAnimationFrame(frame);
+}
+function applyScale() { if (discGroup) discGroup.scale.setScalar(settings.scale); if (blob) blob.scale.setScalar(settings.scale); }
+function buildMarkers() {
+  if (!scene) return;
+  markers.forEach(o => scene.remove(o)); markers = [];
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 });
+  const step = settings.units === "m" ? 10 * FT_PER_M : 50, labelEvery = settings.units === "m" ? 5 : 2;
+  for (let i = 1; i * step <= 700; i++) {
+    const zf = -i * step, major = i % labelEvery === 0;
+    const bar = new THREE.Mesh(new THREE.PlaneGeometry(110, major ? 0.9 : 0.4), lineMat);
+    bar.rotation.x = -Math.PI / 2; bar.position.set(0, 0.08, zf); scene.add(bar); markers.push(bar);
+    if (major) {
+      const txt = settings.units === "m" ? `${Math.round(i * 10)} m` : `${i * 50} ft`;
+      for (const sx of [-1, 1]) { const s = labelSprite(txt); s.position.set(sx * 66, 5, zf); scene.add(s); markers.push(s); }
+    }
+  }
+}
+function resize() {
+  if (!renderer) return;
+  const c = $("view"), w = c.clientWidth || 1, h = c.clientHeight || 1;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  trailLines.forEach(l => l.material.resolution.set(w, h));
+}
+// Trail drawn as a line with a constant on-screen width (pixels), so it is just as
+// visible 400 ft away and never balloons when it passes close to the camera.
+function setTube(path, ghost) {
+  if (path.length < 2) return null;
+  const arr = [];
+  for (const p of path) { const v = toV(p.x, p.y, Math.max(0.15, p.z)); arr.push(v.x, v.y, v.z); }
+  const geo = new LineGeometry(); geo.setPositions(arr);
+  const mat = new LineMaterial({ color: ghost ? 0xffffff : 0xfff1b8, linewidth: ghost ? 2.5 : 4.5, transparent: !!ghost,
+                                 opacity: ghost ? 0.45 : 1, depthWrite: !ghost });
+  const c = $("view"); mat.resolution.set(c.clientWidth || 1, c.clientHeight || 1);
+  const line = new Line2(geo, mat); line.computeLineDistances();
+  line.userData = { segs: path.length - 1 };
+  scene.add(line); trailLines.add(line);
+  return line;
+}
+const trailLines = new Set();
+function revealTrail(line, frac) { line.geometry.instanceCount = Math.max(0, Math.floor(frac * line.userData.segs)); }
+function dropMesh(m) { if (m) { scene.remove(m); trailLines.delete(m); m.geometry.dispose(); m.material.dispose(); } }
+
+// ---------------------------------------------------------------- animation
+let current = null, flight = null, animT = 0, animStart = 0, animating = false, landedAt = 0, spinVis = 0, wobPhase = 0, lastFrame = 0;
+function play(e, fresh) {
+  current = e;
+  flight = flightFor(e);
+  e.res = { distFt: flight.distFt, lateralFt: flight.lateralFt, maxHFt: flight.maxHFt, timeS: flight.timeS };
+  showNumbers(e);
+  $("vDist").textContent = "0"; $("sDist").textContent = "in the air…";
+  centerMsg("");
+  if (scene) {
+    dropMesh(ghostTube); ghostTube = null;
+    if (tube) {                                         // the previous flight stays as a faint full trail
+      tube.material.color.set(0xffffff); tube.material.opacity = 0.45; tube.material.transparent = true;
+      tube.material.linewidth = 2.5; tube.material.depthWrite = false; tube.material.needsUpdate = true;
+      revealTrail(tube, 1); ghostTube = tube;
+    }
+    tube = setTube(flight.path, false);
+    if (tube) revealTrail(tube, 0);
+    if (landLabel) { scene.remove(landLabel); landLabel = null; }
+    landRing.visible = false;
+    if (fresh || settings.camera !== "top") { camPos.set(0, 8, 26); camLook.set(0, 8, -120); }
+  }
+  animT = 0; animStart = performance.now(); animating = true; landedAt = 0;
+  renderSession();
+}
+function pointAt(t) {
+  const P = flight.path, i = Math.min(P.length - 2, Math.max(0, Math.floor(t / 0.02)));
+  const a = P[i], b = P[i + 1], f = Math.max(0, Math.min(1, (t - a.t) / Math.max(1e-6, b.t - a.t)));
+  const L = (u, v) => u + (v - u) * f;
+  return { x: L(a.x, b.x), y: L(a.y, b.y), z: L(a.z, b.z), nx: L(a.nx, b.nx), ny: L(a.ny, b.ny), nz: L(a.nz, b.nz), w: L(a.w, b.w) };
+}
+function placeIdleDisc() {
+  if (!discGroup) return;
+  discGroup.position.set(0, settings.heightFt, -1.5);
+  let tilt = new THREE.Quaternion();
+  if (liveUp) {                                        // mirror the real disc's tilt while it waits
+    // liveUp = world "up" seen in the disc's own axes. Turned to the USB-C front the
+    // phone app set (forward, left, up), the disc's normal in the world is (-uf, -ul, uz).
+    const a = frontDeg * Math.PI / 180, u = liveUp;
+    const uf = u[0] * Math.cos(a) + u[1] * Math.sin(a), ul = -u[0] * Math.sin(a) + u[1] * Math.cos(a);
+    const up3 = new THREE.Vector3(ul, u[2], uf);       // three.js: X right, Y up, Z toward the thrower
+    if (up3.lengthSq() > 1e-6) tilt.setFromUnitVectors(UP, up3.normalize());
+  }
+  discGroup.quaternion.copy(tilt);
+  blob.position.set(0, 0.07, -1.5);
+}
+function frame(now) {
+  requestAnimationFrame(frame);
+  const realDt = lastFrame ? (now - lastFrame) / 1000 : 0.016; lastFrame = now;
+  const animDt = Math.min(0.25, realDt);              // exponential smoothing: stable at any step size
+  const dt = animDt;
+  if (!renderer) return;
+  const smooth = k => 1 - Math.exp(-k * dt);
+  if (flight && current) {
+    if (animating) {
+      animT = (now - animStart) / 1000 * settings.speedX;    // wall clock: real time at any frame rate
+      if (animT >= flight.timeS) { animT = flight.timeS; animating = false; landedAt = now; onLanded(); }
+    }
+    const p = pointAt(animT), pos = toV(p.x, p.y, Math.max(0.1, p.z));
+    discGroup.position.copy(pos);
+    // orientation: disc normal from the simulation, plus a visible (slowed) wobble and spin
+    const n3 = new THREE.Vector3(-p.ny, p.nz, -p.nx).normalize();
+    const u = new THREE.Vector3().crossVectors(n3, new THREE.Vector3(1, 0, 0)); if (u.lengthSq() < 1e-6) u.set(0, 0, 1); u.normalize();
+    const v = new THREE.Vector3().crossVectors(n3, u).normalize();
+    if (animating) { wobPhase += animDt * 2 * Math.PI * 3; spinVis += animDt * 2 * Math.PI * Math.min(4, current.t.spin / 60) * (current.t.ccw ? 1 : -1); }
+    const wr = Math.tan(Math.min(30, p.w) * Math.PI / 180);
+    const nW = n3.clone().addScaledVector(u, wr * Math.cos(wobPhase)).addScaledVector(v, wr * Math.sin(wobPhase)).normalize();
+    const qa = new THREE.Quaternion().setFromUnitVectors(UP, nW);
+    discGroup.quaternion.copy(qa).multiply(new THREE.Quaternion().setFromAxisAngle(UP, spinVis));
+    blob.position.set(pos.x, 0.07, pos.z);
+    const hgt = Math.max(0, p.z);
+    blob.scale.setScalar(settings.scale * (1 + hgt / 25)); blob.material.opacity = 0.38 / (1 + hgt / 12);
+    if (tube) revealTrail(tube, flight.timeS > 0 ? animT / flight.timeS : 1);
+    if (animating) $("vDist").textContent = fmt(dist(Math.hypot(p.x, p.y)));
+    updateCamera(pos, p, smooth);
+  } else {
+    placeIdleDisc();
+    camPos.lerp(new THREE.Vector3(0, 8, 24), smooth(2)); camLook.lerp(new THREE.Vector3(0, 6, -160), smooth(2));
+    camera.fov += (50 - camera.fov) * smooth(3); camera.updateProjectionMatrix();
+  }
+  camera.position.copy(camPos); camera.lookAt(camLook);
+  renderer.render(scene, camera);
+}
+function updateCamera(pos, p, smooth) {
+  const land = flight.path[flight.path.length - 1], landV = toV(land.x, land.y, 0), d = Math.max(60, flight.distFt);
+  const overview = !animating;
+  let wantPos, wantLook, wantFov = 50;
+  if (settings.camera === "top") {
+    wantPos = new THREE.Vector3(landV.x * 0.5, d * 1.05 + 40, landV.z * 0.5 + d * 0.18);
+    wantLook = new THREE.Vector3(landV.x * 0.5, 0, landV.z * 0.5);
+  } else if (settings.camera === "tee") {
+    wantPos = new THREE.Vector3(0, 7, 20);
+    wantLook = overview ? new THREE.Vector3(landV.x * 0.7, 8, landV.z * 0.8) : pos.clone();
+    const r = camPos.distanceTo(overview ? landV : pos);
+    wantFov = Math.max(10, Math.min(50, 2 * Math.atan(55 / Math.max(1, r)) * 180 / Math.PI));
+  } else if (!overview) {                              // follow: behind and above the disc
+    wantPos = new THREE.Vector3(pos.x * 0.9, Math.max(4, pos.y * 0.6 + 4.5), pos.z + 24);
+    wantLook = new THREE.Vector3(pos.x, pos.y * 0.92, pos.z - 30);
+  } else {                                             // after landing: rise to show the whole flight
+    wantPos = new THREE.Vector3(landV.x * 0.3, d * 0.34 + 32, d * 0.3 + 70);
+    wantLook = new THREE.Vector3(landV.x * 0.5, 0, landV.z * 0.42);
+  }
+  const k = overview ? 1.6 : 3.5;
+  camPos.lerp(wantPos, smooth(k)); camLook.lerp(wantLook, smooth(k * 1.6));
+  camera.fov += (wantFov - camera.fov) * smooth(3); camera.updateProjectionMatrix();
+}
+function onLanded() {
+  if (!current) return;
+  showResult(current);
+  if (scene) {
+    const land = flight.path[flight.path.length - 1], lv = toV(land.x, land.y, 0);
+    landRing.position.set(lv.x, 0.1, lv.z); landRing.visible = true;
+    if (landLabel) scene.remove(landLabel);
+    landLabel = labelSprite(`${fmt(dist(current.res.distFt))} ${unit()}`, "#ffd34d", 2.4);
+    landLabel.position.set(lv.x, 16, lv.z); scene.add(landLabel);
+  }
+  setTimeout(() => { if (!animating) idleMsg(); }, 2500);
+}
+
+// ================================================================ UI wiring
+function setMode(m) {
+  settings.mode = m; saveSettings();
+  document.body.className = "mode-" + m;
+  $("modeSel").value = m;
+  if (m !== "ours") {
+    const last = session[session.length - 1];
+    const url = last ? techdiscSimUrl(last.t, last.disc) : "https://techdisc.com/simulate";
+    if ($("tdFrame").src !== url) $("tdFrame").src = url;
+  }
+  setTimeout(resize, 50);
+}
+function renderBag() {
+  $("bagSel").innerHTML = bag.map((b, i) => `<option value="${i}">${b.name} (${b.speed}/${b.glide}/${b.turn}/${b.fade})</option>`).join("") + `<option value="new">+ New disc…</option>`;
+  const i = bag.findIndex(b => b.name === settings.disc.name);
+  $("bagSel").value = i >= 0 ? i : "new";
+  fillDisc(settings.disc);
+}
+function fillDisc(d) {
+  $("dName").value = d.name; $("dSpeed").value = d.speed; $("dGlide").value = d.glide; $("dTurn").value = d.turn; $("dFade").value = d.fade;
+  $("dWeight").value = d.weightG || 175;
+  $("discText").textContent = `${d.name} · ${d.speed}/${d.glide}/${d.turn}/${d.fade}`;
+}
+function readDisc() {
+  const num = (id, lo, hi, def) => { const v = parseFloat($(id).value); return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : def; };
+  return { name: $("dName").value.trim() || "Disc", speed: num("dSpeed", 1, 15, 9), glide: num("dGlide", 1, 7, 5), turn: num("dTurn", -5, 2, 0),
+           fade: num("dFade", 0, 6, 2), weightG: num("dWeight", 120, 200, 175) };
+}
+function discChanged() { settings.disc = readDisc(); saveSettings(); fillDisc(settings.disc); }
+["dSpeed", "dGlide", "dTurn", "dFade", "dName", "dWeight"].forEach(id => $(id).onchange = discChanged);
+$("bagSel").onchange = () => {
+  const v = $("bagSel").value;
+  if (v === "new") { fillDisc({ name: "", speed: 9, glide: 5, turn: -1, fade: 2 }); $("dName").focus(); return; }
+  settings.disc = { ...bag[+v] }; saveSettings(); fillDisc(settings.disc);
+};
+$("bagSave").onclick = () => {
+  const d = readDisc(); const i = bag.findIndex(b => b.name.toLowerCase() === d.name.toLowerCase());
+  if (i >= 0) bag[i] = d; else bag.push(d);
+  saveJSON(BKEY, bag); settings.disc = d; saveSettings(); renderBag(); toast(`${d.name} saved to the bag.`, "good", 2500);
+};
+$("bagDel").onclick = () => {
+  const v = $("bagSel").value; if (v === "new" || bag.length <= 1) return;
+  if (!confirm(`Remove ${bag[+v].name} from the bag?`)) return;
+  bag.splice(+v, 1); saveJSON(BKEY, bag); settings.disc = { ...bag[0] }; saveSettings(); renderBag();
+};
+$("reflyBtn").onclick = () => {
+  const last = current || session[session.length - 1]; if (!last) { toast("No throw to re-fly yet."); return; }
+  discChanged();
+  const e = { ...last, key: `${last.key}-r${Date.now() % 100000}`, at: Date.now(), disc: currentDisc(),
+              cond: { windMph: settings.windMph, windFrom: settings.windFrom, heightFt: settings.heightFt } };
+  const fl = flightFor(e); e.res = { distFt: fl.distFt, lateralFt: fl.lateralFt, maxHFt: fl.maxHFt, timeS: fl.timeS };
+  session.push(e); saveSession(); sendToTechDisc(e); play(e, true);
+};
+$("handSel").onchange = () => { settings.hand = $("handSel").value; saveSettings(); if (current) showNumbers(current); };
+$("windMph").onchange = () => { settings.windMph = Math.max(0, Math.min(40, parseFloat($("windMph").value) || 0)); saveSettings(); };
+$("windFrom").onchange = () => { settings.windFrom = +$("windFrom").value; saveSettings(); };
+$("relHeight").onchange = () => { settings.heightFt = Math.max(0, Math.min(10, parseFloat($("relHeight").value) || 4)); saveSettings(); };
+$("camSel").onchange = () => { settings.camera = $("camSel").value; saveSettings(); };
+$("speedSel").onchange = () => { settings.speedX = parseFloat($("speedSel").value) || 1; saveSettings(); };
+$("unitSel").onchange = () => { settings.units = $("unitSel").value; saveSettings(); buildMarkers(); renderSession(); if (current) { showNumbers(current); if (!animating) { showResult(current); onLanded(); } } };
+$("scaleSel").onchange = () => { settings.scale = parseFloat($("scaleSel").value) || 3; saveSettings(); applyScale(); };
+$("modeSel").onchange = () => setMode($("modeSel").value);
+$("setBtn").onclick = () => $("panel").classList.toggle("hidden");
+$("sessBtn").onclick = () => { settings.showSession = !settings.showSession; saveSettings(); $("session").classList.toggle("hidden", !settings.showSession); };
+$("replayBtn").onclick = () => { const e = current || session[session.length - 1]; if (e) play(e, false); };
+$("fsBtn").onclick = toggleFullscreen;
+$("connPill").onclick = () => { if (!connected && !looping) pickDisc(); };
+$("discPill").onclick = () => $("panel").classList.remove("hidden");
+$("discBtn").onclick = () => device ? disconnect() : pickDisc();
+$("testBtn").onclick = testThrow;
+$("clearBtn").onclick = () => { if (session.length && confirm("Clear this session's throws from the list?")) { session = []; saveSession(); renderSession(); } };
+$("exportBtn").onclick = exportCsv;
+$("welcomeConnect").onclick = () => { $("welcome").classList.add("hidden"); pickDisc(); };
+$("welcomeSkip").onclick = () => $("welcome").classList.add("hidden");
+function toggleFullscreen() {
+  if (document.fullscreenElement) document.exitFullscreen?.(); else document.documentElement.requestFullscreen?.().catch(() => {});
+}
+document.addEventListener("fullscreenchange", () => setTimeout(resize, 100));
+document.addEventListener("keydown", ev => {
+  if (ev.target.closest("input, select, textarea")) return;
+  const k = ev.key.toLowerCase();
+  if (k === "f") toggleFullscreen();
+  else if (k === "r" || k === " ") { ev.preventDefault(); $("replayBtn").click(); }
+  else if (k === "c") { const o = ["follow", "tee", "top"]; settings.camera = o[(o.indexOf(settings.camera) + 1) % 3]; $("camSel").value = settings.camera; saveSettings(); toast("Camera: " + $("camSel").selectedOptions[0].text, "", 1500); }
+  else if (k === "m") { const o = ["ours", "split", "techdisc"]; setMode(o[(o.indexOf(settings.mode) + 1) % 3]); }
+  else if (k === "s") $("sessBtn").click();
+  else if (k === "escape") { $("panel").classList.add("hidden"); $("welcome").classList.add("hidden"); }
+});
+function exportCsv() {
+  const head = "time,test,style,disc,disc_speed,glide,turn,fade,speed_mph,spin_rpm,spin_dir,hyzer_deg,nose_deg,launch_deg,wobble_deg,wobble_note," +
+               "distance_ft,lateral_ft_left,max_height_ft,flight_s,wind_mph,wind_from,release_height_ft,techdisc_link";
+  const rows = session.map(e => [new Date(e.at).toISOString(), e.test ? "yes" : "", styleName(e.t), `"${e.disc.name}"`, e.disc.speed, e.disc.glide,
+    e.disc.turn, e.disc.fade, e.t.speed, e.t.spin, e.t.ccw ? "ccw" : "cw", e.t.hyzer, e.t.nose, e.t.launch, (+e.t.wobble).toFixed(2),
+    e.t.wobbleOld ? "converted from old firmware" : "", e.res.distFt.toFixed(1), e.res.lateralFt.toFixed(1), e.res.maxHFt.toFixed(1),
+    e.res.timeS.toFixed(2), e.cond.windMph, e.cond.windFrom, e.cond.heightFt, techdiscSimUrl(e.t, e.disc)].join(","));
+  const blob = new Blob([[head, ...rows].join("\n") + "\n"], { type: "text/csv" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+  a.download = `disc_sim_session_${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.csv`;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
+
+// ---------------------------------------------------------------- start
+$("handSel").value = settings.hand; $("windMph").value = settings.windMph; $("windFrom").value = settings.windFrom;
+$("relHeight").value = settings.heightFt; $("camSel").value = settings.camera; $("speedSel").value = String(settings.speedX);
+$("unitSel").value = settings.units; $("scaleSel").value = String(settings.scale);
+$("session").classList.toggle("hidden", !settings.showSession);
+if (!navigator.bluetooth) $("btNote").textContent = "This browser has no Bluetooth – use Chrome or Edge on Windows or Mac.";
+renderBag(); renderSession();
+init3D();
+setMode(settings.mode);
+window.discSim = { play, addThrow, testThrow, session: () => session, onSummary, parseSummary };   // for testing
+</script>
+</body>
+</html>
