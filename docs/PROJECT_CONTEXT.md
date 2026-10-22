@@ -269,3 +269,12 @@ Plan: side-by-side test (both trackers on one disc) with radar gun, laser tachom
   (File System Access API) as `part_0001.bin`... (a new file each ~minute), in the disc's own log format (type 2
   chunks of 2048 samples, type 1 throws cut from the stream, type 3 labels). `py disclab.py import <folder>`.
 - A flash full recording now stops with 256 KB free (`STREAM_RESERVE`) so captures still fit.
+- **Live sensor data page** (`sim.html`, display menu → "Live sensor data"; it turns the raw stream on while open):
+  strip charts of the raw gyro and accelerometer (°/s and g, or raw counts), the force with the off-center part
+  removed (with the trigger / release / impact thresholds), spin from the gyro and from √(a/r), and the speed being
+  added up. Release is detected live with the firmware's own `releaseAt()` rules (36-sample look-ahead, so 87 ms
+  behind), and speed / launch / hyzer / nose are held from there; the clipped-gyro ramp is NOT applied live, so hard
+  throws read a little low until the disc's numbers arrive. When a throw packet arrives its samples are cut from the
+  page's ~39 s ring and `throw_metrics.h`'s `analyze()` runs again in JavaScript (`analyzeCapture`, matches disclab
+  exactly on synthetic throws), drawn as sections (pre-trigger, still moment, wind-up + pull, settle, free flight,
+  after impact) with a numbered explanation of each step and a ✓ check against the disc's numbers.

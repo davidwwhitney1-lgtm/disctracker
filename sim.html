@@ -52,6 +52,34 @@
   .pill.rec .dot { background: #ef4444; box-shadow: 0 0 10px #ef4444; animation: recblink 1.2s steps(2, start) infinite; }
   @keyframes recblink { to { visibility: hidden; } }
   .labels { display: flex; flex-wrap: wrap; gap: 6px; }
+  #livePage { position: fixed; top: 60px; left: 12px; right: 12px; bottom: 12px; display: none; z-index: 3; gap: 10px;
+              grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr); }
+  body.mode-live #livePage { display: grid; }
+  body.mode-live #view, body.mode-live #stats, body.mode-live #session, body.mode-live #flightInfo,
+  body.mode-live #centerMsg { display: none; }
+  .lp-card { background: rgba(14, 19, 27, 0.97); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px;
+             min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; }
+  .lp-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .lp-bar b { color: var(--text); font-size: 14px; }
+  .cvwrap { position: relative; flex: 1 1 auto; min-height: 0; min-width: 0; }
+  .cvwrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #lpSide { grid-row: span 2; overflow: auto; }
+  #lpSide h3 { margin: 10px 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  #lpSide h3:first-child { margin-top: 2px; }
+  .lp-break-body { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.62fr); grid-template-rows: minmax(0, 1fr);
+                   gap: 10px; min-height: 0; }
+  #lpSteps { margin: 0; padding-left: 20px; overflow: auto; font-size: 12.5px; line-height: 1.45; color: #d6dde6; }
+  #lpSteps li { margin: 4px 0; }
+  #lpSteps li b { color: var(--text); }
+  .kv { display: grid; grid-template-columns: auto 1fr 1fr; gap: 1px 10px; font-variant-numeric: tabular-nums; font-size: 13px; align-items: baseline; }
+  .kv .h { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  .kv .r { text-align: right; }
+  .calc { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .calc .v { text-align: right; font-weight: 700; }
+  .calc .why { grid-column: span 2; color: var(--muted); font-size: 11.5px; margin: -2px 0 4px; }
+  .sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  #lpWait { position: absolute; inset: 40px 10px 10px; display: flex; align-items: center; justify-content: center; text-align: center;
+            color: var(--muted); font-size: 15px; pointer-events: none; }
   .labels button { flex: 1 1 30%; }
 
   #stats { position: fixed; left: 12px; right: 12px; bottom: 12px; display: grid; gap: 8px; z-index: 3;
@@ -137,6 +165,7 @@
     <option value="ours">Our 3D simulator</option>
     <option value="split">Side by side with TechDisc</option>
     <option value="techdisc">TechDisc only</option>
+    <option value="live">Live sensor data</option>
   </select>
   <button id="replayBtn" title="Replay the last throw (R or Space)">↻ Replay</button>
   <button id="sessBtn" title="Show or hide the session list (S)">Session</button>
@@ -243,6 +272,36 @@
   <div class="tile"><div class="k">Wobble</div><div class="v"><span id="vWobble">–</span><span class="u">°</span></div><div class="s" id="sWobble"></div></div>
 </div>
 
+<div id="livePage">
+  <section class="lp-card">
+    <div class="lp-bar"><b>Live sensor data</b><span id="lpRate">waiting for the disc…</span><span class="spacer"></span>
+      <label>Window <select id="lpWin"><option value="3">3 s</option><option value="6" selected>6 s</option><option value="12">12 s</option></select></label>
+      <label title="Show the chip's own numbers (counts) instead of °/s and g"><input type="checkbox" id="lpCounts"> raw counts</label>
+      <button class="small" id="lpPause" title="Freeze the graphs (P)">❚❚ Pause</button></div>
+    <div class="cvwrap"><canvas id="lpCanvas"></canvas></div>
+    <div id="lpWait">Connect the disc to see its live readings.</div>
+  </section>
+  <aside class="lp-card" id="lpSide">
+    <h3>Right now – straight from the chip</h3>
+    <div class="kv" id="lpRaw"></div>
+    <p class="note">The chip sends whole numbers ("counts"). Converting is a fixed scale: °/s = counts × 0.070, g = counts × 0.000488.
+      Gyro tops out at ±2294 °/s (382 rpm), accelerometer at ±16 g.</p>
+    <h3>Calculated from it, live</h3>
+    <div class="calc" id="lpCalc"></div>
+    <h3>Last throw (the disc's numbers)</h3>
+    <div class="calc" id="lpLast"><span class="why">No throw yet.</span></div>
+    <h3>What the colored sections mean</h3>
+    <div class="calc" id="lpLegend"></div>
+    <p class="note">While this page is open the disc sends every reading here, so its throws are not saved in the disc's memory.
+      To keep them, start a recording (⚙ Settings).</p>
+  </aside>
+  <section class="lp-card">
+    <div class="lp-bar"><b>How the last throw was measured</b><select id="lpThrowSel" style="display:none"></select><span id="lpCheck"></span></div>
+    <div class="lp-break-body"><div class="cvwrap"><canvas id="lpBreak"></canvas></div>
+      <ol id="lpSteps"><li>Throw the disc – every step of the calculation, with its numbers, shows up here.</li></ol></div>
+  </section>
+</div>
+
 <script src="flight.js?v=2026-10-21b"></script>
 <script type="module">
 import * as THREE from "three";
@@ -299,7 +358,14 @@ const SVC = "19b10000-e8f2-537e-4f6c-d104768a1214", SUMMARY = "19b10001-e8f2-537
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timed out")), ms))]);
 let device = null, looping = false, userStop = false, connected = false, liveUp = null, capturingSince = 0;
-let cmdChar = null, hasBtStream = false;
+let cmdChar = null, hasBtStream = false, streamSent = null;
+// The disc streams raw samples while the computer records them OR the live page is open.
+const wantStream = () => !!(rec.on || settings.mode === "live");
+async function syncStream(force) {
+  if (!hasBtStream || !cmdChar) return;
+  const w = wantStream();
+  if (force || w !== streamSent) { streamSent = w; await sendCmd(w ? "bton" : "btoff"); }
+}
 async function sendCmd(text) {
   if (!cmdChar) return false;
   try {
@@ -379,7 +445,7 @@ async function setupGatt() {
     await bt.startNotifications();
     hasBtStream = true;
   } catch (e) { console.warn("no raw-stream channel (older firmware)", e); }
-  if (hasBtStream) await sendCmd(rec.on ? "bton" : "btoff");   // carry on a recording after a drop-out
+  if (hasBtStream) await syncStream(true);                   // carry on a recording / live view after a drop-out
   setConn("on"); updateRecUi();
 }
 async function disconnect() {
@@ -524,6 +590,7 @@ function flushChunk() {
   writeRecord(buf);
 }
 function onBtPacket(dv) {
+  livePacket(dv);                                           // the live page sees everything
   if (!rec.on || dv.byteLength < 2) return;
   const type = dv.getUint8(0);
   if (type === 2 && dv.byteLength >= 100) { rec.info = parseInfo(dv); return; }
@@ -587,15 +654,15 @@ async function recStart() {
   Object.assign(rec, { on: true, part: 0, writer: null, recsInPart: 0, recNo: 0, info: null, expect: null, lost: 0, samples: 0,
     bytes: 0, t0: Date.now(), chunk: null, chunkN: 0, throws: 0, marks: 0, pendingCaps: [], err: "" });
   rec.ringSeq.fill(-1);
-  await sendCmd("bton");
+  await syncStream(true);
   try { if (navigator.wakeLock) rec.wake = await navigator.wakeLock.request("screen"); } catch {}
   clearInterval(rec.uiTimer); rec.uiTimer = setInterval(updateRecUi, 1000);
   updateRecUi(); toast("Recording raw data to this computer.", "good", 3000);
 }
 async function recStop() {
-  await sendCmd("btoff");
   flushChunk(); tryCaps(true);
   rec.on = false;
+  await syncStream();
   clearInterval(rec.uiTimer);
   try { await rec.chain; if (rec.writer) { const w = rec.writer; rec.writer = null; await w.close(); } } catch (e) { rec.err = e.message || String(e); }
   if (rec.mem) {                                              // no folder access in this browser: one download at the end
@@ -628,6 +695,675 @@ document.addEventListener("visibilitychange", async () => {
   if (rec.on && document.visibilityState === "visible" && !rec.wake && navigator.wakeLock) { try { rec.wake = await navigator.wakeLock.request("screen"); } catch {} }
 });
 window.addEventListener("beforeunload", e => { if (rec.on) { e.preventDefault(); e.returnValue = "A recording is running."; } });
+
+// ================================================================ live sensor page
+// Every raw sample the disc streams lands in a ring (~39 s) that the graphs read directly. What the disc derives
+// from them - the force without the off-center part, spin two ways, the speed being added up and the release - is
+// worked out here per sample the same way the disc does it. When a throw's results arrive, its samples are cut out
+// of the ring and the disc's analysis (throw_metrics.h) is re-run step by step to show each section of the throw.
+const LRING = 16384, RW = 36, D2R = Math.PI / 180, R2D = 180 / Math.PI, GMS = 9.80665, GYRO_MAX = 32767 * 0.070;
+const live = {
+  ring: new Int16Array(LRING * 6), seqs: new Float64Array(LRING).fill(-1),
+  fAbs: new Float32Array(LRING), fComp: new Float32Array(LRING).fill(NaN), fSpinG: new Float32Array(LRING),
+  fSpinC: new Float32Array(LRING).fill(NaN), fSpeed: new Float32Array(LRING).fill(NaN), fLaunch: new Float32Array(LRING).fill(NaN),
+  fState: new Uint8Array(LRING),          // 0 moving, no reference; 1 held still; 2 adding up; 3 released (values held)
+  qHist: new Float64Array(64 * 4), vHist: new Float64Array(64 * 3),
+  last: -1, prev: -1, run: 0, info: null, rx: 0, rxPrev: 0, rxT: 0, rate: 0,
+  stillRun: 0, q: null, v: [0, 0, 0], bias: [0, 0, 0], integN: 0, refSeq: -1, peakRun: 0, rel: null, rels: [], impMarks: [],
+  caps: [], pendingCaps: [], sel: null, paused: false, pauseAt: -1, uiT: 0,
+};
+const medianOf = arr => { const a = Float64Array.from(arr).sort(); const m = a.length; return !m ? 0 : (m & 1 ? a[m >> 1] : 0.5 * (a[m / 2 - 1] + a[m / 2])); };
+class Q4 {
+  constructor(w = 1, x = 0, y = 0, z = 0) { this.w = w; this.x = x; this.y = y; this.z = z; }
+  norm() { const n = Math.hypot(this.w, this.x, this.y, this.z); if (n > 1e-9) { this.w /= n; this.x /= n; this.y /= n; this.z /= n; } else { this.w = 1; this.x = this.y = this.z = 0; } return this; }
+  integ(wx, wy, wz, dt) {                         // same first-order step as the firmware
+    const h = 0.5 * dt, { w, x, y, z } = this;
+    this.w += -h * (x * wx + y * wy + z * wz); this.x += h * (w * wx + y * wz - z * wy);
+    this.y += h * (w * wy - x * wz + z * wx); this.z += h * (w * wz + x * wy - y * wx); this.norm();
+  }
+  rot(bx, by, bz) {
+    const { w, x, y, z } = this, tx = 2 * (y * bz - z * by), ty = 2 * (z * bx - x * bz), tz = 2 * (x * by - y * bx);
+    return [bx + w * tx + (y * tz - z * ty), by + w * ty + (z * tx - x * tz), bz + w * tz + (x * ty - y * tx)];
+  }
+  static up(ax, ay, az) {
+    const n = Math.hypot(ax, ay, az); if (n < 1e-6) return new Q4();
+    ax /= n; ay /= n; az /= n; const wq = 1 + az;
+    return wq < 1e-6 ? new Q4(0, 1, 0, 0) : new Q4(wq, ay, -ax, 0).norm();
+  }
+}
+
+function livePacket(dv) {
+  if (dv.byteLength < 2) return;
+  const type = dv.getUint8(0);
+  if (type === 2 && dv.byteLength >= 100) { live.info = parseInfo(dv); return; }
+  if (type === 3 && dv.byteLength >= 64) { live.pendingCaps.push(parseCap(dv)); liveTryCaps(); return; }
+  if (type !== 1 || dv.byteLength < 6) return;
+  const n = Math.min(dv.getUint8(1), Math.floor((dv.byteLength - 6) / 12)), seq = dv.getUint32(2, true);
+  const g = new Int16Array(6);
+  for (let j = 0; j < n; j++) {
+    const sq = seq + j;
+    if (live.seqs[sq % LRING] === sq) continue;           // already have it (resent after a reconnect)
+    for (let k = 0; k < 6; k++) g[k] = dv.getInt16(6 + j * 12 + 2 * k, true);
+    liveSample(sq, g);
+  }
+  live.rx += n;
+  if (live.pendingCaps.length) liveTryCaps();
+}
+
+const ringAt = (sq, k) => live.ring[(sq % LRING) * 6 + k];
+
+// Per sample: store it, and work out the live values.
+function liveSample(sq, g) {
+  const I = live.info || DEFAULT_INFO, slot = sq % LRING, dt = 1 / I.odr, AL = I.alsb, GL = I.glsb;
+  if (live.prev >= 0 && sq !== live.prev + 1) { live.q = null; live.stillRun = 0; live.run = 0; }   // gap: start over
+  live.prev = sq; live.run++;
+  live.ring.set(g, slot * 6); live.seqs[slot] = sq; if (sq > live.last) live.last = sq;
+  const ax = g[3] * AL, ay = g[4] * AL, az = g[5] * AL, a = Math.hypot(ax, ay, az);
+  const gxr = g[0] * GL, gyr = g[1] * GL, gzr = g[2] * GL;
+  live.fAbs[slot] = a; live.fComp[slot] = NaN; live.fSpinC[slot] = NaN;
+  live.fSpinG[slot] = Math.abs(gzr - I.bias[2]) / 6;
+  // The speed being added up from the last still moment (150 ms with the gyro under 25 deg/s and the force
+  // 1 +- 0.15 g). The reference window ends 100 ms back, because the first moments of a pull still pass that
+  // test (0.5 g sideways changes the force's size by only 0.14 g) and would tilt "down"; then catch up to now.
+  const still = Math.hypot(gxr, gyr, gzr) <= 25 && Math.abs(a - 1) <= 0.15, win = Math.floor(0.15 / dt), lag = Math.round(0.1 / dt);
+  live.stillRun = still ? live.stillRun + 1 : 0;
+  if (live.stillRun >= win + lag) {
+    const m = [0, 0, 0, 0, 0, 0];
+    for (let k = lag; k < lag + win; k++) for (let j = 0; j < 6; j++) m[j] += ringAt(sq - k, j);
+    live.q = Q4.up(m[3] / win * AL, m[4] / win * AL, m[5] / win * AL);
+    live.bias = [m[0] / win * GL, m[1] / win * GL, m[2] / win * GL];
+    live.v = [0, 0, 0]; live.integN = 0; live.refSeq = sq - lag; live.peakRun = 0; live.rel = null;
+    for (let k = sq - lag + 1; k <= sq; k++) liveStep(k, I, dt);
+  } else if (live.q) {
+    liveStep(sq, I, dt);
+    if (++live.integN > 3 * I.odr) live.q = null;               // 3 s without a still moment: drifting, stop
+  }
+  const held = live.rel && sq - live.rel.seq < 3 * I.odr, hz = Math.hypot(live.v[0], live.v[1]);
+  live.fSpeed[slot] = held ? live.rel.speed : !live.rel && live.q ? Math.hypot(live.v[0], live.v[1], live.v[2]) * 2.2369363 : NaN;
+  live.fLaunch[slot] = held ? live.rel.launch : !live.rel && live.q && hz > 0.5 ? Math.atan2(live.v[2], hz) * R2D : NaN;
+  live.fState[slot] = held ? 3 : live.stillRun >= win + lag ? 1 : live.q && !live.rel ? 2 : 0;
+  // Look-ahead values for the sample 35 readings ago: like the disc's release test, the steady in-plane
+  // (centripetal) part at sample c is the median over [c, c + 36), so these trail "now" by 87 ms.
+  if (live.run < RW) return;
+  const c = sq - RW + 1, cs = c % LRING, xs = new Float64Array(RW), ys = new Float64Array(RW);
+  let gzMax = 0, gzSum = 0;
+  for (let k = 0; k < RW; k++) {
+    xs[k] = ringAt(c + k, 3) * AL; ys[k] = ringAt(c + k, 4) * AL;
+    const z = Math.abs(ringAt(c + k, 2)) * GL; gzSum += z; if (z > gzMax) gzMax = z;
+  }
+  xs.sort(); ys.sort();
+  const mx = 0.5 * (xs[RW / 2 - 1] + xs[RW / 2]), my = 0.5 * (ys[RW / 2 - 1] + ys[RW / 2]);
+  const comp = k => Math.hypot(ringAt(k, 3) * AL - mx, ringAt(k, 4) * AL - my, ringAt(k, 5) * AL);
+  const slide = comp(c), rl = live.rel;
+  let hand = slide;
+  if (rl && c >= rl.seq + 12 && rl.imp == null) {
+    // in flight the disc's impact test (impactAfter) keeps the steady part from just after release fixed
+    if (c === rl.seq + 12) {
+      rl.fix = [mx, my];
+      const m = []; for (let k = c; k < c + RW; k++) m.push(comp(k));
+      rl.impLim = Math.min(4, medianOf(m) + 1.5);
+    }
+    if (rl.fix) {
+      hand = Math.hypot(ringAt(c, 3) * AL - rl.fix[0], ringAt(c, 4) * AL - rl.fix[1], ringAt(c, 5) * AL);
+      if (hand > rl.impLim) { rl.imp = c; live.impMarks.push(c); if (live.impMarks.length > 12) live.impMarks.shift(); }
+    }
+  }
+  live.fComp[cs] = hand;
+  if (I.radius > 0.0005 && slide < I.freeG && Math.abs(ringAt(c, 2)) * GL > 100)
+    live.fSpinC[cs] = Math.sqrt(Math.hypot(mx, my) * GMS / I.radius) * 60 / (2 * Math.PI);
+  // the disc's release test (releaseAt) at candidate c, while the speed is being added up
+  if (!live.q || live.rel || c <= live.refSeq) return;
+  live.peakRun = Math.max(live.peakRun, live.fAbs[cs]);
+  if (live.peakRun <= I.trigG) return;
+  for (let k = c; k < c + 10; k++) if (comp(k) > I.freeG) return;              // hand force gone for 25 ms
+  if (gzMax < 0.98 * GYRO_MAX) {                                               // steady part fits the spin
+    const w = gzSum / RW * D2R; if (Math.hypot(mx, my) > w * w * I.radius / GMS * 1.5 + 1.5) return;
+  }
+  for (let k = c + 10; k < c + 30; k++) if (comp(k) > I.trigG) return;          // and no more pulling after
+  // left the hand at c: hold speed and angles from there
+  const h = c % 64, qa = live.qHist.subarray(h * 4, h * 4 + 4), va = live.vHist.subarray(h * 3, h * 3 + 3);
+  let gzs = 0; for (let k = c + 12; k < c + RW; k++) gzs += ringAt(k, 2) * GL - live.bias[2];
+  live.rel = { seq: c, ...discAngles(new Q4(qa[0], qa[1], qa[2], qa[3]), va[0], va[1], va[2], gzs > 0) };
+  live.rels.push(live.rel); if (live.rels.length > 12) live.rels.shift();
+  for (let k = c; k <= sq; k++) { const s2 = k % LRING; live.fSpeed[s2] = live.rel.speed; live.fLaunch[s2] = live.rel.launch; live.fState[s2] = 3; }
+  live.q = null;
+}
+
+// One step of adding up, as the disc does over a pull: turn by the gyro, rotate the force into world axes,
+// take off gravity, add to the velocity. Kept for the last 64 readings so the release can be looked up later.
+function liveStep(k, I, dt) {
+  const GL = I.glsb, AL = I.alsb, q = live.q, v = live.v;
+  q.integ((ringAt(k, 0) * GL - live.bias[0]) * D2R, (ringAt(k, 1) * GL - live.bias[1]) * D2R, (ringAt(k, 2) * GL - live.bias[2]) * D2R, dt);
+  const w = q.rot(ringAt(k, 3) * AL, ringAt(k, 4) * AL, ringAt(k, 5) * AL);
+  v[0] += w[0] * GMS * dt; v[1] += w[1] * GMS * dt; v[2] += (w[2] - 1) * GMS * dt;
+  const h = k % 64; live.qHist.set([q.w, q.x, q.y, q.z], h * 4); live.vHist.set(v, h * 3);
+}
+
+// Steps 6-7 of the disc's maths: speed, launch, hyzer and nose from the velocity and the disc's attitude at release.
+function discAngles(q, vx, vy, vz, ccw) {
+  const horiz = Math.hypot(vx, vy), launch = Math.atan2(vz, horiz) * R2D, [nx, ny, nz] = q.rot(0, 0, 1);
+  let hyzer, nose;
+  if (horiz > 0.5) {                               // against the flight direction (left = up x forward)
+    const fx = vx / horiz, fy = vy / horiz, lx = -fy, ly = fx;
+    hyzer = Math.atan2(-(nx * lx + ny * ly), nz) * R2D;
+    nose = Math.atan2(-(nx * fx + ny * fy), nz) * R2D - launch;
+  } else { hyzer = Math.atan2(-ny, nz) * R2D; nose = Math.atan2(-nx, nz) * R2D; }
+  if (!ccw) hyzer = -hyzer;                        // clockwise spin fades left: left edge down = hyzer
+  return { speed: Math.hypot(vx, vy, vz) * 2.2369363, launch, hyzer, nose, normal: [nx, ny, nz] };
+}
+
+// A throw's results packet arrived: cut its samples out of the live buffer and redo the maths here, step by step.
+function liveTryCaps() {
+  while (live.pendingCaps.length) {
+    const c = live.pendingCaps[0];
+    if (live.last < c.start + c.n - 1 && performance.now() - c.at < 15000) return;
+    live.pendingCaps.shift();
+    const S = new Int16Array(c.n * 6); let missing = 0;
+    for (let i = 0; i < c.n; i++) {
+      const sq = c.start + i, sl = sq % LRING;
+      if (live.seqs[sl] === sq) S.set(live.ring.subarray(sl * 6, sl * 6 + 6), i * 6);
+      else { missing++; if (i) S.copyWithin(i * 6, (i - 1) * 6, i * 6); }
+    }
+    let an = null;
+    try { an = analyzeCapture(S, live.info || DEFAULT_INFO); } catch (e) { console.error("analysis failed", e); }
+    live.caps.push({ c, S, an, missing, at: Date.now() });
+    if (live.caps.length > 8) live.caps.shift();
+    live.sel = live.caps[live.caps.length - 1];
+    renderThrowSel(); renderBreakdown(); renderLastThrow();
+  }
+}
+
+// ---- the disc's analysis (throw_metrics.h), in JavaScript, keeping every intermediate step ----
+const FL = { VALID: 1, GYRO_Z_SAT: 2, ACCEL_SAT: 4, NO_RELEASE: 8, NO_STATIC: 16, SPIN_FROM_ACC: 32, SHORT_FLIGHT: 64, SPIN_CCW: 128 };
+function analyzeCapture(S, I) {
+  const n = S.length / 6, dt = 1 / I.odr, AL = I.alsb, GL = I.glsb, SAT = 32200;
+  const ax = i => S[i * 6 + 3] * AL, ay = i => S[i * 6 + 4] * AL, az = i => S[i * 6 + 5] * AL;
+  const gx = i => S[i * 6] * GL, gy = i => S[i * 6 + 1] * GL, gz = i => S[i * 6 + 2] * GL;
+  const sat = v => v >= SAT || v <= -SAT, mag = i => Math.hypot(ax(i), ay(i), az(i));
+  const R = { n, flags: 0 };
+  if (n < 40) return R;
+  const hold = 10, L = 36, gap = 20, settle = 12, flightN = 104;
+  for (let i = 0; i < n; i++) if (sat(S[i * 6 + 3]) || sat(S[i * 6 + 4]) || sat(S[i * 6 + 5])) { R.flags |= FL.ACCEL_SAT; break; }
+  const inMed = (a, b) => { const xs = [], ys = []; for (let k = a; k < b && xs.length < 64; k++) { xs.push(ax(k)); ys.push(ay(k)); } return [medianOf(xs), medianOf(ys)]; };
+  const comp = (k, mx, my) => Math.hypot(ax(k) - mx, ay(k) - my, az(k));
+  const releaseAt = i => {
+    if (i + hold > n) return false;
+    const e = Math.min(i + L, n), [mx, my] = inMed(i, e);
+    for (let k = i; k < i + hold; k++) if (comp(k, mx, my) > I.freeG) return false;
+    let gzMax = 0, gzSum = 0;
+    for (let k = i; k < e; k++) { const v = Math.abs(gz(k)); gzSum += v; if (v > gzMax) gzMax = v; }
+    if (gzMax < 0.98 * 32767 * GL) { const w = gzSum / (e - i) * D2R; if (Math.hypot(mx, my) > w * w * I.radius / GMS * 1.5 + 1.5) return false; }
+    const ge = Math.min(i + hold + gap, n);
+    for (let k = i + hold; k < ge; k++) if (comp(k, mx, my) > I.trigG) return false;
+    return true;
+  };
+  // 2. release, scanning forward from the trigger
+  const i0 = 415 < n ? 415 : 0; let iRel = 0, iPeak = i0, found = false, run = 0;
+  for (let i = i0; i + hold < n; i++) { const m = mag(i); if (m > run) { run = m; iPeak = i; } if (run > I.trigG && releaseAt(i)) { iRel = i; found = true; break; } }
+  if (!found) { iRel = iPeak; R.flags |= FL.NO_RELEASE; }
+  let peak = 0; for (let i = i0; i <= iRel && i < n; i++) peak = Math.max(peak, mag(i));
+  // the hand force the release test looked at (steady in-plane part removed, look-ahead median)
+  // 3. still moment
+  let bias = I.bias.slice(), iStart = 0, stillAt = -1, q;
+  const win = Math.floor(0.15 / dt), limit = iRel > win ? iRel - win : 0;
+  for (let i = 0; i + win < n && i < limit; i++) {
+    const sm = [0, 0, 0, 0, 0, 0]; let still = true;
+    for (let k = 0; k < win; k++) {
+      const a = [ax(i + k), ay(i + k), az(i + k)], gg = [gx(i + k), gy(i + k), gz(i + k)];
+      if (Math.hypot(...gg) > 25 || Math.abs(Math.hypot(...a) - 1) > 0.15) { still = false; break; }
+      sm[0] += a[0]; sm[1] += a[1]; sm[2] += a[2]; sm[3] += gg[0]; sm[4] += gg[1]; sm[5] += gg[2];
+    }
+    if (still) { q = Q4.up(sm[0] / win, sm[1] / win, sm[2] / win); bias = [sm[3] / win, sm[4] / win, sm[5] / win]; iStart = i + win; stillAt = i; break; }
+  }
+  if (stillAt < 0) { R.flags |= FL.NO_STATIC; q = Q4.up(ax(0), ay(0), az(0)); iStart = 0; }
+  // 4. free flight: release + settle .. impact
+  const impactAfter = rel => {
+    const s0 = rel + settle; if (s0 + 2 >= n) return n;
+    const e = Math.min(s0 + L, n), [mx, my] = inMed(s0, e), m = [];
+    for (let k = s0; k < e && m.length < 64; k++) m.push(comp(k, mx, my));
+    const lim = Math.min(4.0, medianOf(m) + 1.5); R.impLim = lim; R.impMed = [mx, my];
+    for (let k = s0; k < n; k++) if (comp(k, mx, my) > lim) return k;
+    return n;
+  };
+  const imp = impactAfter(iRel);
+  // the hand force each test looked at: before the flight the release test's look-ahead median,
+  // in flight up to the impact the impact test's fixed one
+  R.hand = new Float32Array(n).fill(NaN);
+  for (let i = i0; i < n; i++) {
+    const [mx, my] = R.impMed && i >= iRel + settle && i <= imp ? R.impMed : inMed(i, Math.min(i + L, n));
+    R.hand[i] = comp(i, mx, my);
+  }
+  const f0 = Math.min(iRel + settle, n - 1), fEnd = imp > f0 + 3 ? imp - 3 : f0;
+  let f1 = Math.min(f0 + flightN, fEnd);
+  if (f1 <= f0 + 20) { R.flags |= FL.SHORT_FLIGHT; f1 = Math.min(f0 + 21, n); }
+  let spinSum = 0, gzSigned = 0, mgx = 0, mgy = 0, satCount = 0, cnt = 0;
+  for (let i = f0; i < f1; i++) {
+    const a = gx(i) - bias[0], b = gy(i) - bias[1], c = gz(i) - bias[2];
+    if (sat(S[i * 6 + 2])) satCount++;
+    spinSum += Math.abs(c); gzSigned += c; mgx += a; mgy += b; cnt++;
+  }
+  if (cnt) { mgx /= cnt; mgy /= cnt; }
+  const cone = axial => {
+    if (axial < 1) return 0; let sq = 0, c = 0;
+    for (let i = f0; i < f1; i++) { const a = gx(i) - bias[0] - mgx, b = gy(i) - bias[1] - mgy; const w = Math.atan2(Math.hypot(a, b), 2 * axial) * R2D; sq += w * w; c++; }
+    return c ? Math.sqrt(sq / c) : 0;
+  };
+  const spinDps = cnt ? spinSum / cnt : 0;
+  let spin = spinDps / 6, wobble = cone(spinDps), src = 0;
+  if (cnt && satCount > Math.floor(cnt / 5)) R.flags |= FL.GYRO_Z_SAT;
+  // spin from the accelerometer: drag wave (phase fit) and centripetal sqrt(a / r)
+  const wave = (() => {
+    const a = f0, b = f1; if (b <= a + 24) return { rpm: 0, mx: 0, my: 0, amp: 0 };
+    const nn = b - a; let mx = 0, my = 0, amp = 0;
+    for (let i = a; i < b; i++) { mx += ax(i); my += ay(i); } mx /= nn; my /= nn;
+    for (let i = a; i < b; i++) amp += Math.hypot(ax(i) - mx, ay(i) - my); amp /= nn;
+    if (amp < 0.04) return { rpm: 0, mx, my, amp };
+    const unwrap = () => { const out = []; let prev = Math.atan2(ay(a) - my, ax(a) - mx), acc = prev;
+      for (let i = a; i < b; i++) { const th = Math.atan2(ay(i) - my, ax(i) - mx); let d = th - prev; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; acc += d; prev = th; out.push(acc); } return out; };
+    const ph = unwrap(); let St = 0, Sa = 0, Stt = 0, Sta = 0;
+    ph.forEach((v, k) => { const t = k * dt; St += t; Sa += v; Stt += t * t; Sta += t * v; });
+    const den = nn * Stt - St * St; if (den <= 0) return { rpm: 0, mx, my, amp };
+    const slope = (nn * Sta - St * Sa) / den, icpt = (Sa - slope * St) / nn;
+    if (Math.abs(slope) * nn * dt < 3 * Math.PI) return { rpm: 0, mx, my, amp, revs: Math.abs(slope) * nn * dt / (2 * Math.PI) };
+    let ss = 0; ph.forEach((v, k) => { const r = v - (icpt + slope * k * dt); ss += r * r; });
+    if (Math.sqrt(ss / nn) > 0.6) return { rpm: 0, mx, my, amp, ragged: true };
+    return { rpm: Math.abs(slope) * 60 / (2 * Math.PI), mx, my, amp };
+  })();
+  const centrip = Math.hypot(wave.mx, wave.my) * GMS;
+  const spinC = I.radius > 0.0005 && centrip > 0.2 ? Math.sqrt(centrip / I.radius) * 60 / (2 * Math.PI) : 0;
+  if (R.flags & FL.GYRO_Z_SAT) {
+    const w = wave.rpm, c = spinC;
+    if (w > 0 && c > 0) { if (Math.abs(w - c) < 0.15 * w) { spin = 0.5 * (w + c); src = 3; } else { spin = w; src = 1; } }
+    else if (w > 0) { spin = w; src = 1; } else if (c > 0) { spin = c; src = 2; }
+    if (src) { R.flags |= FL.SPIN_FROM_ACC; wobble = cone(spin * 6); }
+  }
+  // 5. the pull: fill the clipped gyro, then add up rotation and velocity from the still moment to release
+  let c0 = -1, g0 = 0, gT = 0, cm = 1;
+  if (found && src) {
+    for (let i = iStart; i <= iRel && i < n; i++) if (sat(S[i * 6 + 2])) { c0 = i; break; }
+    if (c0 >= 0) {
+      const sgn = gzSigned > 0 ? 1 : -1;
+      g0 = c0 > iStart ? gz(c0 - 1) - bias[2] : sgn * 32767 * GL; gT = sgn * spin * 6;
+      if (Math.abs(gT) > Math.abs(g0)) cm = iRel - c0 + 1; else c0 = -1;
+    }
+  }
+  R.speedTrace = new Float32Array(n).fill(NaN); R.fill = new Float32Array(n).fill(NaN);
+  let vx = 0, vy = 0, vz = 0;
+  for (let i = iStart; i <= iRel && i < n; i++) {
+    const filled = c0 >= 0 && i >= c0 && sat(S[i * 6 + 2]);
+    const gzd = filled ? g0 + (gT - g0) * (i - c0 + 1) / cm : gz(i) - bias[2];
+    if (filled) R.fill[i] = Math.abs(gzd) / 6;
+    q.integ((gx(i) - bias[0]) * D2R, (gy(i) - bias[1]) * D2R, gzd * D2R, dt);
+    const w = q.rot(ax(i), ay(i), az(i));
+    vx += w[0] * GMS * dt; vy += w[1] * GMS * dt; vz += (w[2] - 1) * GMS * dt;
+    R.speedTrace[i] = Math.hypot(vx, vy, vz) * 2.2369363;
+  }
+  // 6-7. disc angles at release, against the flight direction; the spin direction sets the hyzer sign
+  if (gzSigned > 0) R.flags |= FL.SPIN_CCW;
+  const { speed, launch, hyzer, nose, normal } = discAngles(q, vx, vy, vz, gzSigned > 0);
+  // 8. is this actually a throw?
+  const allowNR = (I.sens || 5) <= 2;
+  if (peak > I.minPeak && spin >= I.minSpin && (allowNR || !(R.flags & FL.NO_RELEASE))) R.flags |= FL.VALID;
+  return Object.assign(R, { i0, iRel, found, peak, iPeak, stillAt, iStart, win, imp, f0, f1, spin, spinGyro: spinDps / 6, wobble, src,
+    wave, centrip, spinC, satCount, cnt, c0, cm, g0, gT, speed, launch, hyzer, nose, bias, mgx, mgy, vx, vy, vz, normal, odr: I.odr });
+}
+
+// ---- drawing ----
+function fitCanvas(cv) {
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  const w = Math.max(10, Math.round(r.width * dpr)), h = Math.max(10, Math.round(r.height * dpr));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height);
+  return { g, W: r.width, H: r.height };
+}
+const niceStep = (range, target) => { const raw = range / target, p = Math.pow(10, Math.floor(Math.log10(raw || 1))), m = raw / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; };
+const fmtTick = v => Math.abs(v) >= 1000 ? +(v / 1000).toFixed(1) + "k" : String(+v.toFixed(3));
+const BAND = { pre: "rgba(148,163,184,0.10)", still: "rgba(59,130,246,0.26)", pull: "rgba(251,146,60,0.20)", settle: "rgba(148,163,184,0.30)",
+               flight: "rgba(52,211,153,0.22)", after: "rgba(248,113,113,0.14)" };
+const COL = { x: "#f87171", y: "#4ade80", z: "#60a5fa", abs: "#cbd5e1", hand: "#fb923c", spinG: "#60a5fa", spinC: "#c084fc", speed: "#fbbf24", fill: "#e879f9" };
+const FONT = "11px system-ui, Segoe UI, sans-serif", FONT_B = "600 12px system-ui, Segoe UI, sans-serif", TITLE_H = 17;
+// Sample ranges laid side by side across [x, x + w): a time axis with a break, so the dull stretch between the
+// still moment and the throw can be cut out. A short range still gets `minFrac` of the width.
+function xLayout(ranges, x, w, gap = 18, minFrac = 0.16) {
+  const len = ranges.map(([a, b]) => Math.max(1, b - a)), tot = len.reduce((t, v) => t + v, 0), avail = w - gap * (ranges.length - 1);
+  let fr = len.map(v => v / tot);
+  if (ranges.length > 1) {
+    const small = fr.map(f => f < minFrac), fixed = small.filter(Boolean).length * minFrac;
+    const rest = fr.reduce((t, f, k) => t + (small[k] ? 0 : f), 0);
+    fr = fr.map((f, k) => small[k] ? minFrac : f / rest * (1 - fixed));
+  }
+  let cx = x;
+  return ranges.map(([a, b], k) => { const sg = { a, b, x0: cx, x1: cx + fr[k] * avail }; cx = sg.x1 + gap; return sg; });
+}
+function labelBox(g, text, x, y, color, align = "left") {
+  const tw = g.measureText(text).width, x0 = align === "right" ? x - tw : x;
+  g.fillStyle = "rgba(11, 15, 21, 0.78)"; g.fillRect(x0 - 3, y - 7, tw + 6, 14);
+  g.fillStyle = color; g.textAlign = "left"; g.fillText(text, x0, y);
+  return { x0: x0 - 3, x1: x0 + tw + 3, y };
+}
+const clash = (placed, b) => placed.some(p => Math.abs(p.y - b.y) < 13 && b.x1 > p.x0 && b.x0 < p.x1);
+// One graph. o.segs: the sample ranges shown (xLayout); o.sqrt: a square-root scale, so the few g where release
+// and impact are decided stay readable next to a 20 g pull.
+function panel(g, r, o) {
+  const segs = o.segs || [{ a: o.i0, b: o.i1, x0: r.x, x1: r.x + r.w }], span = o.yMax - o.yMin;
+  const dh = r.h - TITLE_H - 2, base = r.y + r.h;                 // the data stays below the title strip
+  const Y = o.sqrt ? v => base - Math.sqrt(Math.max(0, (v - o.yMin) / span)) * dh : v => base - (v - o.yMin) / span * dh;
+  const Xof = sg => i => sg.x0 + (i - sg.a) / (sg.b - sg.a) * (sg.x1 - sg.x0);
+  g.save();
+  g.font = FONT; g.textBaseline = "middle";
+  for (const sg of segs) {
+    const X = Xof(sg);
+    g.fillStyle = "rgba(255, 255, 255, 0.025)"; g.fillRect(sg.x0, r.y, sg.x1 - sg.x0, r.h);
+    for (const b of o.bands || []) { const x0 = Math.max(sg.x0, X(b.a)), x1 = Math.min(sg.x1, X(b.b)); if (x1 > x0) { g.fillStyle = b.color; g.fillRect(x0, r.y, x1 - x0, r.h); } }
+  }
+  // grid and y numbers, kept out of the title strip
+  const ticks = [];
+  if (o.sqrt) { for (const v of [0, 1, 2, 3, 5, 10, 20, 30, 50]) if (v >= o.yMin && v <= o.yMax) ticks.push(v); }
+  else { const st = niceStep(span, Math.max(3, Math.floor(r.h / 24))); for (let k = Math.ceil(o.yMin / st - 1e-9); k * st <= o.yMax + 1e-9; k++) ticks.push(k * st); }
+  let lastY = Infinity;
+  for (const v of ticks) {
+    const y = Y(v);
+    g.strokeStyle = Math.abs(v) < 1e-9 ? "rgba(255, 255, 255, 0.22)" : "rgba(255, 255, 255, 0.07)"; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(r.x, y); g.lineTo(r.x + r.w, y); g.stroke();
+    if (y - 12 > r.y + TITLE_H && lastY - y >= 13) { g.fillStyle = "#8b97a8"; g.fillText(fmtTick(v), r.x + 3, y - 6); lastY = y; }
+  }
+  // threshold lines; labels that would overlap are moved apart
+  const placed = [];
+  g.save(); g.beginPath(); g.rect(r.x, r.y, r.w, r.h); g.clip();
+  for (const h of o.hlines || []) {
+    const y = Y(h.v); if (y < r.y - 2 || y > r.y + r.h + 2) continue;
+    g.strokeStyle = h.color; g.setLineDash([5, 4]); g.lineWidth = 1; g.beginPath(); g.moveTo(r.x, y); g.lineTo(r.x + r.w, y); g.stroke(); g.setLineDash([]);
+    if (!h.label) continue;
+    const tw = g.measureText(h.label).width, ty = y - 8 < r.y + TITLE_H + 2 ? y + 8 : y - 8;
+    let xr = r.x + r.w - 6;
+    for (let k = 0; k < 8 && clash(placed, { x0: xr - tw - 3, x1: xr + 3, y: ty }); k++)
+      xr = Math.min(...placed.filter(pl => Math.abs(pl.y - ty) < 13).map(pl => pl.x0)) - 10;
+    placed.push(labelBox(g, h.label, xr, ty, h.color, "right"));
+  }
+  g.restore();
+  // the data, one stretch of the time axis at a time
+  for (const sg of segs) {
+    const X = Xof(sg), w = sg.x1 - sg.x0;
+    g.save(); g.beginPath(); g.rect(sg.x0, r.y, w, r.h); g.clip();
+    for (const sr of o.series) {
+      const cols = Math.max(1, Math.floor(w)), per = (sg.b - sg.a) / cols;
+      g.beginPath(); let on = false;
+      if (per <= 1.5) {
+        for (let i = Math.ceil(sg.a); i <= sg.b; i++) { const v = sr.get(i); if (v == null || !isFinite(v)) { on = false; continue; } const x = X(i), y = Y(v); on ? g.lineTo(x, y) : g.moveTo(x, y); on = true; }
+      } else {                                    // several readings per pixel: draw each column's min..max so no peak is lost
+        for (let c = 0; c < cols; c++) {
+          const a = Math.floor(sg.a + c * per), b = Math.floor(sg.a + (c + 1) * per); let mn = Infinity, mx = -Infinity;
+          for (let i = a; i < b; i++) { const v = sr.get(i); if (v == null || !isFinite(v)) continue; if (v < mn) mn = v; if (v > mx) mx = v; }
+          if (mn > mx) { on = false; continue; }
+          const x = sg.x0 + c + 0.5; if (!on) g.moveTo(x, Y(mx)); else g.lineTo(x, Y(mx)); g.lineTo(x, Y(mn)); on = true;
+        }
+      }
+      g.strokeStyle = sr.color; g.lineWidth = sr.width || 1.4; g.setLineDash(sr.dash || []); g.stroke(); g.setLineDash([]);
+    }
+    for (const vl of o.vlines || []) {
+      const x = X(vl.i); if (x < sg.x0 || x > sg.x1) continue;
+      g.strokeStyle = vl.color; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, r.y); g.lineTo(x, r.y + r.h); g.stroke();
+    }
+    for (const pt of o.points || []) {
+      const x = X(pt.i), y = Y(pt.v); if (x < sg.x0 || x > sg.x1) continue;
+      g.fillStyle = "#fff"; g.beginPath(); g.arc(x, y, 3.5, 0, 2 * Math.PI); g.fill();
+      labelBox(g, pt.label, x + 7, Math.max(r.y + TITLE_H + 8, y - 9), "#fff");
+    }
+    g.restore();
+  }
+  // names of the vertical markers (top graph only), stacked when close together
+  if (o.vlabels) {
+    const tags = placed.slice();
+    for (const sg of segs) {
+      const X = Xof(sg);
+      for (const vl of o.vlines || []) {
+        const x = X(vl.i); if (!vl.label || x < sg.x0 || x > sg.x1) continue;
+        const tw = g.measureText(vl.label).width, left = x + tw + 10 > r.x + r.w;   // near the right edge: name it on the left
+        const x0 = left ? x - tw - 7 : x + 1; let y = r.y + TITLE_H + 9;
+        while (clash(tags, { x0, x1: x0 + tw + 6, y }) && y < r.y + r.h - 8) y += 14;
+        tags.push(labelBox(g, vl.label, left ? x - 4 : x + 4, y, vl.color, left ? "right" : "left"));
+      }
+    }
+  }
+  // breaks in the time axis
+  g.strokeStyle = "#8b97a8"; g.lineWidth = 1.2;
+  for (let k = 1; k < segs.length; k++) {
+    const gx = (segs[k - 1].x1 + segs[k].x0) / 2, cy = r.y + r.h / 2;
+    for (const d of [-3, 3]) { g.beginPath(); g.moveTo(gx + d - 3, cy + 6); g.lineTo(gx + d + 3, cy - 6); g.stroke(); }
+  }
+  // title and legend
+  const items = o.series.filter(sr => sr.label);
+  g.font = FONT_B; let wTot = g.measureText(o.title).width + 18;
+  g.font = "11.5px system-ui, Segoe UI, sans-serif"; for (const sr of items) wTot += g.measureText("■ " + sr.label).width + 10;
+  g.fillStyle = "rgba(11, 15, 21, 0.6)"; g.fillRect(r.x, r.y, Math.min(r.w, wTot), TITLE_H);
+  g.textBaseline = "top"; g.font = FONT_B; g.fillStyle = "#e5e9f0";
+  let x = r.x + 6; g.fillText(o.title, x, r.y + 3); x += g.measureText(o.title).width + 12;
+  g.font = "11.5px system-ui, Segoe UI, sans-serif";
+  for (const sr of items) { g.fillStyle = sr.color; g.fillText("■ " + sr.label, x, r.y + 4); x += g.measureText("■ " + sr.label).width + 10; }
+  g.restore();
+}
+function timeAxis(g, segs, y, odr, zero, fmt) {
+  g.save(); g.font = FONT; g.fillStyle = "#8b97a8"; g.textBaseline = "top"; g.textAlign = "center";
+  for (const sg of segs) {
+    const w = sg.x1 - sg.x0, secs = (sg.b - sg.a) / odr, fit = Math.max(1, w / 110);
+    const st = [0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 5, 10].find(v => secs / v <= fit) || 10;
+    let drawn = 0;
+    for (let k = Math.ceil((sg.a - zero) / odr / st - 1e-9); k * st <= (sg.b - zero) / odr + 1e-9; k++, drawn++) {
+      const t = +(k * st).toFixed(3), x = sg.x0 + (zero + t * odr - sg.a) / (sg.b - sg.a) * w;
+      g.fillText(fmt(t), Math.max(sg.x0 + 16, Math.min(sg.x1 - 16, x)), y);
+    }
+    if (!drawn) g.fillText(fmt(+(((sg.a + sg.b) / 2 - zero) / odr).toFixed(2)), (sg.x0 + sg.x1) / 2, y);   // a short stretch: its middle
+  }
+  g.restore();
+}
+const autoRange = (vals, minAbs, cap, sym) => {
+  let m = 0; for (const v of vals) if (isFinite(v)) m = Math.max(m, Math.abs(v));
+  m = Math.min(cap, Math.max(minAbs, m * 1.15)); return sym ? [-m, m] : [0, m];
+};
+// The colored sections of one capture (sample indices + s0).
+function captureBands(an, n, s0 = 0) {
+  const b = [{ a: s0, b: s0 + 415, color: BAND.pre }];
+  if (!an || !an.n) return b;
+  if (an.stillAt >= 0) b.push({ a: s0 + an.stillAt, b: s0 + an.iStart, color: BAND.still });
+  b.push({ a: s0 + an.iStart, b: s0 + an.iRel, color: BAND.pull }, { a: s0 + an.iRel, b: s0 + an.f0, color: BAND.settle },
+         { a: s0 + an.f0, b: s0 + an.f1, color: BAND.flight });
+  if (an.imp < n) b.push({ a: s0 + an.imp, b: s0 + n, color: BAND.after });
+  return b;
+}
+function drawLive() {
+  const cv = $("lpCanvas"), { g, W, H } = fitCanvas(cv);
+  const I = live.info || DEFAULT_INFO, odr = I.odr || 416, haveData = live.last >= 0;
+  $("lpWait").style.display = haveData ? "none" : "";
+  if (!haveData) {
+    $("lpWait").textContent = !connected ? "Connect the disc to see its live readings." : !hasBtStream ? "This disc's firmware can't stream yet – update it." : "Waiting for readings…";
+    return;
+  }
+  const end = live.paused ? live.pauseAt : live.last, span = (+$("lpWin").value || 6) * odr, i0 = end - span, i1 = end;
+  const counts = $("lpCounts").checked, gS = counts ? 1 : I.glsb, aS = counts ? 1 : I.alsb;
+  const raw = k => i => { const sl = i % LRING; return live.seqs[sl] === i ? live.ring[sl * 6 + k] : null; };
+  const arr = A => i => { const sl = i % LRING; return live.seqs[sl] === i ? A[sl] : null; };
+  const sc = (f, k) => i => { const v = f(i); return v == null ? null : v * k; };
+  const sample = (f, a, b) => { const out = [], st = Math.max(1, Math.floor((b - a) / 600)); for (let i = a; i <= b; i += st) { const v = f(i); if (v != null) out.push(v); } return out; };
+  // the sections of each throw the disc reported, and releases spotted here before its results arrived
+  const bands = [], vlines = [], ptSpeed = [], ptSpin = [];
+  for (const e of live.caps) {
+    const s0 = e.c.start, an = e.an && e.an.n ? e.an : null; if (s0 + e.c.n < i0 || s0 > i1) continue;
+    bands.push(...captureBands(an, e.c.n, s0));
+    vlines.push({ i: s0 + 415, color: "#94a3b8", label: "trigger" });
+    if (an) {
+      vlines.push({ i: s0 + an.iRel, color: "#fbbf24", label: "release" });
+      const imp = an.imp < an.n ? an.imp : e.c.end === 1 ? e.c.n : -1;    // or where the disc stopped at the impact
+      if (imp >= 0) vlines.push({ i: s0 + imp, color: "#f87171", label: "impact" });
+      ptSpeed.push({ i: s0 + an.iRel, v: e.c.res[0], label: `disc: ${e.c.res[0].toFixed(1)} mph` });
+      ptSpin.push({ i: s0 + Math.round((an.f0 + an.f1) / 2), v: e.c.res[1], label: `disc: ${e.c.res[1].toFixed(0)} rpm` });
+    }
+  }
+  // releases and impacts spotted here, until the disc's results for that throw take over
+  const reported = i => live.caps.some(e => i >= e.c.start && i <= e.c.start + e.c.n + 60);
+  for (const { seq: i } of live.rels) if (!reported(i)) vlines.push({ i, color: "#fbbf24", label: "release" });
+  for (const i of live.impMarks) if (!reported(i)) vlines.push({ i, color: "#f87171", label: "impact" });
+  const top = 2, axisH = 16, gapH = 6, nP = 5, ph = (H - top - axisH - gapH * (nP - 1)) / nP;
+  const R = k => ({ x: 0, y: top + k * (ph + gapH), w: W, h: ph });
+  const gr = autoRange(sample(raw(0), i0, i1).concat(sample(raw(1), i0, i1), sample(raw(2), i0, i1)).map(v => v * gS), counts ? 1500 : 100, counts ? 34000 : 2400, true);
+  panel(g, R(0), { i0, i1, yMin: gr[0], yMax: gr[1], title: `Gyroscope – rotation rate (${counts ? "counts" : "°/s"})`, bands, vlines, vlabels: true,
+    series: [{ get: sc(raw(0), gS), color: COL.x, label: "x" }, { get: sc(raw(1), gS), color: COL.y, label: "y" }, { get: sc(raw(2), gS), color: COL.z, label: "z = spin axis" }],
+    hlines: [{ v: 32767 * gS, color: "#f87171", label: "gyro max" }, { v: -32767 * gS, color: "#f87171" }] });
+  const ar = autoRange(sample(raw(3), i0, i1).concat(sample(raw(4), i0, i1), sample(raw(5), i0, i1)).map(v => v * aS), counts ? 3000 : 1.5, counts ? 34000 : 16.6, true);
+  panel(g, R(1), { i0, i1, yMin: ar[0], yMax: ar[1], title: `Accelerometer – force (${counts ? "counts" : "g"})`, bands, vlines,
+    series: [{ get: sc(raw(3), aS), color: COL.x, label: "x" }, { get: sc(raw(4), aS), color: COL.y, label: "y" }, { get: sc(raw(5), aS), color: COL.z, label: "z (≈ 1 g lying flat)" }],
+    hlines: [{ v: 32767 * aS, color: "#f87171", label: "accel max" }, { v: -32767 * aS, color: "#f87171" }] });
+  const fpk = Math.max(0, ...sample(arr(live.fAbs), i0, i1));
+  panel(g, R(2), { i0, i1, yMin: 0, yMax: Math.min(30, Math.max(5, fpk * 1.1)), sqrt: true, title: "Force (g) – how release and impact are found", bands, vlines,
+    series: [{ get: arr(live.fAbs), color: COL.abs, label: "total" }, { get: arr(live.fComp), color: COL.hand, label: "hand force = total minus the steady off-center part", width: 1.8 }],
+    hlines: [{ v: 4, color: "#f87171", label: "over 4 g after release = hit something" }, { v: I.trigG, color: "#94a3b8", label: `trigger ${I.trigG} g` },
+             { v: I.freeG, color: "#fbbf24", label: `under ${I.freeG} g for 25 ms = left the hand` }] });
+  const sr = autoRange(sample(arr(live.fSpinG), i0, i1).concat(sample(arr(live.fSpinC), i0, i1), ptSpin.map(pt => pt.v)), 420, 3000, false);
+  panel(g, R(3), { i0, i1, yMin: 0, yMax: sr[1], title: "Spin (rpm) – two ways", bands, vlines, points: ptSpin,
+    series: [{ get: arr(live.fSpinG), color: COL.spinG, label: "gyro z ÷ 6" }, { get: arr(live.fSpinC), color: COL.spinC, label: "from the off-center force √(a/r), free flight only", dash: [4, 3] }],
+    hlines: [{ v: GYRO_MAX / 6, color: "#f87171", label: "gyro max 382 rpm" }] });
+  const vr = autoRange(sample(arr(live.fSpeed), i0, i1).concat(ptSpeed.map(pt => pt.v)), 10, 120, false);
+  panel(g, R(4), { i0, i1, yMin: 0, yMax: vr[1], title: "Speed being added up (mph) – from the last still moment, held at release", bands, vlines, points: ptSpeed,
+    series: [{ get: arr(live.fSpeed), color: COL.speed, label: "live estimate", width: 1.8 }] });
+  timeAxis(g, [{ a: i0, b: i1, x0: 0, x1: W }], H - axisH + 3, odr, end, t => t === 0 ? "now" : `−${-t} s`);
+}
+
+function updateLiveSide() {
+  const now = performance.now();
+  if (now - live.rxT >= 1000) { live.rate = (live.rx - live.rxPrev) * 1000 / Math.max(1, now - live.rxT); live.rxPrev = live.rx; live.rxT = now; }
+  const I = live.info || DEFAULT_INFO;
+  $("lpRate").textContent = live.last < 0 ? "waiting for the disc…" :
+    `${live.rate.toFixed(0)} readings/s` + (I.batt > 0 ? ` · battery ${I.batt.toFixed(2)} V` : "") + (live.paused ? " · PAUSED" : "");
+  if (live.last < 0) return;
+  const at = live.paused ? live.pauseAt : live.last, sl = at % LRING, r = live.ring.subarray(sl * 6, sl * 6 + 6);
+  const row = (name, k, sc, unit, d) => `<span>${name}</span><span class="r">${r[k]}</span><span class="r">${(r[k] * sc).toFixed(d)} ${unit}</span>`;
+  $("lpRaw").innerHTML = `<span class="h">axis</span><span class="h r">counts</span><span class="h r">× scale =</span>` +
+    row("gyro x", 0, I.glsb, "°/s", 1) + row("gyro y", 1, I.glsb, "°/s", 1) + row("gyro z", 2, I.glsb, "°/s", 1) +
+    row("accel x", 3, I.alsb, "g", 3) + row("accel y", 4, I.alsb, "g", 3) + row("accel z", 5, I.alsb, "g", 3);
+  const la = Math.max(0, at - RW + 1) % LRING;              // the look-ahead values trail by 35 readings
+  const a = live.fAbs[sl], hand = live.fComp[la], sg = live.fSpinG[sl], scn = live.fSpinC[la], sp = live.fSpeed[sl], lau = live.fLaunch[sl];
+  const st = live.fState[sl], rel = st === 3 ? live.rels.slice().reverse().find(x => x.seq <= at) : null, held = !!rel, isStill = st === 1;
+  const ax = r[3] * I.alsb, ay = r[4] * I.alsb, az = r[5] * I.alsb, am = Math.hypot(ax, ay, az) || 1;
+  const tilt = Math.acos(Math.max(-1, Math.min(1, Math.abs(az) / am))) * R2D, fa = frontDeg * D2R;
+  const uf = ax * Math.cos(fa) + ay * Math.sin(fa), ul = -ax * Math.sin(fa) + ay * Math.cos(fa);
+  const low = Math.atan2(-ul, -uf) * R2D, side = Math.abs(low) < 45 ? "front (USB-C)" : Math.abs(low) > 135 ? "back" : low > 0 ? "left" : "right";
+  const state = !live.paused && capturingSince ? "Recording a throw…" :
+    ["Moving – hold it still a moment", "Held still – reference set", "Moving – adding up speed", "Released – numbers held"][st];
+  const c = (k, val, why) => `<span>${k}</span><span class="v">${val}</span>` + (why ? `<span class="why">${why}</span>` : "");
+  $("lpCalc").innerHTML =
+    c("Total force", `${a.toFixed(2)} g`, "√(x² + y² + z²). 1 g = gravity when still.") +
+    c("Hand force", isFinite(hand) ? `${hand.toFixed(2)} g` : "–", `Total minus the steady part the off-center sensor feels when spinning (87 ms behind). Under ${I.freeG} g for 25 ms = left the hand.`) +
+    c("Spin from gyro", `${sg.toFixed(0)} rpm`, "|gyro z| ÷ 6 (360° a turn, 60 s a minute). Stops at 382 rpm.") +
+    c("Spin from force", isFinite(scn) ? `${scn.toFixed(0)} rpm` : "–", I.radius > 0.0005 ? `√(steady force ÷ ${(I.radius * 1000).toFixed(1)} mm), only in free flight.` : "Needs the spin radius (calibrate spin in the phone app).") +
+    c("Tilt from flat", isStill ? `${tilt.toFixed(1)}°` : "–", isStill ? (tilt > 2 ? `Lower edge: ${side}.` : "Flat.") : "Only while still: gravity is the reference.") +
+    c(held ? "Speed at release" : "Speed so far", held ? `${rel.speed.toFixed(1)} mph` : isFinite(sp) ? `${sp.toFixed(1)} mph` : "–",
+      held ? "Live estimate. The disc's own number (below) also fills in a maxed-out gyro." : "Added up since the last still moment: the force in world directions (from the gyro), minus gravity.") +
+    c(held ? "Launch at release" : "Launch so far", isFinite(lau) ? `${signed(lau)}°` : "–", "The angle of that velocity above level.") +
+    (held ? c("Hyzer / nose", `${signed(rel.hyzer)}° / ${signed(rel.nose)}°`, "The disc's tilt against the flight path at release.") : "") +
+    c("State", state, "");
+}
+function renderLastThrow() {
+  const e = live.sel; if (!e) return;
+  const d = e.c.res;
+  const c = (k, v) => `<span>${k}</span><span class="v">${v}</span>`;
+  $("lpLast").innerHTML = c("Speed", `${d[0].toFixed(1)} mph`) + c("Spin", `${d[1].toFixed(0)} rpm`) + c("Hyzer", `${signed(d[2])}°`) +
+    c("Nose", `${signed(d[3])}°`) + c("Launch", `${signed(d[4])}°`) + c("Wobble", `${d[5].toFixed(1)}°`) +
+    c("Peak force", `${d[6].toFixed(1)} g`) + c("Counted", e.c.counted ? "yes" : "no (see the steps)");
+}
+function renderThrowSel() {
+  const sel = $("lpThrowSel");
+  sel.innerHTML = live.caps.slice().reverse().map((e, k) => `<option value="${live.caps.length - 1 - k}">${new Date(e.at).toLocaleTimeString()} · ${e.c.res[0].toFixed(1)} mph${e.c.counted ? "" : " (not counted)"}</option>`).join("");
+  sel.value = String(live.caps.indexOf(live.sel));
+  sel.style.display = live.caps.length ? "" : "none";
+}
+function renderBreakdown() {
+  const e = live.sel, cv = $("lpBreak"), { g, W, H } = fitCanvas(cv);
+  if (!e || !e.an || !e.an.n) {
+    $("lpCheck").textContent = "";
+    g.font = "14px system-ui, Segoe UI, sans-serif"; g.fillStyle = "#8b97a8"; g.textAlign = "center";
+    g.fillText(e ? "This throw's readings didn't arrive." : "Throw the disc: its readings show up here, cut into the sections the disc uses.", W / 2, H / 2);
+    return;
+  }
+  const an = e.an, S = e.S, I = live.info || DEFAULT_INFO, odr = an.odr || 416, n = an.n;
+  const A = i => Math.hypot(S[i * 6 + 3], S[i * 6 + 4], S[i * 6 + 5]) * I.alsb;
+  // time axis: the still moment, a break, then from just before the wind-up to just after the flight
+  let move = an.iStart;
+  for (let i = an.iStart; i < an.iRel; i++)
+    if (Math.abs(A(i) - 1) > 0.3 || Math.hypot(S[i * 6], S[i * 6 + 1], S[i * 6 + 2]) * I.glsb > 60) { move = i; break; }
+  const pad = Math.round(0.04 * odr), end = Math.max(an.f1, an.imp < n ? an.imp : n - 1) + Math.round(0.06 * odr);
+  const b0 = Math.max(0, Math.min(move, 415, an.iRel) - Math.round(0.12 * odr));
+  const ranges = an.stillAt >= 0 && b0 - an.iStart > 0.25 * odr ? [[Math.max(0, an.stillAt - pad), an.iStart + pad], [b0, end]]
+    : [[Math.max(0, Math.min(an.stillAt >= 0 ? an.stillAt - pad : b0, b0)), end]];
+  const segs = xLayout(ranges, 0, W);
+  const bands = captureBands(an, n), vlines = [{ i: 415, color: "#94a3b8", label: "trigger" }, { i: an.iRel, color: "#fbbf24", label: "release" }];
+  if (an.imp < n) vlines.push({ i: an.imp, color: "#f87171", label: "impact" });
+  else if (e.c.end === 1) vlines.push({ i: n - 1, color: "#f87171", label: "impact: recording ends" });
+  let fpk = 0; for (const [a, b] of ranges) for (let i = a; i <= Math.min(b, n - 1); i++) fpk = Math.max(fpk, A(i));
+  const axisH = 16, gapH = 6, ph = (H - axisH - gapH * 2) / 3, Rk = k => ({ x: 0, y: k * (ph + gapH), w: W, h: ph });
+  const fl = [{ v: I.trigG, color: "#94a3b8", label: `trigger ${I.trigG} g` }, { v: I.freeG, color: "#fbbf24", label: `release: under ${I.freeG} g` }];
+  if (an.imp < n && an.impLim) fl.push({ v: an.impLim, color: "#f87171", label: `impact: over ${an.impLim.toFixed(1)} g` });
+  panel(g, Rk(0), { segs, yMin: 0, yMax: Math.min(30, Math.max(5, fpk * 1.1)), sqrt: true, title: "Force (g)", bands, vlines, vlabels: true, hlines: fl,
+    series: [{ get: i => i >= 0 && i < n ? A(i) : null, color: COL.abs, label: "total" },
+             { get: i => isFinite(an.hand[i]) ? an.hand[i] : null, color: COL.hand, label: "hand force (off-center part removed)", width: 1.8 }] });
+  const inFlight = val => i => i >= an.f0 && i < an.f1 && val > 0 ? val : null;
+  const spinSeries = [{ get: i => i >= 0 && i < n ? Math.abs(S[i * 6 + 2] * I.glsb - an.bias[2]) / 6 : null, color: COL.spinG, label: "gyro z ÷ 6" }];
+  if (an.c0 >= 0) spinSeries.push({ get: i => isFinite(an.fill[i]) ? an.fill[i] : null, color: COL.fill, label: "filled in (gyro maxed)", dash: [5, 3], width: 2 });
+  if (an.spinC > 0) spinSeries.push({ get: inFlight(an.spinC), color: COL.spinC, label: "√(a/r)", dash: [4, 3] });
+  if (an.wave.rpm > 0) spinSeries.push({ get: inFlight(an.wave.rpm), color: "#f472b6", label: "drag wave", dash: [2, 3] });
+  spinSeries.push({ get: inFlight(an.spin), color: COL.y, label: `result ${an.spin.toFixed(0)} rpm`, width: 2.4 });
+  panel(g, Rk(1), { segs, yMin: 0, yMax: Math.max(420, ...[an.spin, an.spinC, an.wave.rpm].map(val => (val || 0) * 1.15)), title: "Spin-axis rate (rpm)",
+    bands, vlines, series: spinSeries, hlines: [{ v: GYRO_MAX / 6, color: "#f87171", label: "gyro max 382 rpm" }] });
+  panel(g, Rk(2), { segs, yMin: 0, yMax: Math.max(10, an.speed * 1.15), title: "Speed being added up (mph)", bands, vlines,
+    series: [{ get: i => isFinite(an.speedTrace[i]) ? an.speedTrace[i] : null, color: COL.speed, label: `|velocity| → ${an.speed.toFixed(1)} mph at release`, width: 2 }] });
+  timeAxis(g, segs, H - axisH + 3, odr, 415, t => `${t > 0 ? "+" : ""}${t} s`);
+  // the disc's own numbers vs this page's re-calculation
+  const d = e.c.res, ok = Math.abs(d[0] - an.speed) < 0.6 && Math.abs(d[1] - an.spin) < 4 && Math.abs(d[2] - an.hyzer) < 1 && Math.abs(d[4] - an.launch) < 1;
+  $("lpCheck").innerHTML = ok ? `<span style="color:var(--good)">✓ this page's re-calculation matches the disc</span>` :
+    `<span style="color:var(--warn)">re-calculation differs from the disc (disc ${d[0].toFixed(1)} mph / ${d[1].toFixed(0)} rpm vs ${an.speed.toFixed(1)} / ${an.spin.toFixed(0)})${e.missing ? ` – ${e.missing} readings were missing` : ""}</span>`;
+  renderSteps(e);
+}
+function renderSteps(e) {
+  const an = e.an, I = live.info || DEFAULT_INFO, odr = an.odr || 416;
+  const ms = k => `${Math.round(k / odr * 1000)} ms`, ts = k => { const t = (k - 415) / odr; return `${t > 0 ? "+" : ""}${t.toFixed(2)} s`; };
+  const sw = c => `<span class="sw" style="background:${c.replace(/0\.\d+\)$/, "0.9)")}"></span>`;
+  const warn = t => ` <span style="color:var(--warn)">${t}</span>`;
+  const src = { 0: "the gyro: average |gyro z| ÷ 6", 1: "the drag wave in the accelerometer", 2: "the off-center force, √(a ÷ r)",
+                3: "the drag wave and the off-center force (they agreed, so averaged)" }[an.src];
+  const endWhy = { 1: "at the impact", 2: "once the flight window was full", 3: "at the 3 s limit" }[e.c.end];
+  const L = [];
+  L.push(`${sw(BAND.pre)}<b>Recording kept</b> (${(an.n / odr).toFixed(2)} s): the 1 s before the trigger is always kept${endWhy ? `; the disc stopped ${endWhy}` : ""}.`);
+  L.push(`<b>Trigger</b> (t = 0): force over ${I.trigG} g or rotation over ${I.trigDps} °/s.`);
+  L.push(an.stillAt >= 0
+    ? `${sw(BAND.still)}<b>Still moment</b> (${ms(an.win)} at ${ts(an.stillAt)}): gyro under 25 °/s and force within 1 ± 0.15 g. Gravity's direction here sets "down", and the gyro's offset is measured: ${an.bias.map(v => v.toFixed(1)).join(", ")} °/s.`
+    : `${sw(BAND.still)}<b>No still moment</b> in the 1 s before the throw, so "down" is a guess from the first reading and speed and angles are less reliable.` + warn("Hold the disc still for a moment before throwing."));
+  L.push(`${sw(BAND.pull)}<b>Wind-up + pull</b> (${ms(an.iRel - an.iStart)}, still moment → release): each reading is turned into world directions with the gyro, gravity (1 g) is taken off, and it is multiplied by 1/${odr} s and added up → velocity. Peak force ${an.peak.toFixed(1)} g.` +
+    (an.c0 >= 0 ? ` The gyro maxed out for the last ${ms(an.iRel - an.c0 + 1)} (spin over 382 rpm), so its rate there was filled in with a straight ramp up to the release spin.` : "") +
+    (an.flags & FL.ACCEL_SAT ? warn("The accelerometer maxed out (16 g), so speed may read low.") : ""));
+  L.push(an.found
+    ? `<b>Release</b> (${ts(an.iRel)}): the hand force (total minus the steady off-center part) stayed under ${I.freeG} g for 25 ms, and no pulling followed in the next 48 ms.`
+    : `<b>No clean release found</b>: the force never settled after the pull. ${(I.sens || 5) <= 2 ? "Counted anyway at this sensitivity." : "Not counted at this sensitivity."}`);
+  L.push(`<b>Speed</b> = length of the added-up velocity = <b>${an.speed.toFixed(1)} mph</b>. <b>Launch</b> = its angle above level, atan2(up, sideways) = <b>${signed(an.launch)}°</b>.`);
+  L.push(`<b>Hyzer</b> = the disc's sideways tilt against the flight path (${an.flags & FL.SPIN_CCW ? "counter-clockwise spin, so right edge down = hyzer" : "clockwise spin, so left edge down = hyzer"}) = <b>${signed(an.hyzer)}°</b>. <b>Nose</b> = its tilt along the flight path, minus launch = <b>${signed(an.nose)}°</b>.`);
+  L.push(`${sw(BAND.settle)}<b>Settle</b>: the first ${ms(12)} after release are skipped, because the disc is still shaking from leaving the hand.`);
+  L.push(`${sw(BAND.flight)}<b>Free flight</b> (${ms(an.f1 - an.f0)}${an.imp < an.n ? ", up to just before the impact" : ""}): <b>spin = ${an.spin.toFixed(0)} rpm</b> from ${src}.` +
+    (an.src ? ` The gyro read ${an.spinGyro.toFixed(0)} rpm because it maxed out (drag wave ${an.wave.rpm ? an.wave.rpm.toFixed(0) : "–"}, off-center force ${an.spinC ? an.spinC.toFixed(0) : "–"} rpm).` : "") +
+    ` <b>Wobble = ${an.wobble.toFixed(1)}°</b> = atan(wobbling in-plane rotation ÷ (2 × spin)), the half-angle of the cone the axis traces.` +
+    (an.flags & FL.SHORT_FLIGHT ? warn("Very short free flight: stand farther from the net.") : ""));
+  if (an.imp < an.n) L.push(`${sw(BAND.after)}<b>Impact</b> (${ts(an.imp)}): the hand force rose above ${an.impLim ? an.impLim.toFixed(1) + " g" : "its in-flight level"} (the net, the ground or a hand). Nothing after it is used.`);
+  else if (e.c.end === 1) L.push(`<b>Impact</b> (${ts(an.n - 1)}): the disc saw the force jump over 4 g (the net, the ground or a hand) and stopped recording there.`);
+  L.push(an.flags & FL.VALID
+    ? `<b>Counted as a throw</b>: peak ${an.peak.toFixed(1)} g > ${I.minPeak} g, spin ${an.spin.toFixed(0)} ≥ ${I.minSpin} rpm${an.found ? ", clean release" : ""}.`
+    : `<b>Not counted</b>: ${an.peak <= I.minPeak ? `peak ${an.peak.toFixed(1)} g ≤ ${I.minPeak} g` : an.spin < I.minSpin ? `spin ${an.spin.toFixed(0)} < ${I.minSpin} rpm` : "no clean release"}.`);
+  $("lpSteps").innerHTML = L.map(x => `<li>${x}</li>`).join("");
+}
+function renderLegend() {
+  const c = (col, k, v) => `<span><span class="sw" style="background:${col.replace(/0\.\d+\)$/, "0.9)")}"></span>${k}</span><span class="v" style="font-weight:400;color:var(--muted)">${v}</span>`;
+  $("lpLegend").innerHTML = c(BAND.pre, "Before the trigger", "always kept (1 s)") + c(BAND.still, "Still moment", "sets 'down' + gyro offset") +
+    c(BAND.pull, "Wind-up + pull", "added up → speed & angles") + c(BAND.settle, "Settle", "skipped (29 ms)") + c(BAND.flight, "Free flight", "spin & wobble") +
+    c(BAND.after, "After the impact", "not used");
+}
+$("lpPause").onclick = () => { live.paused = !live.paused; live.pauseAt = live.last; $("lpPause").textContent = live.paused ? "▶ Resume" : "❚❚ Pause"; };
+$("lpThrowSel").onchange = () => { live.sel = live.caps[+$("lpThrowSel").value] || live.sel; renderBreakdown(); renderLastThrow(); };
+window.addEventListener("resize", () => { if (settings.mode === "live") renderBreakdown(); });
 
 // ================================================================ throws
 function currentDisc() { return { ...settings.disc, weightG: settings.disc.weightG || 175 }; }
@@ -875,6 +1611,11 @@ function placeIdleDisc() {
 }
 function frame(now) {
   requestAnimationFrame(frame);
+  if (settings.mode === "live") {                       // the live page replaces the 3D view
+    drawLive();
+    if (now - live.uiT > 120) { live.uiT = now; updateLiveSide(); }
+    return;
+  }
   const realDt = lastFrame ? (now - lastFrame) / 1000 : 0.016; lastFrame = now;
   const animDt = Math.min(0.25, realDt);              // exponential smoothing: stable at any step size
   const dt = animDt;
@@ -951,10 +1692,12 @@ function setMode(m) {
   settings.mode = m; saveSettings();
   document.body.className = "mode-" + m;
   $("modeSel").value = m;
+  syncStream();
+  if (m === "live") setTimeout(() => { renderBreakdown(); renderLegend(); }, 60);
   if (m !== "ours") {
     const last = session[session.length - 1];
     const url = last ? techdiscSimUrl(last.t, last.disc) : "https://techdisc.com/simulate";
-    if ($("tdFrame").src !== url) $("tdFrame").src = url;
+    if (m !== "live" && $("tdFrame").src !== url) $("tdFrame").src = url;
   }
   setTimeout(resize, 50);
 }
@@ -1033,7 +1776,8 @@ document.addEventListener("keydown", ev => {
   if (k === "f") toggleFullscreen();
   else if (k === "r" || k === " ") { ev.preventDefault(); $("replayBtn").click(); }
   else if (k === "c") { const o = ["follow", "tee", "top"]; settings.camera = o[(o.indexOf(settings.camera) + 1) % 3]; $("camSel").value = settings.camera; saveSettings(); toast("Camera: " + $("camSel").selectedOptions[0].text, "", 1500); }
-  else if (k === "m") { const o = ["ours", "split", "techdisc"]; setMode(o[(o.indexOf(settings.mode) + 1) % 3]); }
+  else if (k === "m") { const o = ["ours", "split", "techdisc", "live"]; setMode(o[(o.indexOf(settings.mode) + 1) % 4]); }
+  else if (k === "p" && settings.mode === "live") $("lpPause").click();
   else if (k === "s") $("sessBtn").click();
   else if (k === "escape") { $("panel").classList.add("hidden"); $("welcome").classList.add("hidden"); }
 });
@@ -1060,8 +1804,10 @@ renderBag(); renderSession();
 init3D();
 setMode(settings.mode);
 updateRecUi();
-window.discSim = { play, addThrow, testThrow, session: () => session, onSummary, parseSummary, onBtPacket, rec, recStop, addMark,
-                   _testStart: () => { Object.assign(rec, { on: true, mem: [], name: "test.bin", t0: Date.now(), recNo: 0, expect: null, chunk: null, chunkN: 0, throws: 0, lost: 0, samples: 0, bytes: 0, pendingCaps: [] }); rec.ringSeq.fill(-1); } };   // for testing
+renderLegend();
+window.discSim = { live, analyzeCapture, livePacket, play, addThrow, testThrow, session: () => session, onSummary, parseSummary, onBtPacket, rec, recStop, addMark,
+                   _testStart: () => { Object.assign(rec, { on: true, mem: [], name: "test.bin", t0: Date.now(), recNo: 0, expect: null, chunk: null, chunkN: 0, throws: 0, lost: 0, samples: 0, bytes: 0, pendingCaps: [] }); rec.ringSeq.fill(-1); },
+                   _testLink: ch => { cmdChar = ch; hasBtStream = true; streamSent = null; } };   // for testing
 </script>
 </body>
 </html>
