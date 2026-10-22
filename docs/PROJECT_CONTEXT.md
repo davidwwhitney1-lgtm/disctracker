@@ -284,3 +284,8 @@ Plan: side-by-side test (both trackers on one disc) with radar gun, laser tachom
   was (type, thrown into, guessed speed, spin range, real distance, angle, nose, wobble, notes). "Export log (Excel)"
   = one row per throw, label next to the disc's numbers; "Data file" = JSON with everything incl. base64 int16
   samples (gx gy gz ax ay az) for re-tuning the maths later.
+- **Play a round** (`sim.html`, ⛳ button or G): nine holes (175-430 ft, baskets offset up to 35 ft) down the same
+  fairway. Each throw that arrives is the next shot: simulated as usual, then placed at the lie and turned toward the
+  basket plus an aim offset (← →). Through the chains (within 1.15 ft of the pole, 1.9-4.6 ft up) = in; landing
+  inside the tap-in distance (Settings, default 10 ft, for soft indoor putts) = one more throw to finish; 10-throw
+  cap. Mulligan, restart hole, scorecard; the round is kept in localStorage.

@@ -105,6 +105,20 @@
                 padding: 8px 12px; font-size: 13px; color: var(--muted); z-index: 2; max-width: 46%; }
   #flightInfo b { color: var(--text); }
 
+  #gameHud { position: fixed; left: 12px; top: 64px; z-index: 3; width: 372px; font-size: 13px;
+             background: var(--hud); border: 1px solid var(--line); border-radius: 14px; padding: 9px 12px; }
+  #gameHud.hidden, body.mode-techdisc #gameHud, body.mode-live #gameHud { display: none; }
+  #gameHud .gh-top { display: flex; gap: 8px; align-items: baseline; }
+  #gameHud .gh-top b { font-size: 18px; color: var(--accent); }
+  #gameHud .gh-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+  #ghState { margin-top: 3px; font-size: 14px; }
+  #ghCard { display: grid; gap: 2px; margin-top: 8px; text-align: center; font-variant-numeric: tabular-nums; font-size: 12px; }
+  #ghCard span { padding: 1px 0; border-radius: 4px; }
+  #ghCard .h { color: var(--muted); font-size: 11px; }
+  #ghCard .cur { outline: 1px solid var(--accent); }
+  #ghCard .under { background: rgba(52, 211, 153, 0.28); }
+  #ghCard .over { background: rgba(248, 113, 113, 0.24); }
+  html.game #flightInfo { display: none; }
   #session { position: fixed; top: 64px; right: 12px; width: 300px; max-height: calc(100% - 64px - 150px); overflow: auto;
              background: var(--hud); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; z-index: 2; }
   #session.hidden { display: none; }
@@ -177,6 +191,7 @@
     <option value="techdisc">TechDisc only</option>
     <option value="live">Live sensor data</option>
   </select>
+  <button id="gameBtn" title="Play a round: every throw is your next shot (G)">⛳ Play a round</button>
   <button id="replayBtn" title="Replay the last throw (R or Space)">↻ Replay</button>
   <button id="sessBtn" title="Show or hide the session list (S)">Session</button>
   <button id="setBtn" title="Settings">⚙ Settings</button>
@@ -184,6 +199,17 @@
 </header>
 
 <div id="flightInfo"></div>
+<div id="gameHud" class="hidden">
+  <div class="gh-top"><b id="ghHole">Hole 1</b><span id="ghInfo"></span><span class="spacer"></span><span id="ghTotal"></span></div>
+  <div id="ghState"></div>
+  <div class="gh-row" id="ghAimRow"><span id="ghAim" style="min-width:150px"></span>
+    <button class="small" id="ghLeft" title="Aim further left (←)">◀</button><button class="small" id="ghRight" title="Aim further right (→)">▶</button>
+    <button class="small" id="ghCenter" title="Aim straight at the basket">at basket</button></div>
+  <div class="gh-row"><button class="small" id="ghUndo" title="Take the last shot back – it doesn't count">Mulligan</button>
+    <button class="small" id="ghRestart">Restart hole</button><button class="small" id="ghTest" title="A random shot, no disc needed">Test shot</button>
+    <span class="spacer"></span><button class="small primary" id="ghNext">Next hole ▸</button></div>
+  <div id="ghCard"></div>
+</div>
 <div id="centerMsg"></div>
 <div id="toast"></div>
 
@@ -230,6 +256,15 @@
       <select id="windFrom"><option value="0">ahead (headwind)</option><option value="180">behind (tailwind)</option>
         <option value="270">the left</option><option value="90">the right</option></select></div>
     <div class="row"><label>Release height</label><input id="relHeight" type="number" min="0" max="10" step="0.5"> ft</div>
+  </div>
+  <div class="sec">
+    <h3>Play a round</h3>
+    <p class="note">⛳ at the top turns it on: nine holes, every throw is flown from where the last one landed, aimed at the
+      basket (← → to aim left or right). A disc that flies through the chains is in. Indoors a soft putt is hard to
+      measure, so a disc landing this close counts as one more throw to finish:</p>
+    <div class="row"><label>Tap-in distance</label><select id="gimmeSel"><option value="0">none – putt everything</option>
+      <option value="6">6 ft</option><option value="10">10 ft</option><option value="20">20 ft</option><option value="33">33 ft (circle 1)</option></select>
+      <button class="small" id="newRoundBtn">New round</button></div>
   </div>
   <div class="sec">
     <h3>Display</h3>
@@ -1625,7 +1660,12 @@ function showResult(e) {
     `peak ${fmt(dist(r.maxHFt))} ${unit()} · ${fmt(r.timeS, 1)} s in the air`;
 }
 function idleMsg() {
-  if (!connected) { centerMsg(""); return; }
+  if (settings.game && settings.mode !== "live" && !round.holeDone && connected) {
+    const b = basketOf(COURSE[round.hole]), d = Math.hypot(b.x - round.lie.x, b.y - round.lie.y);
+    centerMsg(`${round.strokes ? "Next shot" : `Hole ${round.hole + 1} – tee off`}<small>${fmt(dist(d))} ${unit()} to the basket · ← → to aim</small>`, 0);
+    return;
+  }
+  if (!connected || settings.game) { centerMsg(""); return; }
   centerMsg("Ready – throw!<small>The result appears here automatically</small>", 0);
 }
 
@@ -1646,6 +1686,13 @@ $("tdWinBtn").onclick = () => {
 // ================================================================ 3D scene (units: feet)
 // Simulator axes x = downrange, y = left, z = up  ->  three.js X = right, Y = up, Z = toward the thrower.
 const toV = (x, y, z) => new THREE.Vector3(-y, z, -x);
+// Where a shot is thrown from: the lie (simulator x, y in ft) and the heading (rad, + = left). Each flight is
+// simulated straight downrange from the origin, then placed here. Without the game it is the tee, straight ahead.
+const TEE_FRAME = { x: 0, y: 0, psi: 0 }, shot = { ...TEE_FRAME };
+function W3(v, fr = shot) {                                // shot-local three.js point -> world
+  const c = Math.cos(fr.psi), s = Math.sin(fr.psi);
+  return new THREE.Vector3(v.x * c + v.z * s - fr.y, v.y, -v.x * s + v.z * c - fr.x);
+}
 let renderer = null, scene, camera, discGroup, discBody, blob, tube = null, ghostTube = null, landRing, landLabel, markers = [];
 const UP = new THREE.Vector3(0, 1, 0);
 const camPos = new THREE.Vector3(0, 8, 24), camLook = new THREE.Vector3(0, 6, -160);
@@ -1745,6 +1792,7 @@ function setTube(path, ghost) {
   const c = $("view"); mat.resolution.set(c.clientWidth || 1, c.clientHeight || 1);
   const line = new Line2(geo, mat); line.computeLineDistances();
   line.userData = { segs: path.length - 1 };
+  line.position.set(-shot.y, 0, -shot.x); line.rotation.y = shot.psi;
   scene.add(line); trailLines.add(line);
   return line;
 }
@@ -1755,24 +1803,29 @@ function dropMesh(m) { if (m) { scene.remove(m); trailLines.delete(m); m.geometr
 // ---------------------------------------------------------------- animation
 let current = null, flight = null, animT = 0, animStart = 0, animating = false, landedAt = 0, spinVis = 0, wobPhase = 0, lastFrame = 0;
 function play(e, fresh) {
+  if (fresh && settings.game && !e.frame) gameShot(e);      // the game: thrown from where the last one landed
   current = e;
+  Object.assign(shot, e.frame || TEE_FRAME);
   flight = flightFor(e);
+  if (e.game) flight = gameFlight(e, flight);                 // through the chains: the flight stops in the basket
+  if (fresh && e.game && !e.game.scored) gameScore(e, flight);
   e.res = { distFt: flight.distFt, lateralFt: flight.lateralFt, maxHFt: flight.maxHFt, timeS: flight.timeS };
   showNumbers(e);
   $("vDist").textContent = "0"; $("sDist").textContent = "in the air…";
   centerMsg("");
   if (scene) {
-    dropMesh(ghostTube); ghostTube = null;
+    if (!settings.game) { dropMesh(ghostTube); ghostTube = null; }
     if (tube) {                                         // the previous flight stays as a faint full trail
       tube.material.color.set(0xffffff); tube.material.opacity = 0.45; tube.material.transparent = true;
       tube.material.linewidth = 2.5; tube.material.depthWrite = false; tube.material.needsUpdate = true;
-      revealTrail(tube, 1); ghostTube = tube;
+      revealTrail(tube, 1);
+      if (settings.game) holeTrails.push(tube); else ghostTube = tube;   // the game keeps every shot of the hole
     }
     tube = setTube(flight.path, false);
     if (tube) revealTrail(tube, 0);
     if (landLabel) { scene.remove(landLabel); landLabel = null; }
     landRing.visible = false;
-    if (fresh || settings.camera !== "top") { camPos.set(0, 8, 26); camLook.set(0, 8, -120); }
+    if (fresh || settings.camera !== "top") { camPos.copy(W3(new THREE.Vector3(0, 8, 26))); camLook.copy(W3(new THREE.Vector3(0, 8, -120))); }
   }
   animT = 0; animStart = performance.now(); animating = true; landedAt = 0;
   renderSession();
@@ -1785,7 +1838,7 @@ function pointAt(t) {
 }
 function placeIdleDisc() {
   if (!discGroup) return;
-  discGroup.position.set(0, settings.heightFt, -1.5);
+  discGroup.position.copy(W3(new THREE.Vector3(0, settings.heightFt, -1.5)));
   let tilt = new THREE.Quaternion();
   if (liveUp) {                                        // mirror the real disc's tilt while it waits
     // liveUp = world "up" seen in the disc's own axes. Turned to the USB-C front the
@@ -1795,8 +1848,8 @@ function placeIdleDisc() {
     const up3 = new THREE.Vector3(ul, u[2], uf);       // three.js: X right, Y up, Z toward the thrower
     if (up3.lengthSq() > 1e-6) tilt.setFromUnitVectors(UP, up3.normalize());
   }
-  discGroup.quaternion.copy(tilt);
-  blob.position.set(0, 0.07, -1.5);
+  discGroup.quaternion.copy(new THREE.Quaternion().setFromAxisAngle(UP, shot.psi).multiply(tilt));
+  blob.position.copy(W3(new THREE.Vector3(0, 0.07, -1.5)));
 }
 function frame(now) {
   requestAnimationFrame(frame);
@@ -1810,15 +1863,18 @@ function frame(now) {
   const dt = animDt;
   if (!renderer) return;
   const smooth = k => 1 - Math.exp(-k * dt);
-  if (flight && current) {
+  // the game: a moment after a shot lands, the view moves behind the disc for the next one
+  const ready = settings.game && !animating && (!current || !landedAt || now - landedAt > 2500) && !round.holeDone;
+  if (aimLine) aimLine.visible = ready && settings.mode !== "techdisc";
+  if (flight && current && !ready) {
     if (animating) {
       animT = (now - animStart) / 1000 * settings.speedX;    // wall clock: real time at any frame rate
       if (animT >= flight.timeS) { animT = flight.timeS; animating = false; landedAt = now; onLanded(); }
     }
-    const p = pointAt(animT), pos = toV(p.x, p.y, Math.max(0.1, p.z));
+    const p = pointAt(animT), posL = toV(p.x, p.y, Math.max(0.1, p.z)), pos = W3(posL);
     discGroup.position.copy(pos);
     // orientation: disc normal from the simulation, plus a visible (slowed) wobble and spin
-    const n3 = new THREE.Vector3(-p.ny, p.nz, -p.nx).normalize();
+    const n3 = new THREE.Vector3(-p.ny, p.nz, -p.nx).normalize().applyAxisAngle(UP, shot.psi);
     const u = new THREE.Vector3().crossVectors(n3, new THREE.Vector3(1, 0, 0)); if (u.lengthSq() < 1e-6) u.set(0, 0, 1); u.normalize();
     const v = new THREE.Vector3().crossVectors(n3, u).normalize();
     if (animating) { wobPhase += animDt * 2 * Math.PI * 3; spinVis += animDt * 2 * Math.PI * Math.min(4, current.t.spin / 60) * (current.t.ccw ? 1 : -1); }
@@ -1831,10 +1887,16 @@ function frame(now) {
     blob.scale.setScalar(settings.scale * (1 + hgt / 25)); blob.material.opacity = 0.38 / (1 + hgt / 12);
     if (tube) revealTrail(tube, flight.timeS > 0 ? animT / flight.timeS : 1);
     if (animating) $("vDist").textContent = fmt(dist(Math.hypot(p.x, p.y)));
-    updateCamera(pos, p, smooth);
+    updateCamera(posL, p, smooth);
   } else {
+    if (settings.game) {
+      Object.assign(shot, nextFrame()); placeAimLine();
+      if (landLabel) landLabel.visible = false;            // the disc sits there now
+      const b = basketOf(COURSE[round.hole]);
+      if (basketLabel) basketLabel.visible = Math.hypot(b.x - round.lie.x, b.y - round.lie.y) > 100;   // up close it fills the screen
+    }
     placeIdleDisc();
-    camPos.lerp(new THREE.Vector3(0, 8, 24), smooth(2)); camLook.lerp(new THREE.Vector3(0, 6, -160), smooth(2));
+    camPos.lerp(W3(new THREE.Vector3(0, 8, 24)), smooth(2)); camLook.lerp(W3(new THREE.Vector3(0, 6, -160)), smooth(2));
     camera.fov += (50 - camera.fov) * smooth(3); camera.updateProjectionMatrix();
   }
   camera.position.copy(camPos); camera.lookAt(camLook);
@@ -1860,21 +1922,207 @@ function updateCamera(pos, p, smooth) {
     wantLook = new THREE.Vector3(landV.x * 0.5, 0, landV.z * 0.42);
   }
   const k = overview ? 1.6 : 3.5;
-  camPos.lerp(wantPos, smooth(k)); camLook.lerp(wantLook, smooth(k * 1.6));
+  camPos.lerp(W3(wantPos), smooth(k)); camLook.lerp(W3(wantLook), smooth(k * 1.6));
   camera.fov += (wantFov - camera.fov) * smooth(3); camera.updateProjectionMatrix();
 }
 function onLanded() {
   if (!current) return;
   showResult(current);
   if (scene) {
-    const land = flight.path[flight.path.length - 1], lv = toV(land.x, land.y, 0);
-    landRing.position.set(lv.x, 0.1, lv.z); landRing.visible = true;
+    const land = flight.path[flight.path.length - 1], lv = W3(toV(land.x, land.y, 0), current.frame || TEE_FRAME);
+    landRing.position.set(lv.x, 0.1, lv.z); landRing.visible = !current.game?.holed;
     if (landLabel) scene.remove(landLabel);
     landLabel = labelSprite(`${fmt(dist(current.res.distFt))} ${unit()}`, "#ffd34d", 2.4);
-    landLabel.position.set(lv.x, 16, lv.z); scene.add(landLabel);
+    landLabel.position.set(lv.x, 16, lv.z); landLabel.visible = !current.game?.holed; scene.add(landLabel);
   }
-  setTimeout(() => { if (!animating) idleMsg(); }, 2500);
+  if (current.game) gameLanded(current);
+  setTimeout(() => { if (!animating) idleMsg(); }, current.game ? 4500 : 2500);
 }
+
+// ================================================================ the game: play a round
+// Nine holes laid down the same fairway (basket x = length, y = offset, + = left). Every throw that arrives is the
+// next shot: flown from the lie, aimed at the basket plus the aim offset. Passing through the chains (within 1.15 ft
+// of the pole, 1.9-4.6 ft up) is in; landing within the tap-in distance counts one more throw to finish.
+const COURSE = [
+  { len: 210, off: 0, par: 3 }, { len: 275, off: -25, par: 3 }, { len: 320, off: 30, par: 3 },
+  { len: 175, off: 12, par: 3 }, { len: 355, off: -35, par: 3 }, { len: 245, off: 22, par: 3 },
+  { len: 300, off: -15, par: 3 }, { len: 230, off: 35, par: 3 }, { len: 430, off: 0, par: 4 }];
+const RKEY = "disctracker.round.v1", MAX_STROKES = 10, CATCH_R = 1.15;
+const freshRound = () => ({ hole: 0, scores: COURSE.map(() => null), strokes: 0, lie: { x: 0, y: 0 }, aim: 0, holeDone: false, over: false, hist: [] });
+let round = Object.assign(freshRound(), loadJSON(RKEY, {}));
+let basket = null, basketLabel = null, aimLine = null, holeTrails = [];
+const saveRound = () => saveJSON(RKEY, round);
+const basketOf = h => ({ x: h.len, y: h.off });
+const scoreName = (n, par) => n === 1 ? "Ace!" : ({ "-3": "Albatross", "-2": "Eagle", "-1": "Birdie", "0": "Par", "1": "Bogey", "2": "Double bogey",
+  "3": "Triple bogey" })[n - par] || `+${n - par}`;
+function nextFrame() {
+  const b = basketOf(COURSE[round.hole]), L = round.lie;
+  return { x: L.x, y: L.y, psi: Math.atan2(b.y - L.y, b.x - L.x) - round.aim * D2R };
+}
+function gameShot(e) {
+  if (round.over) { newRound(); toast("New round – hole 1.", "", 3000); }
+  else if (round.holeDone) nextHole();
+  const { hist, ...snap } = round; round.hist.push(JSON.stringify(snap));     // for a mulligan
+  e.frame = nextFrame(); e.game = { hole: round.hole, stroke: round.strokes + 1 };
+}
+function gameFlight(e, fl) {
+  const b = basketOf(COURSE[e.game.hole]), fr = e.frame, c = Math.cos(fr.psi), s = Math.sin(fr.psi), P = fl.path;
+  for (let i = 1; i < P.length; i++) {
+    const A = P[i - 1], B = P[i];
+    for (let k = 1; k <= 4; k++) {
+      const f = k / 4, x = A.x + (B.x - A.x) * f, y = A.y + (B.y - A.y) * f, z = A.z + (B.z - A.z) * f;
+      if (Math.hypot(fr.x + x * c - y * s - b.x, fr.y + x * s + y * c - b.y) >= CATCH_R || z <= 1.9 || z >= 4.6) continue;
+      // in the chains: drop into the tray (the path keeps its 0.02 s steps)
+      const dx = b.x - fr.x, dy = b.y - fr.y, bx = dx * c + dy * s, by = -dx * s + dy * c, path = P.slice(0, i), t0 = path[i - 1].t;
+      for (let j = 1; j <= 15; j++) { const u = Math.min(1, j / 6); path.push({ ...A, t: t0 + 0.02 * j, x: x + (bx - x) * u, y: y + (by - y) * u, z: z + (2.4 - z) * u, w: 0 }); }
+      e.game.holed = true;
+      return { ...fl, path, timeS: path[path.length - 1].t, distFt: Math.hypot(bx, by), lateralFt: by, holed: true };
+    }
+  }
+  return fl;
+}
+function gameScore(e, fl) {
+  e.game.scored = true;
+  const land = fl.path[fl.path.length - 1], fr = e.frame, c = Math.cos(fr.psi), s = Math.sin(fr.psi);
+  const wx = fr.x + land.x * c - land.y * s, wy = fr.y + land.x * s + land.y * c, b = basketOf(COURSE[round.hole]);
+  const left = Math.hypot(b.x - wx, b.y - wy);
+  round.strokes++; round.lie = { x: wx, y: wy }; round.aim = 0; e.game.left = left;
+  if (fl.holed) e.game.result = "holed";
+  else if (left <= (settings.gimme ?? 10)) { round.strokes++; e.game.result = "tapin"; }
+  else if (round.strokes >= MAX_STROKES) e.game.result = "pickup";
+  if (e.game.result) {
+    round.scores[round.hole] = round.strokes; round.holeDone = true; round.lie = { ...b };
+    if (round.scores.every(v => v != null)) round.over = true;
+  }
+  e.game.strokes = round.strokes; e.game.par = COURSE[round.hole].par;
+  saveRound();
+}
+function gameLanded(e) {
+  const g = e.game, d = `${fmt(dist(g.left))} ${unit()}`;
+  if (g.result) {
+    const head = g.result === "holed" ? (g.strokes === 1 ? "ACE!" : "In the basket!") : g.result === "tapin" ? `Tap-in from ${d}` : "Picked up";
+    const total = round.scores.reduce((a, v) => a + (v || 0), 0), par = COURSE.reduce((a, h, i) => a + (round.scores[i] != null ? h.par : 0), 0);
+    centerMsg(`${head}<small>${scoreName(g.strokes, g.par)} · ${g.strokes} on a par ${g.par}` +
+      (round.over ? ` · round over: ${total} (${total - par > 0 ? "+" : ""}${total - par || "even"})` : " · throw again for the next hole") + `</small>`, 0);
+  } else centerMsg(`${d} to the basket<small>Throw ${g.stroke} done – throw your next shot</small>`, 0);
+  renderGame();
+}
+function clearHole() {
+  holeTrails.forEach(dropMesh); holeTrails = [];
+  dropMesh(tube); tube = null; dropMesh(ghostTube); ghostTube = null;
+  current = null; flight = null; animating = false;
+  if (landRing) landRing.visible = false;
+  if (landLabel) { scene.remove(landLabel); landLabel = null; }
+}
+function nextHole() {
+  if (round.hole >= COURSE.length - 1) { newRound(); return; }
+  Object.assign(round, { hole: round.hole + 1, strokes: 0, lie: { x: 0, y: 0 }, aim: 0, holeDone: false, hist: [] });
+  clearHole(); saveRound(); placeBasket(); renderGame(); idleMsg();
+}
+function newRound() { round = freshRound(); clearHole(); saveRound(); placeBasket(); renderGame(); idleMsg(); }
+function restartHole() {
+  Object.assign(round, { strokes: 0, lie: { x: 0, y: 0 }, aim: 0, holeDone: false, over: false, hist: [] });
+  round.scores[round.hole] = null; clearHole(); saveRound(); renderGame(); idleMsg();
+}
+function gameUndo(quiet) {
+  if (!round.hist.length) { if (!quiet) toast("No shot to take back on this hole.", "", 2500); return false; }
+  const hist = round.hist, prev = JSON.parse(hist.pop());
+  round = Object.assign(freshRound(), prev, { hist });
+  dropMesh(tube); tube = null; current = null; flight = null; animating = false;
+  if (landRing) landRing.visible = false;
+  if (landLabel) { scene.remove(landLabel); landLabel = null; }
+  saveRound(); renderGame(); if (!quiet) { toast("Mulligan – that shot doesn't count.", "", 2500); idleMsg(); }
+  return true;
+}
+function setGame(on) {
+  settings.game = on; saveSettings();
+  document.documentElement.classList.toggle("game", on);
+  clearHole();
+  Object.assign(shot, on ? nextFrame() : TEE_FRAME);
+  if (basket) basket.visible = on;
+  if (on) placeBasket();
+  renderGame(); idleMsg();
+}
+function buildBasket() {
+  const g = new THREE.Group(), metal = new THREE.MeshStandardMaterial({ color: 0xc9ccd1, metalness: 0.6, roughness: 0.35 });
+  const yellow = new THREE.MeshStandardMaterial({ color: 0xffd21f, roughness: 0.5, side: THREE.DoubleSide });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 5.2, 12), metal); pole.position.y = 2.6;
+  const tray = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 0.95, 0.65, 32, 1, true), yellow); tray.position.y = 2.2;
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(0.95, 32), yellow); floor.rotation.x = -Math.PI / 2; floor.position.y = 1.9;
+  const band = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.06, 8, 40), yellow); band.rotation.x = Math.PI / 2; band.position.y = 4.5;
+  g.add(pole, tray, floor, band);
+  const chainMat = new THREE.MeshStandardMaterial({ color: 0xdfe3e8, metalness: 0.7, roughness: 0.3 });
+  for (let k = 0; k < 14; k++) {                      // chains from the band in toward the pole
+    const a = k / 14 * 2 * Math.PI, top = new THREE.Vector3(Math.cos(a), 4.45, Math.sin(a)), bot = new THREE.Vector3(0.2 * Math.cos(a), 2.6, 0.2 * Math.sin(a));
+    const dir = bot.clone().sub(top), ch = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, dir.length(), 4), chainMat);
+    ch.position.copy(top).addScaledVector(dir, 0.5); ch.quaternion.setFromUnitVectors(UP, dir.normalize()); g.add(ch);
+  }
+  // seen from 400 ft away the basket is a speck: a tall orange beam marks it, and a ring on the ground marks 33 ft
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 70, 12, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xff8a1f, transparent: true, opacity: 0.3, depthWrite: false }));
+  beam.position.y = 40;
+  const c1 = new THREE.Mesh(new THREE.RingGeometry(32.5, 33, 96), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
+  c1.rotation.x = -Math.PI / 2; c1.position.y = 0.09;
+  g.add(beam, c1);
+  g.visible = false; scene.add(g);
+  return g;
+}
+function placeBasket() {
+  if (!scene) return;
+  if (!basket) basket = buildBasket();
+  const h = COURSE[round.hole], b = basketOf(h);
+  basket.position.copy(toV(b.x, b.y, 0)); basket.visible = !!settings.game;
+  if (basketLabel) basket.remove(basketLabel);
+  basketLabel = labelSprite(`Hole ${round.hole + 1} · par ${h.par}`, "#ffd34d", 1.3); basketLabel.position.y = 16; basket.add(basketLabel);
+}
+function placeAimLine() {
+  if (!scene) return;
+  if (!aimLine) {
+    const geo = new THREE.PlaneGeometry(0.7, 1); geo.rotateX(-Math.PI / 2); geo.translate(0, 0, -0.5);
+    aimLine = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, depthWrite: false }));
+    scene.add(aimLine);
+  }
+  const b = basketOf(COURSE[round.hole]), L = round.lie;
+  aimLine.position.set(-L.y, 0.12, -L.x); aimLine.rotation.y = shot.psi;
+  aimLine.scale.z = Math.min(420, Math.hypot(b.x - L.x, b.y - L.y) + 15);
+}
+function setAim(a) { round.aim = Math.max(-60, Math.min(60, a)); saveRound(); renderGame(); }
+function renderGame() {
+  $("gameHud").classList.toggle("hidden", !settings.game);
+  $("gameBtn").textContent = settings.game ? "⛳ Stop playing" : "⛳ Play a round";
+  if (!settings.game) return;
+  const h = COURSE[round.hole], b = basketOf(h), d = Math.hypot(b.x - round.lie.x, b.y - round.lie.y);
+  $("ghHole").textContent = `Hole ${round.hole + 1}`;
+  $("ghInfo").textContent = `par ${h.par} · ${fmt(dist(h.len))} ${unit()}`;
+  const sc = round.scores[round.hole];
+  $("ghState").innerHTML = round.holeDone ? `Done in <b>${sc}</b> – ${scoreName(sc, h.par)}` :
+    round.strokes ? `<b>${fmt(dist(d))} ${unit()}</b> to the basket · ${round.strokes} throw${round.strokes > 1 ? "s" : ""} so far` :
+    `On the tee · <b>${fmt(dist(d))} ${unit()}</b> to the basket`;
+  $("ghAimRow").style.display = round.holeDone ? "none" : "";
+  $("ghAim").textContent = round.aim ? `Aim: ${Math.abs(round.aim)}° ${round.aim > 0 ? "right" : "left"} of the basket` : "Aim: straight at the basket";
+  $("ghNext").style.display = round.holeDone ? "" : "none";
+  $("ghNext").textContent = round.over ? "New round" : "Next hole ▸";
+  let tot = 0, par = 0;
+  round.scores.forEach((v, i) => { if (v != null) { tot += v; par += COURSE[i].par; } });
+  const rel = tot - par;
+  $("ghTotal").textContent = par ? `${tot} (${rel > 0 ? "+" : ""}${rel || "E"})` : "";
+  const cls = i => { const v = round.scores[i]; return (i === round.hole ? "cur " : "") + (v == null ? "" : v < COURSE[i].par ? "under" : v > COURSE[i].par ? "over" : ""); };
+  $("ghCard").style.gridTemplateColumns = `auto repeat(${COURSE.length}, 1fr) 1.3fr`;
+  $("ghCard").innerHTML = `<span class="h">Hole</span>${COURSE.map((_, i) => `<span class="h">${i + 1}</span>`).join("")}<span class="h">Tot</span>` +
+    `<span class="h">Par</span>${COURSE.map(c => `<span class="h">${c.par}</span>`).join("")}<span class="h">${COURSE.reduce((a, c) => a + c.par, 0)}</span>` +
+    `<span class="h">You</span>${COURSE.map((_, i) => `<span class="${cls(i)}">${round.scores[i] ?? (i === round.hole && round.strokes ? "·" : "")}</span>`).join("")}<span><b>${par ? tot : ""}</b></span>`;
+}
+$("gameBtn").onclick = () => setGame(!settings.game);
+$("ghLeft").onclick = () => setAim(round.aim - 2);
+$("ghRight").onclick = () => setAim(round.aim + 2);
+$("ghCenter").onclick = () => setAim(0);
+$("ghUndo").onclick = () => gameUndo(false);
+$("ghRestart").onclick = () => { if (round.strokes === 0 || confirm(`Start hole ${round.hole + 1} again?`)) restartHole(); };
+$("ghNext").onclick = () => round.over ? newRound() : nextHole();
+$("ghTest").onclick = testThrow;
+$("newRoundBtn").onclick = () => { if (confirm("Start a new round? This round's scores are cleared.")) newRound(); };
+$("gimmeSel").value = String(settings.gimme ?? 10);
+$("gimmeSel").onchange = () => { settings.gimme = +$("gimmeSel").value; saveSettings(); };
 
 // ================================================================ UI wiring
 function setMode(m) {
@@ -1926,9 +2174,11 @@ $("bagDel").onclick = () => {
 $("reflyBtn").onclick = () => {
   const last = current || session[session.length - 1]; if (!last) { toast("No throw to re-fly yet."); return; }
   discChanged();
+  if (settings.game && last.game) gameUndo(true);            // the game: this replaces that shot
   const e = { ...last, key: `${last.key}-r${Date.now() % 100000}`, at: Date.now(), disc: currentDisc(),
               cond: { windMph: settings.windMph, windFrom: settings.windFrom, heightFt: settings.heightFt } };
   const fl = flightFor(e); e.res = { distFt: fl.distFt, lateralFt: fl.lateralFt, maxHFt: fl.maxHFt, timeS: fl.timeS };
+  if (settings.game) { delete e.frame; delete e.game; }
   session.push(e); saveSession(); sendToTechDisc(e); play(e, true);
 };
 $("handSel").onchange = () => { settings.hand = $("handSel").value; saveSettings(); if (current) showNumbers(current); };
@@ -1937,7 +2187,7 @@ $("windFrom").onchange = () => { settings.windFrom = +$("windFrom").value; saveS
 $("relHeight").onchange = () => { settings.heightFt = Math.max(0, Math.min(10, parseFloat($("relHeight").value) || 4)); saveSettings(); };
 $("camSel").onchange = () => { settings.camera = $("camSel").value; saveSettings(); };
 $("speedSel").onchange = () => { settings.speedX = parseFloat($("speedSel").value) || 1; saveSettings(); };
-$("unitSel").onchange = () => { settings.units = $("unitSel").value; saveSettings(); buildMarkers(); renderSession(); if (current) { showNumbers(current); if (!animating) { showResult(current); onLanded(); } } };
+$("unitSel").onchange = () => { settings.units = $("unitSel").value; saveSettings(); buildMarkers(); renderSession(); renderGame(); if (current) { showNumbers(current); if (!animating) { showResult(current); onLanded(); } } };
 $("scaleSel").onchange = () => { settings.scale = parseFloat($("scaleSel").value) || 3; saveSettings(); applyScale(); };
 $("modeSel").onchange = () => setMode($("modeSel").value);
 $("setBtn").onclick = () => $("panel").classList.toggle("hidden");
@@ -1967,6 +2217,8 @@ document.addEventListener("keydown", ev => {
   else if (k === "c") { const o = ["follow", "tee", "top"]; settings.camera = o[(o.indexOf(settings.camera) + 1) % 3]; $("camSel").value = settings.camera; saveSettings(); toast("Camera: " + $("camSel").selectedOptions[0].text, "", 1500); }
   else if (k === "m") { const o = ["ours", "split", "techdisc", "live"]; setMode(o[(o.indexOf(settings.mode) + 1) % 4]); }
   else if (k === "p" && settings.mode === "live") $("lpPause").click();
+  else if (k === "g") setGame(!settings.game);
+  else if ((k === "arrowleft" || k === "arrowright") && settings.game && !round.holeDone) { ev.preventDefault(); setAim(round.aim + (k === "arrowleft" ? -2 : 2)); }
   else if (k === "s") $("sessBtn").click();
   else if (k === "escape") { $("panel").classList.add("hidden"); $("welcome").classList.add("hidden"); }
 });
@@ -1992,9 +2244,11 @@ if (!navigator.bluetooth) $("btNote").textContent = "This browser has no Bluetoo
 renderBag(); renderSession();
 init3D();
 setMode(settings.mode);
+setGame(!!settings.game);
 updateRecUi();
 renderLegend();
-window.discSim = { live, analyzeCapture, livePacket, play, addThrow, testThrow, session: () => session, onSummary, parseSummary, onBtPacket, rec, recStop, addMark,
+window.discSim = { _throw: t => play(addThrow({ ccw: false, flags: 1, wobble: 1, ...t, key: `test-${Date.now()}` }, true), true),
+                   _round: () => round, live, analyzeCapture, livePacket, play, addThrow, testThrow, session: () => session, onSummary, parseSummary, onBtPacket, rec, recStop, addMark,
                    _testStart: () => { Object.assign(rec, { on: true, mem: [], name: "test.bin", t0: Date.now(), recNo: 0, expect: null, chunk: null, chunkN: 0, throws: 0, lost: 0, samples: 0, bytes: 0, pendingCaps: [] }); rec.ringSeq.fill(-1); },
                    _testLink: ch => { cmdChar = ch; hasBtStream = true; streamSent = null; } };   // for testing
 </script>
