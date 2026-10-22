@@ -39,7 +39,7 @@
   input[type=number] { width: 72px; }
   a { color: #9fd3ff; }
 
-  header#top { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; gap: 8px; align-items: center; pointer-events: none; z-index: 4; }
+  header#top { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; align-items: center; pointer-events: none; z-index: 4; }
   header#top > * { pointer-events: auto; }
   .brand { background: var(--hud); border: 1px solid var(--line); border-radius: 12px; padding: 7px 14px; font-weight: 800; letter-spacing: .02em; }
   .brand span { color: var(--accent); }
@@ -52,7 +52,7 @@
   .pill.rec .dot { background: #ef4444; box-shadow: 0 0 10px #ef4444; animation: recblink 1.2s steps(2, start) infinite; }
   @keyframes recblink { to { visibility: hidden; } }
   .labels { display: flex; flex-wrap: wrap; gap: 6px; }
-  #livePage { position: fixed; top: 60px; left: 12px; right: 12px; bottom: 12px; display: none; z-index: 3; gap: 10px;
+  #livePage { position: fixed; top: calc(var(--top, 52px) + 8px); left: 12px; right: 12px; bottom: 12px; display: none; z-index: 3; gap: 10px;
               grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr); }
   body.mode-live #livePage { display: grid; }
   body.mode-live #view, body.mode-live #stats, body.mode-live #session, body.mode-live #flightInfo,
@@ -101,11 +101,11 @@
   .tile .s { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tile.big .v { font-size: clamp(44px, 5.4vw, 96px); color: var(--accent); }
 
-  #flightInfo { position: fixed; left: 12px; top: 64px; background: var(--hud2); border: 1px solid var(--line); border-radius: 12px;
+  #flightInfo { position: fixed; left: 12px; top: calc(var(--top, 52px) + 12px); background: var(--hud2); border: 1px solid var(--line); border-radius: 12px;
                 padding: 8px 12px; font-size: 13px; color: var(--muted); z-index: 2; max-width: 46%; }
   #flightInfo b { color: var(--text); }
 
-  #gameHud { position: fixed; left: 12px; top: 64px; z-index: 3; width: 372px; font-size: 13px;
+  #gameHud { position: fixed; left: 12px; top: calc(var(--top, 52px) + 12px); z-index: 3; width: 372px; font-size: 13px;
              background: var(--hud); border: 1px solid var(--line); border-radius: 14px; padding: 9px 12px; }
   #gameHud.hidden, body.mode-techdisc #gameHud, body.mode-live #gameHud { display: none; }
   #gameHud .gh-top { display: flex; gap: 8px; align-items: baseline; }
@@ -119,7 +119,7 @@
   #ghCard .under { background: rgba(52, 211, 153, 0.28); }
   #ghCard .over { background: rgba(248, 113, 113, 0.24); }
   html.game #flightInfo { display: none; }
-  #session { position: fixed; top: 64px; right: 12px; width: 300px; max-height: calc(100% - 64px - 150px); overflow: auto;
+  #session { position: fixed; top: calc(var(--top, 52px) + 12px); right: 12px; width: 300px; max-height: calc(100% - var(--top, 52px) - 162px); overflow: auto;
              background: var(--hud); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; z-index: 2; }
   #session.hidden { display: none; }
   #session h3, #panel h3 { margin: 2px 0 8px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
@@ -135,7 +135,7 @@
   .best { color: var(--accent); }
   .tag { font-size: 10px; border: 1px solid var(--line); border-radius: 6px; padding: 0 4px; color: var(--muted); margin-left: 4px; }
 
-  #panel { position: fixed; top: 64px; right: 12px; width: 380px; max-height: calc(100% - 76px); overflow: auto; z-index: 5;
+  #panel { position: fixed; top: calc(var(--top, 52px) + 12px); right: 12px; width: 380px; max-height: calc(100% - var(--top, 52px) - 24px); overflow: auto; z-index: 5;
            background: rgba(11, 15, 21, 0.94); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
   #panel.hidden { display: none; }
   .sec { border-top: 1px solid var(--line); padding: 10px 0; }
@@ -265,6 +265,7 @@
     <div class="row"><label>Tap-in distance</label><select id="gimmeSel"><option value="0">none – putt everything</option>
       <option value="6">6 ft</option><option value="10">10 ft</option><option value="20">20 ft</option><option value="33">33 ft (circle 1)</option></select>
       <button class="small" id="newRoundBtn">New round</button></div>
+    <div class="row"><button class="primary small" id="gameBtn2">⛳ Play a round</button></div>
   </div>
   <div class="sec">
     <h3>Display</h3>
@@ -302,7 +303,7 @@
         spin and wobble are measured in that free flight.</li>
     </ol>
     <div class="row"><button class="primary" id="welcomeConnect">Connect to the disc</button>
-      <button id="welcomeSkip">Look around first</button></div>
+      <button id="welcomeSkip">Look around first</button><button id="welcomeGame">⛳ Play a round</button></div>
     <p class="note" id="btNote"></p>
   </div>
 </div>
@@ -2089,7 +2090,7 @@ function placeAimLine() {
 function setAim(a) { round.aim = Math.max(-60, Math.min(60, a)); saveRound(); renderGame(); }
 function renderGame() {
   $("gameHud").classList.toggle("hidden", !settings.game);
-  $("gameBtn").textContent = settings.game ? "⛳ Stop playing" : "⛳ Play a round";
+  $("gameBtn").textContent = $("gameBtn2").textContent = settings.game ? "⛳ Stop playing" : "⛳ Play a round";
   if (!settings.game) return;
   const h = COURSE[round.hole], b = basketOf(h), d = Math.hypot(b.x - round.lie.x, b.y - round.lie.y);
   $("ghHole").textContent = `Hole ${round.hole + 1}`;
@@ -2112,7 +2113,9 @@ function renderGame() {
     `<span class="h">Par</span>${COURSE.map(c => `<span class="h">${c.par}</span>`).join("")}<span class="h">${COURSE.reduce((a, c) => a + c.par, 0)}</span>` +
     `<span class="h">You</span>${COURSE.map((_, i) => `<span class="${cls(i)}">${round.scores[i] ?? (i === round.hole && round.strokes ? "·" : "")}</span>`).join("")}<span><b>${par ? tot : ""}</b></span>`;
 }
-$("gameBtn").onclick = () => setGame(!settings.game);
+$("gameBtn").onclick = $("gameBtn2").onclick = () => setGame(!settings.game);
+$("welcomeGame").onclick = () => { $("welcome").classList.add("hidden"); setGame(true); };
+new ResizeObserver(() => document.documentElement.style.setProperty("--top", `${Math.round($("top").getBoundingClientRect().bottom)}px`)).observe($("top"));
 $("ghLeft").onclick = () => setAim(round.aim - 2);
 $("ghRight").onclick = () => setAim(round.aim + 2);
 $("ghCenter").onclick = () => setAim(0);
