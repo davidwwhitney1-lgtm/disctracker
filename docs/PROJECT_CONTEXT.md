@@ -278,3 +278,9 @@ Plan: side-by-side test (both trackers on one disc) with radar gun, laser tachom
   page's ~39 s ring and `throw_metrics.h`'s `analyze()` runs again in JavaScript (`analyzeCapture`, matches disclab
   exactly on synthetic throws), drawn as sections (pre-trigger, still moment, wind-up + pull, settle, free flight,
   after impact) with a numbered explanation of each step and a ✓ check against the disc's numbers.
+- **Throw log for calibration** (live page, "This throw" card): every throw the live page sees is saved in the
+  browser (IndexedDB `disctracker-throwlog`) with its raw samples, the disc's numbers, the page's step-by-step
+  results, the live estimate and the simulated flight (distance + small top/side map). The user labels what it really
+  was (type, thrown into, guessed speed, spin range, real distance, angle, nose, wobble, notes). "Export log (Excel)"
+  = one row per throw, label next to the disc's numbers; "Data file" = JSON with everything incl. base64 int16
+  samples (gx gy gz ax ay az) for re-tuning the maths later.

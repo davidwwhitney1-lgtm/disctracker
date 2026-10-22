@@ -53,7 +53,7 @@
   @keyframes recblink { to { visibility: hidden; } }
   .labels { display: flex; flex-wrap: wrap; gap: 6px; }
   #livePage { position: fixed; top: 60px; left: 12px; right: 12px; bottom: 12px; display: none; z-index: 3; gap: 10px;
-              grid-template-columns: minmax(0, 1fr) 340px; grid-template-rows: minmax(0, 1.25fr) minmax(0, 1fr); }
+              grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr); }
   body.mode-live #livePage { display: grid; }
   body.mode-live #view, body.mode-live #stats, body.mode-live #session, body.mode-live #flightInfo,
   body.mode-live #centerMsg { display: none; }
@@ -63,7 +63,17 @@
   .lp-bar b { color: var(--text); font-size: 14px; }
   .cvwrap { position: relative; flex: 1 1 auto; min-height: 0; min-width: 0; }
   .cvwrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-  #lpSide { grid-row: span 2; overflow: auto; }
+  #lpSide, #lpLog { overflow: auto; }
+  .lg-dist { font-size: 22px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .lg-sim { flex: 0 0 90px; margin-bottom: 4px; }
+  .lg-form { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 5px 6px; align-items: end; }
+  .lg-form > * { grid-column: span 6; }
+  .lg-form > .q { grid-column: span 3; }
+  .lg-form > .n8 { grid-column: span 8; }
+  .lg-form > button { grid-column: span 4; }
+  .lg-form label { display: flex; flex-direction: column; gap: 1px; font-size: 11.5px; color: var(--muted); }
+  .lg-form input, .lg-form select { padding: 3px 6px; font-size: 13px; width: 100%; }
+  #lpLog .row { margin: 5px 0 0; }
   #lpSide h3 { margin: 10px 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
   #lpSide h3:first-child { margin-top: 2px; }
   .lp-break-body { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.62fr); grid-template-rows: minmax(0, 1fr);
@@ -296,10 +306,36 @@
       To keep them, start a recording (⚙ Settings).</p>
   </aside>
   <section class="lp-card">
-    <div class="lp-bar"><b>How the last throw was measured</b><select id="lpThrowSel" style="display:none"></select><span id="lpCheck"></span></div>
+    <div class="lp-bar"><b>How the last throw was measured</b><select id="lpThrowSel" style="display:none"></select><span id="lpCheck"></span>
+      <span class="spacer"></span><span id="lgCount"></span>
+      <button class="small" id="lgCsv" title="Your labels next to the disc's numbers, one row per throw">Export log (Excel)</button>
+      <button class="small" id="lgJson" title="Everything including the raw readings, for re-tuning the calculations">Data file</button></div>
     <div class="lp-break-body"><div class="cvwrap"><canvas id="lpBreak"></canvas></div>
       <ol id="lpSteps"><li>Throw the disc – every step of the calculation, with its numbers, shows up here.</li></ol></div>
   </section>
+  <aside class="lp-card" id="lpLog">
+    <div class="lp-bar"><b>This throw</b><span id="lgWhich"></span><span class="spacer"></span><span class="lg-dist" id="lgDist">–</span></div>
+    <div class="cvwrap lg-sim"><canvas id="lgCanvas"></canvas></div>
+    <div class="note" id="lgSimNote" style="margin:0 0 6px"></div>
+    <div class="lg-form">
+      <label>What it really was<select id="lgType"><option value="">–</option><option>Backhand</option><option>Forehand</option>
+        <option>Overhand / thumber</option><option>Roller</option><option>Putt</option><option>Drop test</option><option>Hand spin / flick</option>
+        <option>Not a throw</option><option>Other</option></select></label>
+      <label>Thrown into<select id="lgWhere"><option value="">–</option><option>Net</option><option>Open field</option><option>Indoors, no net</option>
+        <option>Caught / hand</option></select></label>
+      <label>My speed guess (mph)<input id="lgSpeed" type="number" min="0" max="90" step="1" placeholder="e.g. 40"></label>
+      <label>My spin guess<select id="lgSpin"><option value="">–</option><option value="0-500">low (under 500 rpm)</option>
+        <option value="500-800">medium (500–800 rpm)</option><option value="800-1100">high (800–1100 rpm)</option>
+        <option value="1100-2000">very high (over 1100 rpm)</option></select></label>
+      <label class="q" title="Real distance in feet, if you threw it outdoors">Distance ft<input id="lgDistIn" type="number" min="0" max="700" step="5" placeholder="?"></label>
+      <label class="q">Angle<select id="lgAngle"><option value="">–</option><option>Hyzer</option><option>Flat</option><option>Anhyzer</option></select></label>
+      <label class="q">Wobble<select id="lgWob"><option value="">–</option><option>None</option><option>Some</option><option>A lot</option></select></label>
+      <label class="q">Nose<select id="lgNose"><option value="">–</option><option>Down</option><option>Flat</option><option>Up</option></select></label>
+      <label class="n8">Notes<input id="lgNote" placeholder="anything odd about this one"></label>
+      <button class="primary small" id="lgSave">Save label</button>
+    </div>
+    <div class="note" style="margin-top:4px" id="lgState"></div>
+  </aside>
 </div>
 
 <script src="flight.js?v=2026-10-21b"></script>
@@ -865,11 +901,17 @@ function liveTryCaps() {
       else { missing++; if (i) S.copyWithin(i * 6, (i - 1) * 6, i * 6); }
     }
     let an = null;
-    try { an = analyzeCapture(S, live.info || DEFAULT_INFO); } catch (e) { console.error("analysis failed", e); }
-    live.caps.push({ c, S, an, missing, at: Date.now() });
-    if (live.caps.length > 8) live.caps.shift();
-    live.sel = live.caps[live.caps.length - 1];
-    renderThrowSel(); renderBreakdown(); renderLastThrow();
+    const info = live.info || DEFAULT_INFO;
+    try { an = analyzeCapture(S, info); } catch (e) { console.error("analysis failed", e); }
+    const rr = live.rels.find(r => Math.abs(r.seq - (c.start + c.rel)) < 60);
+    const ent = { id: `${info.boot}-${c.start}-${c.tMs}`, c, S, an, missing, at: Date.now(), info, label: null,
+                  liveEst: rr ? { speed: rr.speed, launch: rr.launch, hyzer: rr.hyzer, nose: rr.nose } : null };
+    ent.flight = capFlight(ent);
+    live.caps.push(ent);
+    if (live.caps.length > 40) live.caps.shift();
+    live.sel = ent;
+    logSave(ent, true);
+    renderThrowSel(); renderBreakdown(); renderLastThrow(); renderLog(true);
   }
 }
 
@@ -1187,6 +1229,7 @@ function drawLive() {
   // the sections of each throw the disc reported, and releases spotted here before its results arrived
   const bands = [], vlines = [], ptSpeed = [], ptSpin = [];
   for (const e of live.caps) {
+    if (e.old || (e.info && live.info && e.info.boot !== live.info.boot)) continue;         // another session or boot
     const s0 = e.c.start, an = e.an && e.an.n ? e.an : null; if (s0 + e.c.n < i0 || s0 > i1) continue;
     bands.push(...captureBands(an, e.c.n, s0));
     vlines.push({ i: s0 + 415, color: "#94a3b8", label: "trigger" });
@@ -1199,7 +1242,7 @@ function drawLive() {
     }
   }
   // releases and impacts spotted here, until the disc's results for that throw take over
-  const reported = i => live.caps.some(e => i >= e.c.start && i <= e.c.start + e.c.n + 60);
+  const reported = i => live.caps.some(e => !e.old && i >= e.c.start && i <= e.c.start + e.c.n + 60);
   for (const { seq: i } of live.rels) if (!reported(i)) vlines.push({ i, color: "#fbbf24", label: "release" });
   for (const i of live.impMarks) if (!reported(i)) vlines.push({ i, color: "#f87171", label: "impact" });
   const top = 2, axisH = 16, gapH = 6, nP = 5, ph = (H - top - axisH - gapH * (nP - 1)) / nP;
@@ -1271,7 +1314,8 @@ function renderLastThrow() {
 }
 function renderThrowSel() {
   const sel = $("lpThrowSel");
-  sel.innerHTML = live.caps.slice().reverse().map((e, k) => `<option value="${live.caps.length - 1 - k}">${new Date(e.at).toLocaleTimeString()} · ${e.c.res[0].toFixed(1)} mph${e.c.counted ? "" : " (not counted)"}</option>`).join("");
+  const when = t => new Date(t).toDateString() === new Date().toDateString() ? new Date(t).toLocaleTimeString() : new Date(t).toLocaleString();
+  sel.innerHTML = live.caps.slice().reverse().map((e, k) => `<option value="${live.caps.length - 1 - k}">${e.label ? "✓ " : ""}${when(e.at)} · ${e.c.res[0].toFixed(1)} mph${e.c.counted ? "" : " (not counted)"}</option>`).join("");
   sel.value = String(live.caps.indexOf(live.sel));
   sel.style.display = live.caps.length ? "" : "none";
 }
@@ -1283,7 +1327,7 @@ function renderBreakdown() {
     g.fillText(e ? "This throw's readings didn't arrive." : "Throw the disc: its readings show up here, cut into the sections the disc uses.", W / 2, H / 2);
     return;
   }
-  const an = e.an, S = e.S, I = live.info || DEFAULT_INFO, odr = an.odr || 416, n = an.n;
+  const an = e.an, S = e.S, I = e.info || live.info || DEFAULT_INFO, odr = an.odr || 416, n = an.n;
   const A = i => Math.hypot(S[i * 6 + 3], S[i * 6 + 4], S[i * 6 + 5]) * I.alsb;
   // time axis: the still moment, a break, then from just before the wind-up to just after the flight
   let move = an.iStart;
@@ -1322,7 +1366,7 @@ function renderBreakdown() {
   renderSteps(e);
 }
 function renderSteps(e) {
-  const an = e.an, I = live.info || DEFAULT_INFO, odr = an.odr || 416;
+  const an = e.an, I = e.info || live.info || DEFAULT_INFO, odr = an.odr || 416;
   const ms = k => `${Math.round(k / odr * 1000)} ms`, ts = k => { const t = (k - 415) / odr; return `${t > 0 ? "+" : ""}${t.toFixed(2)} s`; };
   const sw = c => `<span class="sw" style="background:${c.replace(/0\.\d+\)$/, "0.9)")}"></span>`;
   const warn = t => ` <span style="color:var(--warn)">${t}</span>`;
@@ -1362,8 +1406,153 @@ function renderLegend() {
     c(BAND.after, "After the impact", "not used");
 }
 $("lpPause").onclick = () => { live.paused = !live.paused; live.pauseAt = live.last; $("lpPause").textContent = live.paused ? "▶ Resume" : "❚❚ Pause"; };
-$("lpThrowSel").onchange = () => { live.sel = live.caps[+$("lpThrowSel").value] || live.sel; renderBreakdown(); renderLastThrow(); };
-window.addEventListener("resize", () => { if (settings.mode === "live") renderBreakdown(); });
+$("lpThrowSel").onchange = () => { live.sel = live.caps[+$("lpThrowSel").value] || live.sel; renderBreakdown(); renderLastThrow(); renderLog(true); };
+window.addEventListener("resize", () => { if (settings.mode === "live") { renderBreakdown(); renderLog(); } });
+
+// ================================================================ throw log: what each throw really was
+// Every throw seen on the live page is kept in this browser (IndexedDB) with its raw readings, the disc's
+// numbers, this page's step-by-step results, the live estimate and the simulated flight. A label adds what it
+// really was, so the calculations can later be compared with reality and re-tuned.
+const LOGDB = "disctracker-throwlog", LOGSTORE = "throws";
+let logDbP = null;
+const logDb = () => logDbP || (logDbP = new Promise((res, rej) => {
+  const r = indexedDB.open(LOGDB, 1);
+  r.onupgradeneeded = () => r.result.createObjectStore(LOGSTORE, { keyPath: "id" });
+  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+}));
+async function logTx(mode, fn) {
+  const db = await logDb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(LOGSTORE, mode), req = fn(tx.objectStore(LOGSTORE));
+    tx.oncomplete = () => res(req.result); tx.onerror = () => rej(tx.error);
+  });
+}
+const logAll = () => logTx("readonly", st => st.getAll());
+live.logStats = { total: 0, labeled: 0 };
+function capFlight(e) {
+  const d = e.c.res, disc = currentDisc(); e.simDisc = disc.name;
+  return simulateFlight({ speedMph: d[0], spinRpm: d[1], hyzer: d[2], nose: d[3], launch: d[4], wobble: d[5], ccw: !!(e.c.flags & 128),
+    disc, windMph: settings.windMph, windFrom: settings.windFrom, heightFt: settings.heightFt });
+}
+function capRecord(e) {
+  const an = e.an && e.an.n ? e.an : null, fl = e.flight;
+  return { id: e.id, at: e.at, label: e.label, c: e.c, S: e.S, info: e.info, missing: e.missing, live: e.liveEst,
+    page: an && { speed: an.speed, spin: an.spin, hyzer: an.hyzer, nose: an.nose, launch: an.launch, wobble: an.wobble, peak: an.peak,
+      spinGyro: an.spinGyro, spinCentrip: an.spinC, spinWave: an.wave.rpm, flags: an.flags, src: an.src, rel: an.iRel, stillAt: an.stillAt,
+      imp: an.imp, flightMs: (an.f1 - an.f0) / an.odr * 1000, fillMs: an.c0 >= 0 ? (an.iRel - an.c0 + 1) / an.odr * 1000 : 0 },
+    sim: fl && { distFt: fl.distFt, lateralFt: fl.lateralFt, maxHFt: fl.maxHFt, timeS: fl.timeS, disc: e.simDisc } };
+}
+async function logSave(e, isNew) {
+  try {
+    await logTx("readwrite", st => st.put(capRecord(e)));
+    if (isNew) live.logStats.total++;
+    renderLogCount();
+  } catch (err) { console.warn("throw log", err); $("lgCount").textContent = "This browser can't save throws."; }
+}
+function renderLogCount() {
+  const st = live.logStats;
+  $("lgCount").textContent = st.total ? `Log: ${st.labeled} of ${st.total} throws labeled` : "Throws are logged as they come in";
+}
+const lgFields = { type: "lgType", where: "lgWhere", speed: "lgSpeed", spin: "lgSpin", distFt: "lgDistIn", angle: "lgAngle", wobble: "lgWob", nose: "lgNose", note: "lgNote" };
+const stickyKey = "disctracker.loglast.v1";
+// The card for the selected throw: simulated distance, a small flight map and its label.
+function renderLog(fillForm) {
+  const e = live.sel;
+  drawMiniSim(e);
+  if (!e) { $("lgWhich").textContent = ""; $("lgDist").textContent = "–"; $("lgSimNote").textContent = "Throw the disc to see its flight here."; renderLogCount(); return; }
+  const fl = e.flight, k = live.caps.indexOf(e) + 1;
+  $("lgWhich").textContent = `${new Date(e.at).toLocaleTimeString()}${e.c.counted ? "" : " · not counted"}`;
+  $("lgDist").textContent = fl ? `${fmt(dist(fl.distFt))} ${unit()}` : "–";
+  $("lgSimNote").textContent = fl ? `Simulated with ${e.simDisc || "the disc in Settings"}, no wind: ${Math.abs(fl.lateralFt).toFixed(0)} ft ${fl.lateralFt >= 0 ? "left" : "right"}, ` +
+    `${fl.maxHFt.toFixed(0)} ft high, ${fl.timeS.toFixed(1)} s.` : "";
+  if (fillForm) {
+    let last = {}; try { last = JSON.parse(localStorage.getItem(stickyKey) || "{}"); } catch {}
+    const L = e.label || { type: last.type || "", where: last.where || "" };    // what you threw last time is the usual guess
+    for (const [f, id] of Object.entries(lgFields)) $(id).value = L[f] ?? "";
+  }
+  $("lgState").innerHTML = e.label ? `<span style="color:var(--good)">✓ labeled</span>` : "Not labeled yet";
+  renderLogCount();
+}
+$("lgSave").onclick = async () => {
+  const e = live.sel; if (!e) { toast("No throw to label yet.", "warn", 2500); return; }
+  const L = {};
+  for (const [f, id] of Object.entries(lgFields)) { const v = $(id).value.trim(); L[f] = v === "" ? null : (f === "speed" || f === "distFt") ? +v : v; }
+  L.savedAt = Date.now();
+  const was = !!e.label; e.label = L;
+  try { localStorage.setItem(stickyKey, JSON.stringify({ type: L.type, where: L.where })); } catch {}
+  if (!was) live.logStats.labeled++;
+  await logSave(e, false);
+  renderThrowSel(); renderLog(false);
+  toast("Label saved.", "good", 1500);
+};
+function drawMiniSim(e) {
+  const { g, W, H } = fitCanvas($("lgCanvas")), fl = e && e.flight;
+  g.fillStyle = "rgba(255,255,255,0.025)"; g.fillRect(0, 0, W, H);
+  if (!fl || !fl.path.length) return;
+  const P = fl.path, maxX = Math.max(100, ...P.map(q => q.x)) * 1.06, maxY = Math.max(25, ...P.map(q => Math.abs(q.y))) * 1.25;
+  const maxZ = Math.max(10, ...P.map(q => q.z)) * 1.2, topH = Math.round(H * 0.62), sideY0 = topH + 4, sideH = H - sideY0;
+  const X = x => 8 + x / maxX * (W - 16), Yt = y => topH / 2 - y / maxY * (topH / 2 - 4), Ys = z => sideY0 + sideH - 2 - z / maxZ * (sideH - 6);
+  g.font = "10.5px system-ui, Segoe UI, sans-serif"; g.textBaseline = "top";
+  const step = maxX > 400 ? 100 : 50;
+  for (let x = step; x < maxX; x += step) {
+    g.strokeStyle = "rgba(255,255,255,0.07)"; g.beginPath(); g.moveTo(X(x), 0); g.lineTo(X(x), H); g.stroke();
+    g.fillStyle = "#8b97a8"; g.fillText(`${x}`, X(x) + 2, 2);
+  }
+  g.strokeStyle = "rgba(255,255,255,0.18)"; g.beginPath(); g.moveTo(X(0), topH / 2); g.lineTo(W, topH / 2); g.moveTo(0, sideY0 + sideH - 2); g.lineTo(W, sideY0 + sideH - 2); g.stroke();
+  g.fillStyle = "rgba(255,255,255,0.06)"; g.fillRect(0, topH + 1, W, 2);
+  g.fillStyle = "#8b97a8"; g.fillText("from above (ft)", W - 82, topH - 13); g.fillText("from the side", W - 70, sideY0 + 2);
+  const line = (Y, key) => { g.beginPath(); P.forEach((q, i) => { const x = X(q.x), y = Y(q[key]); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); };
+  g.strokeStyle = "#ff8a1f"; g.lineWidth = 2; line(Yt, "y"); line(Ys, "z"); g.lineWidth = 1;
+  const end = P[P.length - 1];
+  g.fillStyle = "#ffd34d"; g.beginPath(); g.arc(X(end.x), Yt(end.y), 4, 0, 2 * Math.PI); g.fill();
+  g.fillStyle = "#fff"; g.beginPath(); g.arc(X(0), Yt(0), 3, 0, 2 * Math.PI); g.fill();
+}
+const csvCell = v => v == null ? "" : typeof v === "number" ? (Number.isInteger(v) ? String(v) : v.toFixed(2)) : `"${String(v).replace(/"/g, '""')}"`;
+function saveFile(name, text, type) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
+const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+$("lgCsv").onclick = async () => {
+  const recs = (await logAll()).sort((a, b) => a.at - b.at);
+  if (!recs.length) { toast("No throws saved yet.", "warn", 2500); return; }
+  const head = ["time", "labeled", "what_it_was", "thrown_into", "my_speed_mph", "disc_speed_mph", "speed_diff_mph", "my_spin", "disc_spin_rpm",
+    "spin_in_my_range", "my_distance_ft", "sim_distance_ft", "distance_diff_ft", "my_angle", "disc_hyzer_deg", "my_nose", "disc_nose_deg",
+    "disc_launch_deg", "my_wobble", "disc_wobble_deg", "counted", "spin_from", "peak_g", "gyro_spin_rpm", "centripetal_spin_rpm", "wave_spin_rpm",
+    "gyro_maxed_ms", "flight_window_ms", "ended_by", "live_speed_mph", "page_matches_disc", "sim_disc", "notes"];
+  const SRC = ["gyro", "drag wave", "centripetal", "wave+centripetal"], END = { 1: "impact", 2: "flight window", 3: "time limit" };
+  const rows = recs.map(r => {
+    const d = r.c.res, L = r.label || {}, pg = r.page || {}, sim = r.sim || {};
+    const rng = L.spin ? L.spin.split("-").map(Number) : null;
+    const match = r.page ? Math.abs(pg.speed - d[0]) < 0.6 && Math.abs(pg.spin - d[1]) < 4 : null;
+    return [new Date(r.at).toLocaleString(), r.label ? "yes" : "", L.type, L.where, L.speed, d[0], L.speed != null ? d[0] - L.speed : null,
+      L.spin ? $("lgSpin").querySelector(`option[value="${L.spin}"]`)?.textContent || L.spin : null, d[1], rng ? (d[1] >= rng[0] && d[1] < rng[1] ? "yes" : "no") : null,
+      L.distFt, sim.distFt, L.distFt != null && sim.distFt != null ? sim.distFt - L.distFt : null, L.angle, d[2], L.nose, d[3], d[4], L.wobble, d[5],
+      r.c.counted ? "yes" : "no", SRC[r.c.src] || "", d[6], pg.spinGyro, pg.spinCentrip, pg.spinWave, pg.fillMs, pg.flightMs, END[r.c.end] || "",
+      r.live ? r.live.speed : null, match == null ? "" : match ? "yes" : "NO", sim.disc, L.note].map(csvCell).join(",");
+  });
+  saveFile(`disc_throw_log_${stamp()}.csv`, [head.join(","), ...rows].join("\n") + "\n", "text/csv");
+};
+$("lgJson").onclick = async () => {
+  const recs = (await logAll()).sort((a, b) => a.at - b.at);
+  if (!recs.length) { toast("No throws saved yet.", "warn", 2500); return; }
+  const b64 = a => { const u = new Uint8Array(a.buffer, a.byteOffset, a.byteLength); let t = ""; for (let i = 0; i < u.length; i += 8192) t += String.fromCharCode(...u.subarray(i, i + 8192)); return btoa(t); };
+  const out = recs.map(r => ({ ...r, S: undefined, samples_b64_int16_gx_gy_gz_ax_ay_az: r.S ? b64(r.S) : null }));
+  saveFile(`disc_throw_log_${stamp()}.json`, JSON.stringify({ format: "disctracker throw log v1", exported: new Date().toISOString(), throws: out }), "application/json");
+};
+// throws saved earlier come back into the list, so they can still be labeled
+logAll().then(recs => {
+  live.logStats = { total: recs.length, labeled: recs.filter(r => r.label).length };
+  const old = recs.sort((a, b) => a.at - b.at).slice(-30).filter(r => !live.caps.some(x => x.id === r.id)).map(r => {
+    const e = { id: r.id, at: r.at, c: r.c, S: r.S, info: r.info, missing: r.missing, label: r.label, liveEst: r.live, old: true };
+    try { e.an = analyzeCapture(r.S, r.info); } catch { e.an = null; }
+    e.flight = capFlight(e); return e;
+  });
+  live.caps.unshift(...old);
+  if (!live.sel && live.caps.length) live.sel = live.caps[live.caps.length - 1];
+  renderThrowSel(); renderLastThrow(); renderLog(true);
+  if (settings.mode === "live") renderBreakdown();
+}).catch(err => { console.warn("throw log", err); $("lgCount").textContent = "This browser can't save throws."; });
 
 // ================================================================ throws
 function currentDisc() { return { ...settings.disc, weightG: settings.disc.weightG || 175 }; }
@@ -1693,7 +1882,7 @@ function setMode(m) {
   document.body.className = "mode-" + m;
   $("modeSel").value = m;
   syncStream();
-  if (m === "live") setTimeout(() => { renderBreakdown(); renderLegend(); }, 60);
+  if (m === "live") setTimeout(() => { renderBreakdown(); renderLegend(); renderLog(); }, 60);
   if (m !== "ours") {
     const last = session[session.length - 1];
     const url = last ? techdiscSimUrl(last.t, last.disc) : "https://techdisc.com/simulate";
