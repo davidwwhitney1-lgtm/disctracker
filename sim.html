@@ -49,6 +49,10 @@
   .pill.busy .dot { background: var(--warn); }
   .pill.bad .dot { background: var(--bad); }
   .spacer { flex: 1; }
+  .pill.rec .dot { background: #ef4444; box-shadow: 0 0 10px #ef4444; animation: recblink 1.2s steps(2, start) infinite; }
+  @keyframes recblink { to { visibility: hidden; } }
+  .labels { display: flex; flex-wrap: wrap; gap: 6px; }
+  .labels button { flex: 1 1 30%; }
 
   #stats { position: fixed; left: 12px; right: 12px; bottom: 12px; display: grid; gap: 8px; z-index: 3;
            grid-template-columns: minmax(230px, 1.5fr) repeat(6, minmax(0, 1fr)); }
@@ -127,6 +131,7 @@
   <div class="pill" id="connPill" title="Bluetooth connection to the disc"><span class="dot"></span><span id="connText">Not connected</span></div>
   <div class="pill" id="discPill" title="Simulated disc – click to change"><span id="discText">–</span></div>
   <div class="pill" id="battPill" style="display:none"><span id="battText"></span></div>
+  <div class="pill rec" id="recPill" style="display:none" title="Recording raw data to this computer – click for details"><span class="dot"></span><span id="recText">REC</span></div>
   <div class="spacer"></div>
   <select id="modeSel" title="What the screen shows (M)">
     <option value="ours">Our 3D simulator</option>
@@ -150,6 +155,20 @@
 </aside>
 
 <aside id="panel" class="hidden">
+  <div class="sec">
+    <h3>Record raw data to this computer</h3>
+    <p class="note">Streams every sensor reading (416 a second) over Bluetooth into a folder on this computer. Nothing is
+      stored on the disc, so the length is limited only by this computer's disk – about 18 MB an hour. Every throw is
+      also saved with its own readings and the disc's results. A new file starts every minute, so a crash loses at most
+      a minute. Keep this page open (it can be in the background) and the computer awake.</p>
+    <div class="row"><button class="primary small" id="recBtn">● Start recording</button><span class="note" id="recState">Not recording</span></div>
+    <div class="labels" id="labelBtns">
+      <button class="small" data-mark="1">Drop</button><button class="small" data-mark="2">Throw into net</button>
+      <button class="small" data-mark="3">Real throw</button><button class="small" data-mark="4">Hand spin / flick</button>
+      <button class="small" data-mark="5">Other</button>
+    </div>
+    <p class="note">Tap a label before each test to mark it in the recording. To analyze: <code>py disclab.py import "that folder"</code>.</p>
+  </div>
   <div class="sec">
     <h3>Disc</h3>
     <div class="row"><select id="bagSel" style="flex:1"></select></div>
@@ -276,10 +295,19 @@ function centerMsg(html, ms = 0) {
 // ================================================================ Bluetooth
 const SVC = "19b10000-e8f2-537e-4f6c-d104768a1214", SUMMARY = "19b10001-e8f2-537e-4f6c-d104768a1214",
       CMD = "19b10002-e8f2-537e-4f6c-d104768a1214", LIVE = "19b10004-e8f2-537e-4f6c-d104768a1214",
-      STATUS = "19b10005-e8f2-537e-4f6c-d104768a1214";
+      STATUS = "19b10005-e8f2-537e-4f6c-d104768a1214", BTSTREAM = "19b10009-e8f2-537e-4f6c-d104768a1214";
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timed out")), ms))]);
 let device = null, looping = false, userStop = false, connected = false, liveUp = null, capturingSince = 0;
+let cmdChar = null, hasBtStream = false;
+async function sendCmd(text) {
+  if (!cmdChar) return false;
+  try {
+    const d = new TextEncoder().encode(text);
+    await (cmdChar.writeValueWithoutResponse ? cmdChar.writeValueWithoutResponse(d) : cmdChar.writeValue(d));
+    return true;
+  } catch (e) { console.warn("command failed", text, e); return false; }
+}
 
 function setConn(state, n = 0) {
   connected = state === "on";
@@ -311,6 +339,7 @@ function hookDevice(d) {
   if (d._hooked) return; d._hooked = true;
   d.addEventListener("gattserverdisconnected", () => {
     if (d !== device) return;
+    cmdChar = null; hasBtStream = false; updateRecUi();
     setConn(userStop ? "off" : "lost");
     if (!userStop) connectLoop();
   });
@@ -342,7 +371,16 @@ async function setupGatt() {
   const sm = await svc.getCharacteristic(SUMMARY);            // last: the disc then sends throws it stored
   sm.addEventListener("characteristicvaluechanged", e => onSummary(e.target.value));
   await sm.startNotifications();
-  setConn("on");
+  try { cmdChar = await svc.getCharacteristic(CMD); } catch { cmdChar = null; }
+  hasBtStream = false;
+  try {
+    const bt = await svc.getCharacteristic(BTSTREAM);
+    bt.addEventListener("characteristicvaluechanged", e => onBtPacket(e.target.value));
+    await bt.startNotifications();
+    hasBtStream = true;
+  } catch (e) { console.warn("no raw-stream channel (older firmware)", e); }
+  if (hasBtStream) await sendCmd(rec.on ? "bton" : "btoff");   // carry on a recording after a drop-out
+  setConn("on"); updateRecUi();
 }
 async function disconnect() {
   userStop = true;
@@ -421,6 +459,175 @@ function onSummary(dv) {
     if (last) play(last, true);
   }, 300);
 }
+
+// ================================================================ raw recording to this computer
+// The disc streams every sample over Bluetooth (packet types in disc_tracker_v2.ino, btStreamChr).
+// They are written here in the disc's own log format - records of a 256-byte header + raw
+// samples - so `disclab.py import` reads them like a download from the disc's memory:
+//   type 2  continuous recording, CHUNK samples per record (~4.9 s)
+//   type 1  a throw: its samples cut out of the stream + the disc's results
+//   type 3  a test label (Drop, Net throw, ...)
+const LOG_MAGIC = 0x474F4C44, CHUNK = 2048, PART_RECORDS = 12, RING = 16384;
+const DEFAULT_INFO = { boot: 0, seq: 0, millis: 0, odr: 416, sens: 5, logVer: 3, alsb: 0.000488, glsb: 0.07, bias: [0, 0, 0],
+  R: [1, 0, 0, 0, 1, 0, 0, 0, 1], radius: 0, batt: 0, trigG: 3.5, trigDps: 600, freeG: 3, minPeak: 3.5, minSpin: 60 };
+const rec = { on: false, dir: null, sess: null, name: "", part: 0, writer: null, recsInPart: 0, chain: Promise.resolve(), mem: null,
+  recNo: 0, info: null, expect: null, lost: 0, samples: 0, bytes: 0, t0: 0, chunk: null, chunkN: 0, chunkSeq: 0, throws: 0,
+  marks: 0, ring: new Int16Array(RING * 6), ringSeq: new Float64Array(RING).fill(-1), pendingCaps: [], wake: null, uiTimer: 0, err: "" };
+
+function parseInfo(dv) {
+  const f = k => dv.getFloat32(16 + 4 * k, true);
+  return { boot: dv.getUint16(2, true), seq: dv.getUint32(4, true), millis: dv.getUint32(8, true), odr: dv.getUint16(12, true) || 416,
+    sens: dv.getUint8(14), logVer: dv.getUint8(15) || 3, alsb: f(0), glsb: f(1), bias: [f(2), f(3), f(4)],
+    R: [f(5), f(6), f(7), f(8), f(9), f(10), f(11), f(12), f(13)], radius: f(14), batt: f(15),
+    trigG: f(16), trigDps: f(17), freeG: f(18), minPeak: f(19), minSpin: f(20) };
+}
+function parseCap(dv) {
+  const f = k => dv.getFloat32(20 + 4 * k, true);
+  return { start: dv.getUint32(2, true), n: dv.getUint16(6, true), rel: dv.getUint16(8, true), liveRel: dv.getUint16(10, true),
+    counted: dv.getUint8(12), src: dv.getUint8(13), flags: dv.getUint16(14, true), end: dv.getUint8(16), sens: dv.getUint8(17),
+    res: Array.from({ length: 10 }, (_, k) => f(k)), tMs: dv.getUint32(60, true), at: performance.now() };
+}
+const tMsAt = seq => { const I = rec.info || DEFAULT_INFO; return Math.max(0, Math.round(I.millis + (seq - I.seq) * 1000 / I.odr)); };
+function header(type, n, tMs, x = {}) {
+  const I = rec.info || DEFAULT_INFO, len = 256 + n * 12, buf = new ArrayBuffer(len), dv = new DataView(buf);
+  const F = (o, v) => dv.setFloat32(o, +v || 0, true);
+  dv.setUint32(0, LOG_MAGIC, true); dv.setUint16(4, I.logVer, true); dv.setUint16(6, type, true); dv.setUint32(8, len, true);
+  dv.setUint32(12, rec.recNo++, true); dv.setUint16(16, I.boot, true); dv.setUint8(18, x.sens ?? I.sens); dv.setUint8(19, x.end ?? 0);
+  dv.setUint32(20, tMs >>> 0, true); dv.setUint16(24, n, true); dv.setUint16(26, I.odr, true);
+  dv.setUint16(28, x.rel ?? 0xFFFF, true); dv.setUint16(30, x.liveRel ?? 0xFFFF, true);
+  dv.setUint8(32, x.counted ?? 0); dv.setUint8(33, x.src ?? 0); dv.setUint16(34, x.flags ?? 0, true);
+  (x.res || []).forEach((v, k) => F(36 + 4 * k, v));
+  I.bias.forEach((v, k) => F(76 + 4 * k, v)); I.R.forEach((v, k) => F(88 + 4 * k, v));
+  F(124, I.radius); F(128, I.batt); F(132, I.trigG); F(136, I.trigDps); F(140, I.freeG); F(144, I.minPeak); F(148, I.minSpin);
+  F(152, I.alsb); F(156, I.glsb);
+  return buf;
+}
+function writeRecord(buf) {
+  rec.bytes += buf.byteLength;
+  if (rec.mem) { rec.mem.push(buf); return; }
+  rec.chain = rec.chain.then(async () => {
+    if (!rec.writer) await openPart();
+    await rec.writer.write(buf);
+    if (++rec.recsInPart >= PART_RECORDS) { const w = rec.writer; rec.writer = null; await w.close(); }   // commit this minute
+  }).catch(e => { console.error(e); rec.err = e.message || String(e); updateRecUi(); });
+}
+async function openPart() {
+  rec.part++; rec.recsInPart = 0;
+  const fh = await rec.sess.getFileHandle(`part_${String(rec.part).padStart(4, "0")}.bin`, { create: true });
+  rec.writer = await fh.createWritable();
+}
+function flushChunk() {
+  if (!rec.chunk || !rec.chunkN) { rec.chunk = null; return; }
+  const buf = header(2, rec.chunkN, tMsAt(rec.chunkSeq));
+  new Int16Array(buf, 256, rec.chunkN * 6).set(rec.chunk.subarray(0, rec.chunkN * 6));
+  rec.chunk = null; rec.chunkN = 0;
+  writeRecord(buf);
+}
+function onBtPacket(dv) {
+  if (!rec.on || dv.byteLength < 2) return;
+  const type = dv.getUint8(0);
+  if (type === 2 && dv.byteLength >= 100) { rec.info = parseInfo(dv); return; }
+  if (type === 4) return;                                   // gap notice: the jump in sample numbers is counted below
+  if (type === 3 && dv.byteLength >= 64) { rec.pendingCaps.push(parseCap(dv)); tryCaps(false); return; }
+  if (type !== 1 || dv.byteLength < 6) return;
+  const n = Math.min(dv.getUint8(1), Math.floor((dv.byteLength - 6) / 12)), seq = dv.getUint32(2, true);
+  let j0 = 0;
+  if (rec.expect !== null) {
+    if (seq + n <= rec.expect) return;                       // already have these (resent after a reconnect)
+    if (seq < rec.expect) j0 = rec.expect - seq;
+    else if (seq > rec.expect) { rec.lost += seq - rec.expect; flushChunk(); }   // a gap: start a new record there
+  }
+  for (let j = j0; j < n; j++) {
+    const sq = seq + j, off = 6 + j * 12, ri = sq % RING;
+    if (!rec.chunk) { rec.chunk = new Int16Array(CHUNK * 6); rec.chunkN = 0; rec.chunkSeq = sq; }
+    for (let k = 0; k < 6; k++) { const v = dv.getInt16(off + 2 * k, true); rec.ring[ri * 6 + k] = v; rec.chunk[rec.chunkN * 6 + k] = v; }
+    rec.ringSeq[ri] = sq;
+    if (++rec.chunkN === CHUNK) flushChunk();
+  }
+  rec.expect = seq + n; rec.samples += n - j0;
+  if (rec.pendingCaps.length) tryCaps(false);
+}
+// A throw's results arrive as one packet; its samples are cut out of the stream once they are all in.
+function tryCaps(force) {
+  while (rec.pendingCaps.length) {
+    const c = rec.pendingCaps[0];
+    const ready = rec.expect !== null && rec.expect >= c.start + c.n;
+    if (!ready && !force && performance.now() - c.at < 15000) return;
+    rec.pendingCaps.shift();
+    const buf = header(1, c.n, c.tMs, c), S = new Int16Array(buf, 256, c.n * 6);
+    let missing = 0;
+    for (let i = 0; i < c.n; i++) {
+      const sq = c.start + i, ri = sq % RING;
+      if (rec.ringSeq[ri] === sq) S.set(rec.ring.subarray(ri * 6, ri * 6 + 6), i * 6);
+      else { missing++; if (i) S.copyWithin(i * 6, (i - 1) * 6, i * 6); }
+    }
+    if (missing) console.warn(`throw saved with ${missing} of ${c.n} samples missing`);
+    writeRecord(buf); rec.throws++;
+  }
+}
+function addMark(code) {
+  if (!rec.on) { toast("Start a recording first (Settings → Record raw data).", "warn"); return; }
+  flushChunk();
+  writeRecord(header(3, 0, tMsAt(rec.expect ?? (rec.info ? rec.info.seq : 0)), { end: code }));
+  rec.marks++;
+  toast(`Marked: ${({ 1: "Drop", 2: "Throw into net", 3: "Real throw", 4: "Hand spin / flick", 5: "Other" })[code]}`, "good", 1800);
+}
+async function recStart() {
+  if (!connected) { toast("Connect the disc first.", "warn"); return; }
+  if (!hasBtStream) { toast("The disc's firmware can't stream to the computer yet – update it.", "bad", 7000); return; }
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+  try {
+    if (window.showDirectoryPicker) {
+      rec.dir = await window.showDirectoryPicker({ id: "disctracker-raw", mode: "readwrite" });
+      rec.name = `disc_raw_${stamp}`;
+      rec.sess = await rec.dir.getDirectoryHandle(rec.name, { create: true });
+      rec.mem = null;
+    } else { rec.mem = []; rec.name = `disc_raw_${stamp}.bin`; }
+  } catch (e) { if (e && e.name === "AbortError") return; toast("Couldn't use that folder: " + (e.message || e), "bad"); return; }
+  Object.assign(rec, { on: true, part: 0, writer: null, recsInPart: 0, recNo: 0, info: null, expect: null, lost: 0, samples: 0,
+    bytes: 0, t0: Date.now(), chunk: null, chunkN: 0, throws: 0, marks: 0, pendingCaps: [], err: "" });
+  rec.ringSeq.fill(-1);
+  await sendCmd("bton");
+  try { if (navigator.wakeLock) rec.wake = await navigator.wakeLock.request("screen"); } catch {}
+  clearInterval(rec.uiTimer); rec.uiTimer = setInterval(updateRecUi, 1000);
+  updateRecUi(); toast("Recording raw data to this computer.", "good", 3000);
+}
+async function recStop() {
+  await sendCmd("btoff");
+  flushChunk(); tryCaps(true);
+  rec.on = false;
+  clearInterval(rec.uiTimer);
+  try { await rec.chain; if (rec.writer) { const w = rec.writer; rec.writer = null; await w.close(); } } catch (e) { rec.err = e.message || String(e); }
+  if (rec.mem) {                                              // no folder access in this browser: one download at the end
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(rec.mem, { type: "application/octet-stream" }));
+    a.download = rec.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 5000);
+    rec.mem = null;
+  }
+  try { if (rec.wake) { await rec.wake.release(); rec.wake = null; } } catch {}
+  updateRecUi();
+  toast(`Recording saved: ${fmtDur((Date.now() - rec.t0) / 1000)}, ${(rec.bytes / 1e6).toFixed(1)} MB, ${rec.throws} throws` +
+        (rec.lost ? `, ${rec.lost} samples lost` : ""), "good", 7000);
+}
+const fmtDur = s => `${Math.floor(s / 3600) ? Math.floor(s / 3600) + ":" : ""}${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(Math.floor(s) % 60).padStart(2, "0")}`;
+function updateRecUi() {
+  const pill = $("recPill"), btn = $("recBtn");
+  if (!pill || !btn) return;
+  btn.textContent = rec.on ? "■ Stop recording" : "● Start recording";
+  btn.disabled = !rec.on && (!connected || !hasBtStream);
+  pill.style.display = rec.on ? "" : "none";
+  if (!rec.on) {
+    $("recState").textContent = rec.err ? "Error: " + rec.err : (connected && !hasBtStream ? "This disc's firmware can't stream yet" : "Not recording");
+    return;
+  }
+  const secs = (Date.now() - rec.t0) / 1000, live = connected ? "" : " · disc out of range (it keeps ~10 s)";
+  const txt = `${fmtDur(secs)} · ${(rec.bytes / 1e6).toFixed(1)} MB · ${rec.throws} throws` + (rec.lost ? ` · ${rec.lost} lost` : "");
+  $("recText").textContent = "REC " + txt;
+  $("recState").textContent = (rec.err ? "Error: " + rec.err + " · " : "") + `Recording to ${rec.mem ? "memory (saved when you stop)" : rec.name}: ${txt}${live}`;
+}
+document.addEventListener("visibilitychange", async () => {
+  if (rec.on && document.visibilityState === "visible" && !rec.wake && navigator.wakeLock) { try { rec.wake = await navigator.wakeLock.request("screen"); } catch {} }
+});
+window.addEventListener("beforeunload", e => { if (rec.on) { e.preventDefault(); e.returnValue = "A recording is running."; } });
 
 // ================================================================ throws
 function currentDisc() { return { ...settings.disc, weightG: settings.disc.weightG || 175 }; }
@@ -809,6 +1016,9 @@ $("connPill").onclick = () => { if (!connected && !looping) pickDisc(); };
 $("discPill").onclick = () => $("panel").classList.remove("hidden");
 $("discBtn").onclick = () => device ? disconnect() : pickDisc();
 $("testBtn").onclick = testThrow;
+$("recBtn").onclick = () => rec.on ? recStop() : recStart();
+$("recPill").onclick = () => $("panel").classList.remove("hidden");
+document.querySelectorAll("#labelBtns button").forEach(b => b.onclick = () => addMark(+b.dataset.mark));
 $("clearBtn").onclick = () => { if (session.length && confirm("Clear this session's throws from the list?")) { session = []; saveSession(); renderSession(); } };
 $("exportBtn").onclick = exportCsv;
 $("welcomeConnect").onclick = () => { $("welcome").classList.add("hidden"); pickDisc(); };
@@ -849,7 +1059,9 @@ if (!navigator.bluetooth) $("btNote").textContent = "This browser has no Bluetoo
 renderBag(); renderSession();
 init3D();
 setMode(settings.mode);
-window.discSim = { play, addThrow, testThrow, session: () => session, onSummary, parseSummary };   // for testing
+updateRecUi();
+window.discSim = { play, addThrow, testThrow, session: () => session, onSummary, parseSummary, onBtPacket, rec, recStop, addMark,
+                   _testStart: () => { Object.assign(rec, { on: true, mem: [], name: "test.bin", t0: Date.now(), recNo: 0, expect: null, chunk: null, chunkN: 0, throws: 0, lost: 0, samples: 0, bytes: 0, pendingCaps: [] }); rec.ringSeq.fill(-1); } };   // for testing
 </script>
 </body>
 </html>

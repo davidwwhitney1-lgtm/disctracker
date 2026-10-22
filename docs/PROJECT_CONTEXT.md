@@ -246,3 +246,26 @@ Plan: side-by-side test (both trackers on one disc) with radar gun, laser tachom
   Summary byte 19 bit 7 = new definition; log header version 2 (`ver=` in export). Older values are converted
   approximately with tan(cone) = tan(old)/2. New firmware is built (`build/disc_tracker_v2.uf2`) but must be
   flashed when the disc is next on USB.
+
+## 9. Updates 2026-10-21 (evening): net throws, raw stream to the computer
+
+- **Hard throws read far too low (20-30 ft sims) - cause found and fixed (firmware LOG_VER 3).** The IMU sits
+  ~7-12 mm off the spin axis, so in flight it feels a steady centripetal force (13 g at 1000 rpm for 12 mm). The
+  old release test ("|a| < freeG for 25 ms") never passed while the disc spun fast, so release was found only after
+  the disc stopped in the net and speed was integrated through the net's deceleration. New `releaseAt()` (shared by
+  the live capture logic and the analyzer in throw_metrics.h): force minus the in-plane MEDIAN over the next 36
+  samples (the steady centripetal part) must be < freeG for 10 samples; the steady part must fit w^2*r while the
+  gyro is in range; and no more pulling (> trigG) in the next 20 samples. Scan starts at the trigger, not the global
+  peak (the net impact can be the biggest force). Impact = same compensation, > impactDevG (1.5 g) above the in-flight
+  level. While the gyro z is clipped in the pull (it tops out at 2294 deg/s = 382 rpm, not 333), the rate is filled
+  with a straight ramp up to the release spin measured from the accelerometer. Simulated 55 mph / 900 rpm net throw:
+  old 46.7 mph / 298 rpm, new 53.3 mph / 897 rpm. disclab: `releaseModel="spin"` (default), `fw_params()` matches each
+  record's firmware version for the "Python matches the disc" check. Nets should be >= ~2.5 m (8 ft) away.
+- **Raw stream to the computer (char 19B10009, cmds `bton`/`btoff`):** every sample over BLE (19 per packet at MTU
+  247, ~22 packets/s, measured 418 samples/s with 0 losses), a 4096-sample ring (~10 s) on the disc for drop-outs,
+  throws sent as a 64-byte results packet with the stream index of capture[0] (`capStartSeq`) and NOT written to
+  flash. Packet types: 1 samples [1][n][u32 seq][n x 12 B], 2 info (100 B: boot, seq, millis, odr, sens, log ver,
+  LSBs, bias, R, radius, battery, thresholds), 3 throw (64 B), 4 gap. `sim.html` records it into a user-picked folder
+  (File System Access API) as `part_0001.bin`... (a new file each ~minute), in the disc's own log format (type 2
+  chunks of 2048 samples, type 1 throws cut from the stream, type 3 labels). `py disclab.py import <folder>`.
+- A flash full recording now stops with 256 KB free (`STREAM_RESERVE`) so captures still fit.
