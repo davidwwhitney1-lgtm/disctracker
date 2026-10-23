@@ -4,19 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DiscTracker 3D</title>
-<meta name="description" content="A live 3D copy of the DiscTracker disc: every tilt, turn and spin of the real disc, as it happens.">
+<meta name="description" content="A live 3D copy of the DiscTracker disc: every tilt, turn and spin of the real disc, and a slow-motion replay of every throw.">
 <style>
-  :root { --hud: rgba(11, 15, 21, 0.78); --line: rgba(255, 255, 255, 0.14); --text: #f3f6fa; --muted: #a7b2c0;
-          --accent: #ff8a1f; --good: #34d399; --bad: #f87171; --warn: #fbbf24; }
+  :root { --hud: rgba(11, 15, 21, 0.8); --line: rgba(255, 255, 255, 0.14); --text: #f3f6fa; --muted: #a7b2c0;
+          --accent: #ff8a1f; --good: #34d399; --bad: #f87171; --warn: #fbbf24; --blue: #60a5fa; }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0f14; color: var(--text);
                font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-  button { font: inherit; color: var(--text); background: var(--hud); border: 1px solid var(--line); border-radius: 10px; padding: 7px 13px; cursor: pointer; }
+  button, select, input[type=text] { font: inherit; color: var(--text); background: var(--hud); border: 1px solid var(--line); border-radius: 10px; padding: 7px 13px; }
+  button { cursor: pointer; }
   button:hover { border-color: rgba(255, 255, 255, 0.4); }
   button.primary { background: var(--accent); color: #1c0e00; border-color: transparent; font-weight: 700; }
+  button.on { border-color: var(--accent); color: var(--accent); }
+  select { padding: 5px 8px; max-width: 100%; }
+  [hidden] { display: none !important; }
   a { color: #9fd3ff; }
-  header { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; z-index: 3; pointer-events: none; }
+  header { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; z-index: 5; pointer-events: none; }
   header > * { pointer-events: auto; }
   .brand { background: var(--hud); border: 1px solid var(--line); border-radius: 12px; padding: 7px 14px; font-weight: 800; }
   .brand span { color: var(--accent); }
@@ -26,9 +30,9 @@
   .pill.busy .dot { background: var(--warn); }
   .pill.bad .dot { background: var(--bad); }
   .spacer { flex: 1; }
-  #panel { position: fixed; left: 12px; bottom: 12px; z-index: 3; width: 300px; background: var(--hud); border: 1px solid var(--line);
-           border-radius: 14px; padding: 10px 14px; }
-  #panel h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .card { background: var(--hud); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; }
+  .card h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  #panel { position: fixed; left: 12px; bottom: 12px; z-index: 3; width: 300px; }
   .kv { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; font-variant-numeric: tabular-nums; }
   .kv .v { text-align: right; font-weight: 700; }
   .kv .s { grid-column: span 2; color: var(--muted); font-size: 12px; margin: -2px 0 3px; }
@@ -36,12 +40,52 @@
   #spinBig .n { font-size: clamp(40px, 6vw, 84px); font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1; }
   #spinBig .u { font-size: 18px; color: var(--muted); margin-left: 4px; }
   #spinBig .s { font-size: 13px; color: var(--muted); }
+  body.replay #spinBig { bottom: 184px; }
+  body.replay .liveOnly { display: none !important; }
   #opts { position: fixed; right: 12px; top: 64px; z-index: 3; display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
   #opts label { background: var(--hud); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 13px; display: flex; gap: 6px; align-items: center; cursor: pointer; }
   #msg { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%); z-index: 2; text-align: center; font-size: clamp(18px, 2.4vw, 30px);
          font-weight: 700; text-shadow: 0 3px 16px rgba(0,0,0,.6); pointer-events: none; }
   #msg small { display: block; font-size: 0.55em; font-weight: 500; color: var(--muted); margin-top: 6px; }
-  @media (max-width: 640px) { #panel { width: auto; right: 12px; bottom: 120px; } #opts { top: auto; bottom: 12px; left: 12px; right: auto; flex-direction: row; flex-wrap: wrap; } #spinBig { bottom: 200px; } }
+  #hint { position: fixed; left: 50%; top: 66px; transform: translateX(-50%); z-index: 6; max-width: min(560px, calc(100vw - 32px)); font-size: 14px;
+          border-color: rgba(255, 138, 31, 0.5); }
+  /* how the disc looks */
+  #lookPanel { position: fixed; right: 12px; top: 64px; z-index: 4; width: 310px; max-height: calc(100vh - 80px); overflow: auto; background: rgba(11, 15, 21, 0.96); }
+  .row { display: flex; gap: 8px; align-items: center; margin: 7px 0; flex-wrap: wrap; }
+  .row > label { flex: 1; font-size: 13px; color: var(--muted); }
+  .row input[type=range] { flex: 1.4; min-width: 120px; accent-color: var(--accent); }
+  .row input[type=text] { flex: 1.4; min-width: 120px; padding: 5px 9px; }
+  .row input[type=color] { width: 46px; height: 32px; border: 1px solid var(--line); border-radius: 8px; background: none; padding: 2px; }
+  .row .val { min-width: 42px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .row button { padding: 5px 11px; }
+  .hint { font-size: 12.5px; color: var(--muted); }
+  .hint b { color: var(--text); }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 10px 0; }
+  /* the throw replay */
+  #replayPanel { position: fixed; left: 12px; bottom: 184px; z-index: 3; width: 360px; max-height: calc(100vh - 260px); overflow: auto; }
+  table.cmp { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; margin-top: 4px; }
+  table.cmp th { font-size: 11.5px; color: var(--muted); font-weight: 600; text-align: right; padding: 0 0 3px 8px; }
+  table.cmp th:first-child, table.cmp td:first-child { text-align: left; padding-left: 0; }
+  table.cmp td { text-align: right; padding: 2px 0 2px 8px; border-top: 1px solid rgba(255,255,255,0.07); }
+  table.cmp td.new { font-weight: 800; color: var(--accent); }
+  table.cmp td.old { color: var(--muted); }
+  .now { margin-top: 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .now b { color: var(--accent); }
+  .notes { margin: 8px 0 0; padding-left: 16px; font-size: 12.5px; color: var(--muted); }
+  .notes li { margin: 2px 0; }
+  .ctl { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .ctl button { padding: 5px 10px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; padding: 5px 9px; background: transparent; }
+  .seg button.on { background: rgba(255, 138, 31, 0.22); color: var(--accent); }
+  #timeline { position: fixed; left: 12px; right: 12px; bottom: 12px; height: 162px; z-index: 3; padding: 0; overflow: hidden; }
+  #tl { width: 100%; height: 100%; display: block; cursor: ew-resize; touch-action: none; }
+  @media (max-width: 760px) {
+    #panel { width: auto; right: 12px; bottom: 120px; } #opts { top: auto; bottom: 12px; left: 12px; right: auto; flex-direction: row; flex-wrap: wrap; }
+    #spinBig { bottom: 200px; } body.replay #spinBig { display: none; }
+    #replayPanel { right: 12px; width: auto; bottom: 184px; max-height: 42vh; } body.replay #opts { display: none; }
+    #lookPanel { left: 12px; right: 12px; width: auto; }
+  }
 </style>
 <script type="importmap">{ "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -54,23 +98,54 @@
   <div class="pill" id="connPill"><span class="dot"></span><span id="connText">Not connected</span></div>
   <button class="primary" id="connBtn">Connect</button>
   <span class="spacer"></span>
+  <button id="lastBtn" hidden title="Watch the last throw again, slowed down">Last throw</button>
+  <button id="faceBtn" title="Hold the disc flat in front of you with its label reading normally, then press: the picture turns to match what you see (F)">Face me</button>
   <button id="levelBtn" title="Snap the picture to gravity (hold the disc still first)">Re-level</button>
-  <button id="headBtn" title="Turn the picture so the disc faces you the way it is now">Reset heading</button>
+  <button id="lookBtn" title="The label's position, colours, words or a photo of your disc">Look</button>
   <a class="pill" href="sim.html">Simulator</a><a class="pill" href="./">Phone app</a>
 </header>
 <div id="opts">
-  <label title="Move the picture with the disc (added up from the force readings - approximate, drifts back to the middle)"><input type="checkbox" id="optMove" checked> Show movement</label>
+  <label class="liveOnly" title="Move the picture with the disc (added up from the force readings - approximate, drifts back to the middle)"><input type="checkbox" id="optMove" checked> Show movement</label>
   <label title="Above ~150 rpm the screen can't show the real spin (it would look like it crawls or runs backwards), so it is shown slowed"><input type="checkbox" id="optSlow" checked> Slow fast spins</label>
-  <label><input type="checkbox" id="optTrail" checked> Trail</label>
+  <label class="liveOnly"><input type="checkbox" id="optTrail" checked> Trail</label>
   <label><input type="checkbox" id="optAxes"> Disc axes</label>
 </div>
+<div id="lookPanel" class="card" hidden>
+  <h3>How the disc looks <span class="spacer"></span><button id="lookClose" title="Close">✕</button></h3>
+  <div class="row"><label for="lkTurn">Turn the label</label><input type="range" id="lkTurn" min="-180" max="180" step="1"><span class="val" id="lkTurnV">0°</span></div>
+  <div class="row"><button id="lkTurnM5">−5°</button><button id="lkTurnM1">−1°</button><button id="lkTurnP1">+1°</button><button id="lkTurnP5">+5°</button><button id="lkTurn0">0°</button></div>
+  <div class="row hint">Where the label sits depends on where the sensor is inside your disc: turn it until the picture's label lines up with the real one.</div>
+  <div class="row"><label for="lkColor">Disc colour</label><input type="color" id="lkColor"></div>
+  <div class="row"><label for="lkText">Label words</label><input type="text" id="lkText" maxlength="24" spellcheck="false"></div>
+  <div class="row"><label>Photo of your disc</label><button id="lkPhotoBtn">Choose…</button><button id="lkPhotoX" hidden>Remove</button>
+    <input type="file" id="lkPhoto" accept="image/*" hidden></div>
+  <div class="row" id="lkZoomRow" hidden><label for="lkZoom">Photo size</label><input type="range" id="lkZoom" min="0.5" max="2.5" step="0.01"></div>
+  <div class="row hint" id="lkPhotoHint" hidden>Take the photo from straight above, with the label reading normally; then line it up with "Turn the label".</div>
+  <hr>
+  <div class="row hint"><span><b>Turns the wrong way?</b> The picture shows the disc from where you stand. Hold the disc in front of you with its label reading normally and press <b>Face me</b>: then tilting its right edge down tilts the picture's right edge down. Press it again whenever it drifts (always after a hard throw).</span></div>
+  <div class="row"><button id="faceBtn2" class="primary">Face me</button><span class="spacer"></span><button id="lkReset">Reset look</button></div>
+</div>
+<div id="hint" class="card" hidden></div>
 <div id="msg"></div>
-<div id="panel">
+<div id="panel" class="card">
   <h3>The disc right now</h3>
   <div class="kv" id="readout"><span>Waiting for the disc…</span><span></span></div>
 </div>
+<div id="replayPanel" class="card" hidden>
+  <h3>Throw replay <span class="spacer"></span><select id="rpSel" title="Earlier throws"></select></h3>
+  <div id="rpBody"></div>
+  <div class="now" id="rpNow"></div>
+  <div class="ctl">
+    <button id="rpPlay" title="Play / pause (space)">Pause</button>
+    <span class="seg" id="rpSpeed"><button data-s="0.05">1/20</button><button data-s="0.1">1/10</button><button data-s="0.25">1/4</button><button data-s="1">real</button></span>
+    <span class="spacer"></span>
+    <button id="rpExit" title="Back to the live disc (Esc)">Back to live</button>
+  </div>
+</div>
+<div id="timeline" class="card" hidden><canvas id="tl" aria-label="The throw over time: force and spin, measured and rebuilt"></canvas></div>
 <div id="spinBig"><div><span class="n" id="rpmN">0</span><span class="u">rpm</span></div><div class="s" id="rpmS"></div></div>
 
+<script src="track.js"></script>
 <script type="module">
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -79,10 +154,17 @@ import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { LineGeometry } from "three/addons/lines/LineGeometry.js";
 
 const $ = id => document.getElementById(id);
-const D2R = Math.PI / 180, R2D = 180 / Math.PI, GMS = 9.80665, TAU = 2 * Math.PI;
+const D2R = Math.PI / 180, R2D = 180 / Math.PI, GMS = 9.80665, TAU = 2 * Math.PI, MPH = 2.2369363;
 const SVC = "19b10000-e8f2-537e-4f6c-d104768a1214", CMD = "19b10002-e8f2-537e-4f6c-d104768a1214",
       BTSTREAM = "19b10009-e8f2-537e-4f6c-d104768a1214";
-const CLIP = 32200;                        // raw counts: the gyro is maxed out (2254 deg/s = 376 rpm)
+const CLIP = 32200, ACLIP = 32700;         // raw counts: the gyro (2254 deg/s = 376 rpm) / the accelerometer (16 g) is maxed out
+const Z = new THREE.Vector3(0, 0, 1);
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+
+// ================================================================ how the disc looks (kept in this browser)
+const LOOK_KEY = "disc3d.look.v1", LOOK0 = { turn: 0, color: "#ff7a1a", text: "DiscTracker", photo: null, zoom: 1 };
+const look = Object.assign({}, LOOK0, (() => { try { return JSON.parse(localStorage.getItem(LOOK_KEY)) || {}; } catch { return {}; } })());
+function saveLook() { try { localStorage.setItem(LOOK_KEY, JSON.stringify(look)); return true; } catch { return false; } }
 
 // ================================================================ orientation from the raw readings
 // Samples arrive in DISC axes (+Z out of the flight plate). The gyro turns the disc; gravity pulls the picture level
@@ -92,10 +174,14 @@ const info = { odr: 416, alsb: 0.000488, glsb: 0.07, bias: [0, 0, 0], radius: 0,
 const st = {
   q: new THREE.Quaternion(), lastSeq: -1, n: 0, rateN: 0, rateT: performance.now(), rate: 0,
   wz: 0, wzRaw: 0, clipped: false, wSrc: "gyro", a: [0, 0, 1], aMag: 1, rot: 0, still: 0, mode: "–",
-  axy: [0, 0], v: new THREE.Vector3(), p: new THREE.Vector3(), started: false, freeFall: 0,
+  axy: [0, 0], v: new THREE.Vector3(), p: new THREE.Vector3(), started: false, freeFall: 0, faced: false,
 };
+// Samples per second, by the disc's own clock: two info packets at least 8 s apart (samples counted / milliseconds).
+// Its chip runs a little fast of the nominal 416; 418.6 is what this disc measured.
+const rateObs = []; let rateRef = null;
+function rateNow() { if (!rateObs.length) return 418.6; const a = rateObs.slice().sort((x, y) => x - y); return a[a.length >> 1]; }
 function onSample(c) {
-  const dt = 1 / (info.odr || 416), GL = info.glsb, AL = info.alsb;
+  const dt = 1 / rateNow(), GL = info.glsb, AL = info.alsb;
   const g = [c[0] * GL - info.bias[0], c[1] * GL - info.bias[1], c[2] * GL - info.bias[2]];   // deg/s, zero error removed
   const a = [c[3] * AL, c[4] * AL, c[5] * AL];
   const aMag = Math.hypot(a[0], a[1], a[2]);
@@ -138,8 +224,11 @@ function onSample(c) {
   const accW = fw.clone().sub(new THREE.Vector3(0, 0, 1)).multiplyScalar(GMS);
   const isStill = rotRate < 15 && Math.abs(aMag - 1) < 0.05;
   st.still = isStill ? st.still + 1 : 0;
-  st.freeFall = aMag < 0.3 + Math.hypot(st.axy[0], st.axy[1]) && Math.abs(a[2]) < 0.3 ? st.freeFall + 1 : 0;
-  const supported = spinning && !(aMag < 0.3 + Math.hypot(st.axy[0], st.axy[1]) && Math.abs(a[2]) < 0.3);   // spinning on a table / in a hand
+  const freeFall = aMag < 0.3 + Math.hypot(st.axy[0], st.axy[1]) && Math.abs(a[2]) < 0.3;
+  st.freeFall = freeFall ? st.freeFall + 1 : 0;
+  // spinning on a table or in a hand: about 1 g once the spin's own force is out (a hard pull is far more, and keeps
+  // its speed)
+  const supported = spinning && !freeFall && Math.abs(Math.hypot(am[0], am[1], am[2]) - 1) < 0.5;
   if (st.still > 40 || supported) st.v.multiplyScalar(0.9);
   else st.v.addScaledVector(accW, dt);
   st.v.multiplyScalar(Math.exp(-dt / 0.9));
@@ -150,23 +239,138 @@ function onSample(c) {
   st.wz = wz; st.wzRaw = g[2]; st.clipped = clipped; st.a = a; st.aMag = aMag; st.rot = rotRate;
   st.mode = st.freeFall > 20 ? "in the air" : clipped || Math.abs(g[2]) > 360 ? "spinning" : st.still > 60 ? "still" : "moving";
   st.n++;
+  // the first time it lies still for a second: turn the picture as if its label faced you (a guess - "Face me" makes it right)
+  if (!st.faced && st.still > 420) { st.faced = true; if (faceMe()) showHint("Turned so the label faces you. If tilting looks back to front, hold the disc with its label reading normally and press <b>Face me</b>.", 9000); }
+}
+
+// ================================================================ packets: readings, the disc's settings, throws
+const LRING = 16384, ring = new Int16Array(LRING * 6), seqs = new Float64Array(LRING).fill(-1);   // ~39 s of readings
+const pendingCaps = [], throwsList = [];
+// What slower throws (the gyro still seeing the spin) teach about this disc, for the fast ones it can't see (kept in
+// this browser): kI = how fast its wobble turns for its spin (the disc's shape), and how far off the axis the sensor
+// sits (used when the disc has no calibrated radius). Middle value of the last 15.
+const LEARN_KEY = "disc3d.learn.v1";
+const learn = (() => { try { return Object.assign({ kI: [], r: [] }, JSON.parse(localStorage.getItem(LEARN_KEY)) || {}); } catch { return { kI: [], r: [] }; } })();
+const learned = k => learn[k].length >= 2 ? DiscTrack.median(learn[k]) : 0;
+function teach(spin) {
+  let changed = false;
+  if (spin.kIObs > 0.8 && spin.kIObs < 1.02) { learn.kI.push(+spin.kIObs.toFixed(4)); changed = true; }
+  if (spin.radiusObs > 0.002 && spin.radiusObs < 0.025) { learn.r.push(+spin.radiusObs.toFixed(5)); changed = true; }
+  for (const k of ["kI", "r"]) if (learn[k].length > 15) learn[k].splice(0, learn[k].length - 15);
+  if (changed) try { localStorage.setItem(LEARN_KEY, JSON.stringify(learn)); } catch {}
+}
+function parseInfo(dv) {
+  const f = k => dv.getFloat32(16 + 4 * k, true);
+  return { boot: dv.getUint16(2, true), seq: dv.getUint32(4, true), millis: dv.getUint32(8, true), odr: dv.getUint16(12, true) || 416,
+           alsb: f(0), glsb: f(1), bias: [f(2), f(3), f(4)], radius: f(14), batt: f(15) };
+}
+function parseCap(dv) {                                       // a throw's results packet (as sim.html)
+  const f = k => dv.getFloat32(20 + 4 * k, true);
+  return { start: dv.getUint32(2, true), n: dv.getUint16(6, true), rel: dv.getUint16(8, true), liveRel: dv.getUint16(10, true),
+    counted: dv.getUint8(12), src: dv.getUint8(13), flags: dv.getUint16(14, true), end: dv.getUint8(16), sens: dv.getUint8(17),
+    res: Array.from({ length: 10 }, (_, k) => f(k)), tMs: dv.getUint32(60, true), at: performance.now() };
 }
 function onPacket(dv) {
   if (dv.byteLength < 2) return;
   const type = dv.getUint8(0);
   if (type === 2 && dv.byteLength >= 100) {
-    const f = k => dv.getFloat32(16 + 4 * k, true);
-    Object.assign(info, { odr: dv.getUint16(12, true) || 416, alsb: f(0), glsb: f(1), bias: [f(2), f(3), f(4)], radius: f(14), batt: f(15), seen: true });
+    const I = parseInfo(dv);
+    if (rateRef && rateRef.boot === I.boot && I.millis - rateRef.millis >= 8000 && I.seq > rateRef.seq) {
+      const r = (I.seq - rateRef.seq) * 1000 / (I.millis - rateRef.millis);
+      if (r > 380 && r < 460) { rateObs.push(r); if (rateObs.length > 9) rateObs.shift(); }
+    }
+    if (!rateRef || rateRef.boot !== I.boot || I.millis - rateRef.millis >= 8000 || I.millis < rateRef.millis) rateRef = I;
+    Object.assign(info, I, { seen: true });
     return;
   }
+  if (type === 3 && dv.byteLength >= 64) { pendingCaps.push(parseCap(dv)); tryCaps(); return; }
   if (type !== 1 || dv.byteLength < 6) return;
   const n = Math.min(dv.getUint8(1), Math.floor((dv.byteLength - 6) / 12)), seq = dv.getUint32(2, true), c = new Int16Array(6);
   for (let j = 0; j < n; j++) {
-    if (seq + j <= st.lastSeq) continue;
+    const sq = seq + j, slot = sq % LRING;
     for (let k = 0; k < 6; k++) c[k] = dv.getInt16(6 + j * 12 + 2 * k, true);
-    onSample(c); st.lastSeq = seq + j;
+    if (seqs[slot] !== sq) { ring.set(c, slot * 6); seqs[slot] = sq; }
+    if (sq > st.lastSeq) { onSample(c); st.lastSeq = sq; }
   }
   st.rateN += n;
+  if (pendingCaps.length) tryCaps();
+}
+// A throw's results packet: once its readings are all in (or 15 s on), cut them out of the buffer and rebuild the throw.
+function tryCaps() {
+  while (pendingCaps.length) {
+    const c = pendingCaps[0];
+    if (st.lastSeq < c.start + c.n - 1 && performance.now() - c.at < 15000) return;
+    pendingCaps.shift();
+    if (!c.counted && !(c.res[6] >= 4 && c.res[1] >= 120)) continue;          // handling the disc, not a throw
+    const S = new Int16Array(c.n * 6); let missing = 0;
+    for (let i = 0; i < c.n; i++) {
+      const sq = c.start + i, sl = sq % LRING;
+      if (seqs[sl] === sq) S.set(ring.subarray(sl * 6, sl * 6 + 6), i * 6);
+      else { missing++; if (i) S.copyWithin(i * 6, (i - 1) * 6, i * 6); }      // a lost reading: a copy (the tracker bridges it)
+    }
+    if (missing > 0.2 * c.n || c.n < 470) { showHint(`A throw came in, but ${missing} of its ${c.n} readings were lost on the way: no replay for this one.`, 7000); continue; }
+    let th = null;
+    try { th = analyzeThrow(c, S, missing); } catch (e) { console.error("rebuilding the throw failed", e); }
+    if (!th) continue;
+    // picked up, or dropping out of the net: a throw spins - well over 120 rpm by both counts
+    if (Math.abs(th.nw.six.spin) < 120 && !(c.counted && c.res[1] >= 120)) continue;
+    teach(th.nw.info.spin);
+    throwsList.push(th); if (throwsList.length > 12) throwsList.shift();
+    enterReplay(th);
+  }
+}
+
+// ================================================================ a throw, rebuilt (track.js), ready to replay
+// Scene frame for a replay: Z up, the release at REL_H above the middle of the floor, the throw heading into the
+// screen (+Y), the camera behind and above the thrower's side.
+const FLOOR_Z = -0.35, REL_H = FLOOR_Z + 1.0;
+function analyzeThrow(c, S, missing) {
+  const n = c.n, I = { alsb: info.alsb, glsb: info.glsb, bias: info.bias.slice(), radius: info.radius, odr: info.odr, rate: rateNow(), kI: learned("kI") || 0.93 };
+  const rCal = info.radius > 0.0005;
+  if (!rCal && learned("r")) I.radius = learned("r");
+  const o = { iRel: c.rel < n ? c.rel : undefined, spinRpm: c.res[1] > 0 ? c.res[1] : undefined };
+  const nw = DiscTrack.reconstruct(S, I, o), old = DiscTrack.reconstruct(S, I, Object.assign({ old: true }, o));
+  if (!nw.info.rel || !old.info.rel) return null;
+  const rate = 1 / nw.info.dt, iRel = nw.info.iRel, i0 = nw.iStart;
+  const v = nw.info.rel.v, psi = Math.PI / 2 - Math.atan2(v[1], v[0]), cz = Math.cos(psi), sz = Math.sin(psi);
+  const rotZ = p => [cz * p[0] - sz * p[1], sz * p[0] + cz * p[1], p[2]];
+  const qY = new THREE.Quaternion().setFromAxisAngle(Z, psi), pR = nw.info.rel.p;
+  const kA = Math.max(i0, iRel - Math.round(0.3 * rate)), kB = n - 1, N = kB - kA + 1;
+  const pos = new Float32Array(N * 3), att = [], spin = new Float32Array(N), spd = new Float32Array(N);
+  const fMeas = new Float32Array(N), fNew = new Float32Array(N), clipA = new Uint8Array(N), gMeas = new Float32Array(N), clipG = new Uint8Array(N);
+  for (let k = kA; k <= kB; k++) {
+    const j = k - kA, P = nw.path[k - i0], p = rotZ([P[0] - pR[0], P[1] - pR[1], P[2] - pR[2]]);
+    pos[j * 3] = p[0]; pos[j * 3 + 1] = p[1]; pos[j * 3 + 2] = p[2] + REL_H;
+    const a = nw.att[k - i0]; att.push(qY.clone().multiply(new THREE.Quaternion(a[1], a[2], a[3], a[0])));
+    spin[j] = nw.wz[k] * 60 / TAU;
+    const vv = nw.vel[k - i0]; spd[j] = Math.hypot(vv[0], vv[1], vv[2]) * MPH;
+    const r = S.subarray(k * 6, k * 6 + 6);
+    fMeas[j] = Math.hypot(r[3], r[4], r[5]) * I.alsb;
+    clipA[j] = Math.abs(r[3]) >= ACLIP || Math.abs(r[4]) >= ACLIP || Math.abs(r[5]) >= ACLIP ? 1 : 0;
+    fNew[j] = Math.hypot(nw.fx[k], nw.fy[k], nw.fz[k]) / GMS;
+    gMeas[j] = Math.abs(r[2] * I.glsb - I.bias[2]) / 6;
+    clipG[j] = Math.abs(r[2]) >= CLIP ? 1 : 0;
+  }
+  // the ghost: the same readings added up as they came - force cut off at 16 g, the gyro's spin stuck at its top -
+  // started from the same point
+  const oi0 = old.iStart, kAl = Math.max(kA, oi0), base = old.path[kAl - oi0], jAl = kAl - kA, ghost = [];
+  for (let k = kAl; k <= kB; k++) {
+    const P = old.path[k - oi0], p = rotZ([P[0] - base[0], P[1] - base[1], P[2] - base[2]]);
+    ghost.push(p[0] + pos[jAl * 3], p[1] + pos[jAl * 3 + 1], p[2] + pos[jAl * 3 + 2]);
+  }
+  const oRel = old.info.iRel, gRel = oRel >= kAl ? (oRel - kAl) * 3 : 0;
+  let accN = 0, gyrN = 0, peak = 0;
+  for (let k = i0; k <= iRel; k++) {
+    const r = S.subarray(k * 6, k * 6 + 6);
+    if (Math.abs(r[3]) >= ACLIP || Math.abs(r[4]) >= ACLIP || Math.abs(r[5]) >= ACLIP) accN++;
+    if (Math.abs(r[2]) >= CLIP) gyrN++;
+    if (k >= kA) peak = Math.max(peak, fNew[k - kA]);
+  }
+  return { c, S, nw, old, I, rate, iRel, kA, kB, N, pos, att, spin, spd, fMeas, fNew, clipA, gMeas, clipG, ghost,
+    relJ: iRel - kA, discRelJ: c.rel - kA, vRel: rotZ(v), vOld: rotZ(old.info.rel.v), oldRelPos: ghost.slice(gRel, gRel + 3),
+    accMs: accN / rate * 1000, gyrMs: gyrN / rate * 1000, peak, relShift: iRel - (nw.info.relGiven ?? iRel), missing, at: new Date(),
+    impact: c.end === 1, kI: I.kI, kIN: learn.kI.length >= 2 ? learn.kI.length : 0, radius: I.radius,
+    rSrc: rCal ? "calibrated" : I.radius > 0 ? `learned from ${learn.r.length} throws` : "" };
 }
 
 // ================================================================ Bluetooth (as sim.html)
@@ -235,6 +439,9 @@ if (navigator.bluetooth && navigator.bluetooth.getDevices) {
   }).catch(() => {});
 }
 function showMsg(html) { $("msg").innerHTML = html; }
+let hintTimer = 0;
+function showHint(html, ms = 6000) { $("hint").innerHTML = html; $("hint").hidden = false; clearTimeout(hintTimer); hintTimer = setTimeout(() => $("hint").hidden = true, ms); }
+$("hint").onclick = () => $("hint").hidden = true;
 
 // ================================================================ 3D
 // three.js is Y-up; the disc maths is Z-up (world Z = up). A holder group turns one into the other.
@@ -244,27 +451,36 @@ renderer.shadowMap.enabled = true;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x152030);
 scene.fog = new THREE.Fog(0x152030, 4, 12);
-const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 60);
 camera.position.set(0.0, 0.42, 0.62);
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 0.02, 0); controls.enableDamping = true; controls.minDistance = 0.2; controls.maxDistance = 5;
+controls.target.set(0, 0.02, 0); controls.enableDamping = true; controls.minDistance = 0.2; controls.maxDistance = 9;
 scene.add(new THREE.HemisphereLight(0xdfefff, 0x1c2430, 1.4));
 const sun = new THREE.DirectionalLight(0xffffff, 2.4); sun.position.set(0.8, 2.0, 1.2); sun.castShadow = true;
 sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, { left: -1, right: 1, top: 1, bottom: -1, near: 0.1, far: 6 });
-scene.add(sun);
-const floorY = -0.35;
-const floor = new THREE.Mesh(new THREE.CircleGeometry(4, 64), new THREE.MeshStandardMaterial({ color: 0x2a3a4c, roughness: 0.95 }));
+scene.add(sun); scene.add(sun.target);
+const floorY = FLOOR_Z;
+const floor = new THREE.Mesh(new THREE.CircleGeometry(9, 72), new THREE.MeshStandardMaterial({ color: 0x2a3a4c, roughness: 0.95 }));
 floor.rotation.x = -Math.PI / 2; floor.position.y = floorY; floor.receiveShadow = true; scene.add(floor);
-const grid = new THREE.GridHelper(8, 80, 0x5a7390, 0x3a4c60); grid.position.y = floorY + 0.001; scene.add(grid);
+const grid = new THREE.GridHelper(18, 180, 0x5a7390, 0x3a4c60); grid.position.y = floorY + 0.001; scene.add(grid);
 
 const world = new THREE.Group(); world.rotation.x = -Math.PI / 2; scene.add(world);    // Z-up frame
 const mover = new THREE.Group(); world.add(mover);                                       // position
 const tiltG = new THREE.Group(); mover.add(tiltG);                                       // orientation without the spin
 const spinG = new THREE.Group(); tiltG.add(spinG);                                       // the spin about the disc's axis
 
-// The disc: a lathed profile (radius 10.5 cm), flight plate on top, rim, open cavity underneath. Built along Y, turned to Z.
+// The disc: a lathed profile (radius 10.5 cm), flight plate on top, rim, open cavity underneath. Built along Y, turned
+// to Z. The label lies on the top surface (it follows the dome and the rim's shoulder) and can be turned, recoloured,
+// reworded or replaced with a photo of the real disc (the "Look" panel). Its top is +Y before it is turned.
+const LABEL_R = 0.1, PLATE = 0.084;
+const topZ = rho => rho <= 0.088 ? 0.012 - 0.006 * (rho / 0.088) ** 2
+  : (a => 0.006 - 0.012 * (1 - Math.cos(a)) / 2 - 0.006 * (a / Math.PI))(Math.asin(Math.min(1, (rho - 0.088) / 0.017)));
+const bodyMat = new THREE.MeshStandardMaterial({ color: look.color, roughness: 0.45, metalness: 0.05, side: THREE.DoubleSide });
+const labelCanvas = document.createElement("canvas"); labelCanvas.width = labelCanvas.height = 1024;
+const labelTex = new THREE.CanvasTexture(labelCanvas); labelTex.colorSpace = THREE.SRGBColorSpace; labelTex.anisotropy = 8;
+let labelMesh = null, blurMat = null;
 function buildDisc() {
-  const R = 0.105, pts = [];
+  const pts = [];
   // outer top surface from the centre out (gently domed), round over the rim, then the underside of the rim and the cavity
   for (let i = 0; i <= 12; i++) { const x = i / 12 * 0.088; pts.push(new THREE.Vector2(x, 0.012 - 0.006 * (x / 0.088) ** 2)); }
   for (let i = 0; i <= 10; i++) { const a = i / 10 * Math.PI; pts.push(new THREE.Vector2(0.088 + 0.017 * Math.sin(a), 0.006 - 0.012 * (1 - Math.cos(a)) / 2 - 0.006 * (i / 10))); }
@@ -272,68 +488,324 @@ function buildDisc() {
   for (let i = 0; i <= 8; i++) { const x = 0.08 - i / 8 * 0.08; pts.push(new THREE.Vector2(Math.max(0.0005, x), 0.006 + 0.002 * (1 - (x / 0.08) ** 2))); }
   const geo = new THREE.LatheGeometry(pts, 96);
   geo.rotateX(Math.PI / 2);                                    // Y-up profile -> normal along +Z
-  const body = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xff7a1a, roughness: 0.45, metalness: 0.05, side: THREE.DoubleSide }));
+  const body = new THREE.Mesh(geo, bodyMat);
   body.castShadow = true;
-  // the label: a drawn texture on a thin disc just above the flight plate, with marks so the spin is easy to see
-  const c = document.createElement("canvas"); c.width = c.height = 512; const g = c.getContext("2d");
-  g.fillStyle = "#ff7a1a"; g.fillRect(0, 0, 512, 512);
-  g.translate(256, 256);
-  for (let k = 0; k < 4; k++) { g.fillStyle = k % 2 ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.12)"; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 250, k * Math.PI / 2, (k + 1) * Math.PI / 2); g.fill(); }
-  g.fillStyle = "#1b1b1b"; g.fillRect(-18, -250, 36, 500);                                  // a stripe across the face
-  g.fillStyle = "#ffffff"; g.font = "bold 64px system-ui, Segoe UI, sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
-  g.save(); g.rotate(-Math.PI / 2); g.fillText("DiscTracker", 0, -120); g.restore();
-  g.fillStyle = "#34d399"; g.beginPath(); g.arc(0, -200, 26, 0, TAU); g.fill();              // a dot on the rim: one turn = one lap of the dot
-  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
-  const label = new THREE.Mesh(new THREE.CircleGeometry(0.084, 96), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5 }));
-  label.position.z = 0.0122;
-  const blur = new THREE.Mesh(new THREE.CircleGeometry(0.104, 96), new THREE.MeshBasicMaterial({ color: 0xffb070, transparent: true, opacity: 0, depthWrite: false }));
+  const lg = new THREE.RingGeometry(0.0002, LABEL_R, 128, 40), lp = lg.attributes.position;
+  for (let i = 0; i < lp.count; i++) lp.setZ(i, topZ(Math.hypot(lp.getX(i), lp.getY(i))) + 0.0006);
+  lg.computeVertexNormals();
+  labelMesh = new THREE.Mesh(lg, new THREE.MeshStandardMaterial({ map: labelTex, roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -1 }));
+  blurMat = new THREE.MeshBasicMaterial({ color: 0xffb070, transparent: true, opacity: 0, depthWrite: false });
+  const blur = new THREE.Mesh(new THREE.CircleGeometry(0.104, 96), blurMat);
   blur.position.z = 0.0135;
-  const disc = new THREE.Group(); disc.add(body, label, blur);
+  const disc = new THREE.Group(); disc.add(body, labelMesh, blur);
   return { disc, blur };
 }
+const photoImg = new Image();
+photoImg.onload = () => drawLabel();
+function drawLabel() {
+  const g = labelCanvas.getContext("2d"), S = labelCanvas.width, h = S / 2, P = h * PLATE / LABEL_R;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.fillStyle = look.color; g.fillRect(0, 0, S, S);
+  g.translate(h, h);
+  if (look.photo && photoImg.naturalWidth) {
+    const w = photoImg.naturalWidth, ht = photoImg.naturalHeight, k = S / Math.min(w, ht) * look.zoom;
+    g.save(); g.beginPath(); g.arc(0, 0, h, 0, TAU); g.clip();
+    g.drawImage(photoImg, -w * k / 2, -ht * k / 2, w * k, ht * k); g.restore();
+  } else {
+    // the flight plate: four shaded quarters (so the spin shows), the words, and a green dot at the label's top
+    for (let q = 0; q < 4; q++) {
+      g.fillStyle = q % 2 ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.10)";
+      g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, P, (q - 0.5) * Math.PI / 2, (q + 0.5) * Math.PI / 2); g.fill();
+    }
+    g.strokeStyle = "rgba(0,0,0,0.25)"; g.lineWidth = 6; g.beginPath(); g.arc(0, 0, P, 0, TAU); g.stroke();
+    const words = (look.text || "").trim();
+    if (words) {
+      let fs = 150; const font = s => `800 ${s}px system-ui, "Segoe UI", sans-serif`;
+      g.font = font(fs); const wd = g.measureText(words).width; if (wd > 1.5 * P) { fs = Math.floor(fs * 1.5 * P / wd); g.font = font(fs); }
+      g.textAlign = "center"; g.textBaseline = "middle"; g.lineJoin = "round";
+      g.lineWidth = Math.max(6, fs * 0.12); g.strokeStyle = "rgba(0,0,0,0.55)"; g.strokeText(words, 0, -P * 0.2);
+      g.fillStyle = "#ffffff"; g.fillText(words, 0, -P * 0.2);
+    }
+    g.fillStyle = "#34d399"; g.beginPath(); g.arc(0, -P * 0.8, 34, 0, TAU); g.fill();
+  }
+  labelTex.needsUpdate = true;
+  bodyMat.color.set(look.color);
+  if (blurMat) blurMat.color.set(look.color).lerp(new THREE.Color(0xffffff), 0.35);
+  labelMesh.rotation.z = look.turn * D2R;
+}
 const { disc, blur } = buildDisc(); spinG.add(disc);
+if (look.photo) photoImg.src = look.photo; else drawLabel();
 const axes = new THREE.AxesHelper(0.16); axes.visible = false; spinG.add(axes);
 // shadow-ish ring under the disc to show height
-const ring = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.107, 64), new THREE.MeshBasicMaterial({ color: 0x5f7a96, transparent: true, opacity: 0.6 }));
-ring.rotation.x = -Math.PI / 2; ring.position.y = floorY + 0.002; scene.add(ring);
+const ring2 = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.107, 64), new THREE.MeshBasicMaterial({ color: 0x5f7a96, transparent: true, opacity: 0.6 }));
+ring2.rotation.x = -Math.PI / 2; ring2.position.y = floorY + 0.002; scene.add(ring2);
 // trail of where the disc has been (last ~2 s)
 const trailPts = [];
 const trailGeo = new LineGeometry(); trailGeo.setPositions([0, 0, 0, 0, 0, 0]);
 const trailMat = new LineMaterial({ color: 0xfff1b8, linewidth: 3, transparent: true, opacity: 0.85 });
 const trail = new Line2(trailGeo, trailMat); scene.add(trail);
+// the replay's own pieces (Z-up, in `world`): the rebuilt path, the ghost of the readings as they came, the release
+// with its velocity, and the net
+const rpG = new THREE.Group(); rpG.visible = false; world.add(rpG);
+const pathMat = new LineMaterial({ color: 0xff9a3c, linewidth: 4 }), ghostMat = new LineMaterial({ color: 0x9aa7b6, linewidth: 2, transparent: true, opacity: 0.7, dashed: true, dashSize: 0.06, gapSize: 0.04 });
+const pathLine = new Line2(new LineGeometry(), pathMat), ghostLine = new Line2(new LineGeometry(), ghostMat);
+const relDot = new THREE.Mesh(new THREE.SphereGeometry(0.022, 20, 14), new THREE.MeshBasicMaterial({ color: 0xff9a3c }));
+const oldDot = new THREE.Mesh(new THREE.SphereGeometry(0.016, 16, 12), new THREE.MeshBasicMaterial({ color: 0x9aa7b6 }));
+// a solid arrow (WebGL lines are one pixel wide): a shaft and a cone along +Y, stretched to its length
+function makeArrow(color, r) {
+  const g = new THREE.Group(), mat = new THREE.MeshBasicMaterial({ color });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 12), mat), head = new THREE.Mesh(new THREE.ConeGeometry(r * 2.8, 1, 18), mat);
+  g.add(shaft, head); g.userData = { shaft, head };
+  return g;
+}
+function setArrow(a, from, dir, len) {
+  const hl = Math.min(0.14, len * 0.3), { shaft, head } = a.userData;
+  shaft.scale.set(1, len - hl, 1); shaft.position.set(0, (len - hl) / 2, 0);
+  head.scale.set(1, hl, 1); head.position.set(0, len - hl / 2, 0);
+  a.position.copy(from); a.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+}
+const arrowNew = makeArrow(0xffd166, 0.011), arrowOld = makeArrow(0x9aa7b6, 0.008);
+const net = new THREE.Group();
+net.add(new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6), new THREE.MeshBasicMaterial({ color: 0x8fb3d9, transparent: true, opacity: 0.12, side: THREE.DoubleSide, depthWrite: false })));
+net.add(new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.6, 16, 16), new THREE.MeshBasicMaterial({ color: 0xb7cde4, wireframe: true, transparent: true, opacity: 0.35 })));
+net.rotation.x = Math.PI / 2;                                  // upright, facing the throw (+Y)
+rpG.add(pathLine, ghostLine, relDot, oldDot, arrowNew, arrowOld, net);
+const lineMats = [trailMat, pathMat, ghostMat];
 
 function resize() {
   const w = innerWidth, h = innerHeight;
-  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); trailMat.resolution.set(w, h);
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  for (const m of lineMats) m.resolution.set(w, h);
 }
 addEventListener("resize", resize); resize();
 
 // The picture: tilt = the measured attitude with its twist about the disc axis taken out; the twist is drawn
 // separately so a fast spin can be slowed down for the eye.
-let headingOffset = new THREE.Quaternion(), visSpin = 0, lastT = performance.now(), uiT = 0;
-const Z = new THREE.Vector3(0, 0, 1);
+let headingOffset = new THREE.Quaternion(), visSpin = 0, lastT = performance.now(), uiT = 0, tlT = 0;
 function swingTwist(q) {                                       // q = swing * twist(about Z)
   const twist = new THREE.Quaternion(0, 0, q.z, q.w).normalize();
   const swing = q.clone().multiply(twist.clone().invert());
   return { swing, twistAngle: 2 * Math.atan2(q.z, q.w) };
 }
-$("headBtn").onclick = () => {                                 // turn the world so the disc's current heading faces the camera
-  const n = Z.clone().applyQuaternion(st.q), f = new THREE.Vector3(1, 0, 0).applyQuaternion(st.q);
-  const yaw = Math.atan2(f.y - n.y * f.dot(n), f.x - n.x * f.dot(n));
-  headingOffset.setFromAxisAngle(Z, -yaw - Math.PI / 2);
-};
+// "Face me": the disc is held in front of the viewer with its label reading normally, so the label's top points
+// away from them and its face toward them. Turn the picture so the same is true on screen (away = into the screen, +Y).
+function faceMe() {
+  const lt = look.turn * D2R;
+  const up = new THREE.Vector3(-Math.sin(lt), Math.cos(lt), 0).applyQuaternion(st.q), nrm = Z.clone().applyQuaternion(st.q);
+  const dx = up.x - nrm.x, dy = up.y - nrm.y;
+  if (Math.hypot(dx, dy) < 0.15) return false;
+  headingOffset.setFromAxisAngle(Z, Math.PI / 2 - Math.atan2(dy, dx));
+  st.faced = true;
+  return true;
+}
+function faceNow() {
+  if (!st.n) { showHint("Connect the disc first."); return; }
+  if (rp.on) exitReplay();
+  if (!faceMe()) showHint("Hold the disc flatter (or upright facing you) and press Face me again.");
+}
+$("faceBtn").onclick = faceNow; $("faceBtn2").onclick = faceNow;
 $("levelBtn").onclick = () => {
   const a = new THREE.Vector3(...st.a).normalize();
   const yawKeep = swingTwist(st.q).twistAngle;
-  st.q.setFromUnitVectors(a, Z).multiply(new THREE.Quaternion().setFromAxisAngle(Z, 0));
+  st.q.setFromUnitVectors(a, Z);
   st.q.premultiply(new THREE.Quaternion().setFromAxisAngle(Z, yawKeep)).normalize();
 };
 $("optAxes").onchange = () => axes.visible = $("optAxes").checked;
 
-function frame(now) {
-  requestAnimationFrame(frame);
-  const dtF = Math.min(0.1, (now - lastT) / 1000); lastT = now;
-  // attitude for display: heading offset * measured attitude, then split off the twist about the disc's own axis
+// ================================================================ the "Look" panel
+function lookUi() {
+  $("lkTurn").value = look.turn; $("lkTurnV").textContent = `${look.turn}°`;
+  $("lkColor").value = look.color; $("lkText").value = look.text;
+  $("lkPhotoX").hidden = $("lkZoomRow").hidden = $("lkPhotoHint").hidden = !look.photo; $("lkZoom").value = look.zoom;
+}
+function setLook(p) { Object.assign(look, p); drawLabel(); lookUi(); if (!saveLook()) showHint("This browser wouldn't keep the photo (too big?) - it shows until the page is closed."); }
+const turnBy = d => setLook({ turn: ((look.turn + d + 540) % 360) - 180 });
+$("lookBtn").onclick = () => { $("lookPanel").hidden = !$("lookPanel").hidden; $("lookBtn").classList.toggle("on", !$("lookPanel").hidden); lookUi(); };
+$("lookClose").onclick = () => { $("lookPanel").hidden = true; $("lookBtn").classList.remove("on"); };
+$("lkTurn").oninput = () => setLook({ turn: +$("lkTurn").value });
+$("lkTurnM5").onclick = () => turnBy(-5); $("lkTurnM1").onclick = () => turnBy(-1);
+$("lkTurnP1").onclick = () => turnBy(1); $("lkTurnP5").onclick = () => turnBy(5); $("lkTurn0").onclick = () => setLook({ turn: 0 });
+$("lkColor").oninput = () => setLook({ color: $("lkColor").value });
+$("lkText").oninput = () => setLook({ text: $("lkText").value });
+$("lkZoom").oninput = () => setLook({ zoom: +$("lkZoom").value });
+$("lkPhotoBtn").onclick = () => $("lkPhoto").click();
+$("lkPhotoX").onclick = () => { photoImg.removeAttribute("src"); setLook({ photo: null, zoom: 1 }); };
+$("lkPhoto").onchange = () => {
+  const f = $("lkPhoto").files[0]; if (!f) return;
+  const img = new Image(), url = URL.createObjectURL(f);
+  img.onload = () => {                                         // square middle of the photo, at most 768 px, as JPEG
+    const s = Math.min(img.naturalWidth, img.naturalHeight), d = Math.min(768, s), cv = document.createElement("canvas");
+    cv.width = cv.height = d;
+    cv.getContext("2d").drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, d, d);
+    URL.revokeObjectURL(url);
+    const data = cv.toDataURL("image/jpeg", 0.86);
+    look.photo = data; look.zoom = 1; photoImg.src = data; setLook({});
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); showHint("That file didn't open as a picture."); };
+  img.src = url; $("lkPhoto").value = "";
+};
+$("lkReset").onclick = () => { photoImg.removeAttribute("src"); setLook(Object.assign({}, LOOK0)); };
+
+// ================================================================ the throw replay
+const rp = { on: false, th: null, t: 0, speed: 0.1, playing: true, hold: 0, drag: false, visSpin: 0, camLive: null };
+const tA = th => (th.kA - th.iRel) / th.rate, tB = th => (th.kB - th.iRel) / th.rate;
+function setLine(line, arr) { const g = new LineGeometry(); g.setPositions(arr.length >= 6 ? arr : [0, 0, 0, 0, 0, 0.0001]); line.geometry.dispose(); line.geometry = g; line.computeLineDistances(); }
+function enterReplay(th) {
+  if (!rp.on) rp.camLive = camera.position.clone().sub(controls.target);
+  rp.on = true; rp.th = th; rp.t = tA(th); rp.playing = true; rp.hold = 0;
+  setLine(pathLine, Array.from(th.pos)); setLine(ghostLine, th.ghost);
+  const R = th.relJ * 3, relP = new THREE.Vector3(th.pos[R], th.pos[R + 1], th.pos[R + 2]);
+  relDot.position.copy(relP);
+  // velocity arrows: 1 m per 25 m/s (56 mph)
+  const vN = new THREE.Vector3(...th.vRel), vO = new THREE.Vector3(...th.vOld);
+  setArrow(arrowNew, relP, vN, Math.max(0.15, vN.length() / 25));
+  oldDot.position.set(...th.oldRelPos);
+  setArrow(arrowOld, oldDot.position, vO, Math.max(0.12, vO.length() / 25));
+  const E = (th.N - 7) * 3;                                    // the recording ends 6 readings after the net
+  net.visible = th.impact; net.position.set(th.pos[E], th.pos[E + 1] + 0.04, Math.max(th.pos[E + 2], FLOOR_Z + 0.8));
+  rpG.visible = true; trail.visible = false; trailPts.length = 0; showMsg("");
+  document.body.classList.add("replay");
+  $("panel").hidden = true; $("replayPanel").hidden = false; $("timeline").hidden = false; $("lastBtn").hidden = true;
+  // camera: behind the thrower and a little to the right, high enough to see the whole flight to the net
+  const relT = new THREE.Vector3(relP.x, relP.z, -relP.y);
+  controls.target.copy(relT); camera.position.copy(relT).add(new THREE.Vector3(1.7, 1.5, 3.4));
+  renderReplayPanel(); setSpeedUi();
+}
+function exitReplay() {
+  if (!rp.on) return;
+  const hard = rp.th && rp.th.gyrMs > 0;
+  rp.on = false; rpG.visible = false;
+  document.body.classList.remove("replay");
+  $("panel").hidden = false; $("replayPanel").hidden = true; $("timeline").hidden = true; $("lastBtn").hidden = !throwsList.length;
+  const goal = new THREE.Vector3();
+  controls.target.copy(goal); camera.position.copy(goal).add(rp.camLive || new THREE.Vector3(0, 0.42, 0.62));
+  if (hard) showHint("The throw spun the gyro past its limit, so the picture's direction is lost: hold the disc with its label reading normally and press <b>Face me</b>.", 9000);
+}
+function setSpeedUi() {
+  for (const b of $("rpSpeed").querySelectorAll("button")) b.classList.toggle("on", +b.dataset.s === rp.speed);
+  $("rpPlay").textContent = rp.playing ? "Pause" : "Play";
+}
+$("rpSpeed").onclick = e => { const b = e.target.closest("button"); if (!b) return; rp.speed = +b.dataset.s; setSpeedUi(); };
+$("rpPlay").onclick = () => { rp.playing = !rp.playing; if (rp.playing && rp.t >= tB(rp.th) - 1e-6) rp.t = tA(rp.th); rp.hold = 0; setSpeedUi(); };
+$("rpExit").onclick = exitReplay;
+$("lastBtn").onclick = () => { if (throwsList.length) enterReplay(throwsList[throwsList.length - 1]); };
+$("rpSel").onchange = () => { const th = throwsList[+$("rpSel").value]; if (th) enterReplay(th); };
+addEventListener("keydown", e => {
+  if (e.target.closest("input, select, textarea")) return;
+  if (e.key === "Escape") { if (!$("lookPanel").hidden) $("lookClose").click(); else exitReplay(); }
+  else if (e.key === " " && rp.on) { e.preventDefault(); $("rpPlay").click(); }
+  else if (e.key === "f" || e.key === "F") faceNow();
+});
+function renderReplayPanel() {
+  const th = rp.th, s = th.nw.six, r = th.c.res, f1 = x => x.toFixed(1), sg = x => (x > 0 ? "+" : "") + x.toFixed(1);
+  const row = (k, a, b, u) => `<tr><td>${k}</td><td class="new">${a}</td><td class="old">${b}</td><td class="old">${u}</td></tr>`;
+  $("rpBody").innerHTML = `<table class="cmp"><tr><th></th><th>rebuilt</th><th>disc's own</th><th></th></tr>` +
+    row("Speed", f1(s.speed), f1(r[0]), "mph") + row("Spin", s.spin.toFixed(0), r[1].toFixed(0), "rpm") +
+    row("Hyzer", sg(s.hyzer), sg(r[2]), "°") + row("Nose", sg(s.nose), sg(r[3]), "°") + row("Launch", sg(s.launch), sg(r[4]), "°") + `</table>` +
+    `<ul class="notes">` +
+    (th.accMs > 0 ? `<li>The force passed the sensor's 16 g for ${th.accMs.toFixed(0)} ms of the pull; rebuilt from the readings it did get, it peaked near ${th.peak.toFixed(0)} g.</li>` : `<li>The force stayed within the sensor's 16 g: nothing had to be rebuilt.</li>`) +
+    (th.gyrMs > 0 ? `<li>The spin passed the gyro's 382 rpm ${th.gyrMs.toFixed(0)} ms before release; the spin-up in between is ${th.nw.info.ramp === "fitted" ? "the shape that fits the force readings best" : "a smooth curve to the flight's spin"}.</li>` : "") +
+    spinNote(th) +
+    (Math.abs(th.relShift) >= 3 ? `<li>Released ${(Math.abs(th.relShift) / th.rate * 1000).toFixed(0)} ms ${th.relShift > 0 ? "later" : "earlier"} than the disc marked${th.relShift < 0 && th.nw.info.relGiven >= th.nw.info.iImp - 8 ? " (it marked the net)" : ""}: here the readings settled into free flight, after the spin passed 300 rpm.</li>` : "") +
+    (th.missing ? `<li>${th.missing} readings were lost over Bluetooth and bridged.</li>` : "") +
+    `<li>Orange: the rebuilt flight. Grey dashed: the same readings added up as they came, cut off at 16 g.</li></ul>`;
+  $("rpSel").innerHTML = throwsList.map((t, i) => `<option value="${i}">${t.at.toLocaleTimeString()} · ${t.nw.six.speed.toFixed(0)} mph</option>`).reverse().join("");
+  $("rpSel").value = String(throwsList.indexOf(th));
+}
+// How the flight's spin was found when the gyro was maxed (track.js: the wobble's turning rate, the off-centre force)
+function spinNote(th) {
+  const i = th.nw.info, sp = i.spin, src = i.spinSrc, f0 = x => x.toFixed(0);
+  if (src === "gyro") return "";
+  const kI = `the wobble turns at ${th.kI.toFixed(2)} × the spin (${th.kIN ? `learned from ${th.kIN} slower throws` : "a golf disc's usual; it learns from throws under 382 rpm"})`;
+  const mm = th.radius > 0 ? `${(th.radius * 1000).toFixed(1)} mm off the axis, ${th.rSrc}` : "";
+  const txt = src === "wobble+force" ? `Spin past the gyro's top, measured two ways that agree: the wobble ${f0(sp.wobble)} rpm (${kI}) and the off-centre force ${f0(sp.force)} rpm (sensor ${mm}).`
+    : src.startsWith("wobble (") ? `Spin past the gyro's top, from the wobble: ${f0(sp.wobble)} rpm (${kI}). The off-centre force says ${f0(sp.force)} rpm - the sensor's radius (${mm}) may be off.`
+    : src === "wobble" ? `Spin past the gyro's top, from the wobble: ${f0(sp.wobble)} rpm (${kI}).`
+    : src === "force" ? `Spin past the gyro's top, from the off-centre force: ${f0(sp.force)} rpm (sensor ${mm}). Too little wobble to cross-check.`
+    : src === "disc" ? "Spin past the gyro's top: the disc's own number (too little wobble or flight here to measure it)."
+    : "Spin: at least 382 rpm, the gyro's top - too little wobble or flight to measure past it.";
+  return `<li>${txt}</li>`;
+}
+// the timeline: force and spin over the throw - what the sensor read (grey/blue), where it was maxed (red), and the
+// rebuilt values (orange); drag it to move through the throw
+function drawTimeline() {
+  const th = rp.th, cv = $("tl"), dpr = Math.min(2, devicePixelRatio || 1), W = cv.clientWidth, H = cv.clientHeight;
+  if (!W || !H) return;
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const L = 58, R = W - 14, x = j => L + j / (th.N - 1) * (R - L), N = th.N;
+  const lanes = [{ y0: 22, y1: H / 2 - 4 }, { y0: H / 2 + 16, y1: H - 22 }];
+  g.font = "11.5px system-ui, Segoe UI, sans-serif"; g.textBaseline = "middle";
+  const fMax = Math.max(20, th.peak * 1.12), sMax = Math.max(450, Math.abs(th.nw.six.spin) * 1.15);
+  const lane = (ln, max, unit, limit, limitTxt, title) => {
+    const y = v => ln.y1 - Math.min(1.04, v / max) * (ln.y1 - ln.y0);
+    g.strokeStyle = "rgba(255,255,255,0.08)"; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(L, ln.y1 + 0.5); g.lineTo(R, ln.y1 + 0.5); g.stroke();
+    g.fillStyle = "#a7b2c0"; g.textAlign = "right"; g.fillText(`${Math.round(max)}`, L - 6, ln.y0); g.fillText("0", L - 6, ln.y1);
+    g.textAlign = "left"; g.fillText(title, L + 4, ln.y0 - 10);
+    g.setLineDash([4, 4]); g.strokeStyle = "rgba(248,113,113,0.8)"; g.beginPath(); g.moveTo(L, y(limit)); g.lineTo(R, y(limit)); g.stroke(); g.setLineDash([]);
+    g.fillStyle = "rgba(248,113,113,0.9)"; g.textAlign = "right"; g.fillText(limitTxt, R - 2, y(limit) - 7);
+    return y;
+  };
+  const series = (y, arr, col, w, from = 0, to = N - 1, dash) => {
+    g.strokeStyle = col; g.lineWidth = w; g.setLineDash(dash || []); g.beginPath();
+    for (let j = from; j <= to; j++) { const X = x(j), Y = y(Math.abs(arr[j])); j === from ? g.moveTo(X, Y) : g.lineTo(X, Y); }
+    g.stroke(); g.setLineDash([]);
+  };
+  // maxed stretches (red bands)
+  const bands = (flags, ln) => { g.fillStyle = "rgba(248,113,113,0.18)"; for (let j = 0; j < N; j++) if (flags[j]) g.fillRect(x(j) - 0.5, ln.y0, Math.max(1.5, (R - L) / N + 0.5), ln.y1 - ln.y0); };
+  bands(th.clipA, lanes[0]); bands(th.clipG, lanes[1]);
+  const yF = lane(lanes[0], fMax, "g", 16, "16 g: sensor's limit (each axis)", "Force on the sensor (g) — grey: as read · orange: rebuilt");
+  series(yF, th.fMeas, "#9aa7b6", 1.5); series(yF, th.fNew, "#ff9a3c", 2.2);
+  const yS = lane(lanes[1], sMax, "rpm", 2294 / 6, "382 rpm: gyro's limit", "Spin (rpm) — blue: gyro · orange: rebuilt");
+  const spinAbs = th.spin.map(Math.abs);
+  series(yS, th.gMeas, "#60a5fa", 1.5); series(yS, spinAbs, "#ff9a3c", 2.2);
+  // release marks and the time axis (ms from release)
+  const mark = (j, col, txt, dash) => {
+    if (j < 0 || j >= N) return;
+    g.strokeStyle = col; g.setLineDash(dash || []); g.lineWidth = 1.5; g.beginPath(); g.moveTo(x(j), 14); g.lineTo(x(j), H - 18); g.stroke(); g.setLineDash([]);
+    const w = g.measureText(txt).width / 2 + 2;
+    g.fillStyle = col; g.textAlign = "center"; g.fillText(txt, clamp(x(j), L + w, R - w), 8);
+  };
+  if (Math.abs(th.discRelJ - th.relJ) >= 3) mark(th.discRelJ, "#9aa7b6", "disc's release", [3, 3]);
+  mark(th.relJ, "#ff9a3c", "release");
+  g.fillStyle = "#a7b2c0"; g.textAlign = "center";
+  const t0 = (0 - th.relJ) / th.rate * 1000, t1 = (N - 1 - th.relJ) / th.rate * 1000;
+  for (let ms = Math.ceil(t0 / 100) * 100; ms <= t1; ms += 100) { const j = th.relJ + ms / 1000 * th.rate; g.fillText(`${ms > 0 ? "+" : ""}${ms} ms`, x(j), H - 9); }
+  // the playhead
+  const jp = clamp(rp.t * th.rate + th.iRel - th.kA, 0, N - 1);
+  g.strokeStyle = "#ffffff"; g.lineWidth = 2; g.beginPath(); g.moveTo(x(jp), 14); g.lineTo(x(jp), H - 18); g.stroke();
+}
+function scrub(e) {
+  const r = $("tl").getBoundingClientRect(), th = rp.th, L = 58, R = r.width - 14;
+  const j = clamp((e.clientX - r.left - L) / (R - L), 0, 1) * (th.N - 1);
+  rp.t = (j + th.kA - th.iRel) / th.rate; rp.hold = 0;
+}
+$("tl").addEventListener("pointerdown", e => { if (!rp.on) return; rp.drag = true; rp.wasPlaying = rp.playing; rp.playing = false; setSpeedUi(); $("tl").setPointerCapture(e.pointerId); scrub(e); });
+$("tl").addEventListener("pointermove", e => { if (rp.drag) scrub(e); });
+$("tl").addEventListener("pointerup", () => { rp.drag = false; });
+
+// the disc at time rp.t of the replay
+function replayFrame(dtF) {
+  const th = rp.th, a = tA(th), b = tB(th);
+  let dT = 0;
+  if (rp.playing && !rp.drag) {
+    if (rp.hold > 0) { rp.hold -= dtF; if (rp.hold <= 0) { rp.t = a; rp.visSpin = null; } }
+    else { dT = dtF * rp.speed; rp.t += dT; if (rp.t >= b) { rp.t = b; rp.hold = 1.4; } }
+  }
+  const x = clamp(rp.t * th.rate + th.iRel - th.kA, 0, th.N - 1), j0 = Math.min(th.N - 2, Math.floor(x)), f = x - j0;
+  const P = i => new THREE.Vector3(th.pos[i * 3], th.pos[i * 3 + 1], th.pos[i * 3 + 2]);
+  const pos = P(j0).lerp(P(j0 + 1), f), q = th.att[j0].clone().slerp(th.att[j0 + 1], f);
+  const { swing, twistAngle } = swingTwist(q);
+  const rpm = Math.abs(th.spin[j0]), shown = rpm * rp.speed, slow = $("optSlow").checked && shown > 150 && rp.playing && !rp.drag;
+  if (slow && rp.visSpin != null) rp.visSpin += Math.sign(th.spin[j0]) * Math.min(rpm * TAU / 60 * rp.speed, 2.2 * TAU) * dtF;
+  else rp.visSpin = twistAngle;
+  tiltG.quaternion.copy(swing); spinG.quaternion.setFromAxisAngle(Z, rp.visSpin);
+  blur.material.opacity = Math.min(0.55, Math.max(0, (shown - 120) / 600));
+  mover.position.copy(pos);
+  return { pos, rpm, j: Math.round(x), slow };
+}
+function liveFrame(dtF) {
   const q = headingOffset.clone().multiply(st.q);
   const { swing, twistAngle } = swingTwist(q);
   const rpm = Math.abs(st.wz) * 60 / TAU, slow = $("optSlow").checked && rpm > 150;
@@ -342,23 +814,39 @@ function frame(now) {
   tiltG.quaternion.copy(swing);
   spinG.quaternion.setFromAxisAngle(Z, visSpin);
   blur.material.opacity = Math.min(0.55, Math.max(0, (rpm - 120) / 600));
-  // position
   const move = $("optMove").checked;
   const pos = move ? new THREE.Vector3(st.p.x, st.p.y, st.p.z).applyQuaternion(headingOffset) : new THREE.Vector3();
   mover.position.copy(pos);
-  const wp = new THREE.Vector3(pos.x, pos.z, -pos.y);              // world (Z-up) -> three (Y-up)
-  ring.position.set(wp.x, floorY + 0.002, wp.z);
-  ring.material.opacity = 0.6 / (1 + Math.max(0, wp.y - floorY) * 2);
-  if ($("optTrail").checked && move) {
+  return { pos, rpm, slow, move };
+}
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dtF = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+  const r = rp.on ? replayFrame(dtF) : liveFrame(dtF);
+  const wp = new THREE.Vector3(r.pos.x, r.pos.z, -r.pos.y);         // world (Z-up) -> three (Y-up)
+  ring2.position.set(wp.x, floorY + 0.002, wp.z);
+  ring2.material.opacity = 0.6 / (1 + Math.max(0, wp.y - floorY) * 2);
+  if (!rp.on && $("optTrail").checked && r.move) {
     trailPts.push(wp.x, wp.y, wp.z); if (trailPts.length > 3 * 120) trailPts.splice(0, 3);
     if (trailPts.length >= 6) { trail.geometry.dispose(); const tg = new LineGeometry(); tg.setPositions(trailPts); trail.geometry = tg; trail.computeLineDistances(); }
     trail.visible = true;
-  } else { trail.visible = false; trailPts.length = 0; }
-  const goal = new THREE.Vector3(wp.x, Math.max(floorY + 0.1, wp.y) + 0.02, wp.z), dT = goal.sub(controls.target).multiplyScalar(1 - Math.exp(-dtF / 0.3));
+  } else if (!rp.on) { trail.visible = false; trailPts.length = 0; }
+  sun.position.set(wp.x + 0.8, 2.0 + Math.max(0, wp.y), wp.z + 1.2); sun.target.position.copy(wp);
+  const goal = new THREE.Vector3(wp.x, Math.max(floorY + 0.1, wp.y) + 0.02, wp.z), dT = goal.sub(controls.target).multiplyScalar(1 - Math.exp(-dtF / (rp.on ? 0.6 : 0.3)));
   controls.target.add(dT); camera.position.add(dT);                                       // the camera follows the disc
   controls.update();
   renderer.render(scene, camera);
-  if (now - uiT > 120) { uiT = now; updateUi(rpm, slow); }
+  if (rp.on && now - tlT > 33) { tlT = now; drawTimeline(); }
+  if (now - uiT > 120) { uiT = now; rp.on ? replayUi(r) : updateUi(r.rpm, r.slow); }
+}
+const fitted = (th, j) => { const w = th.nw.info.fitWindow, k = j + th.kA; return !!w && k >= w[0] && k < w[1]; };
+function replayUi(r) {
+  const th = rp.th, j = clamp(r.j, 0, th.N - 1), ms = (j - th.relJ) / th.rate * 1000;
+  $("rpmN").textContent = r.rpm < 1 ? "0" : r.rpm.toFixed(0);
+  $("rpmS").textContent = (th.clipG[j] ? "gyro maxed: rebuilt" : "") + (r.slow ? (th.clipG[j] ? " · " : "") + "shown slowed" : "");
+  $("rpNow").innerHTML = `${ms < 0 ? `${(-ms).toFixed(0)} ms before release` : ms < 1 ? "release" : `${ms.toFixed(0)} ms after release`} · ` +
+    `<b>${th.spd[j].toFixed(1)} mph</b> · force ${th.fNew[j].toFixed(1)} g` +
+    (!th.clipA[j] ? "" : fitted(th, j) ? " (rebuilt: the sensor read 16 g)" : " (more: the sensor maxed out)");
 }
 function updateUi(rpm, slow) {
   if (now() - st.rateT >= 1000) { st.rate = st.rateN * 1000 / (now() - st.rateT); st.rateN = 0; st.rateT = now(); }
@@ -366,6 +854,7 @@ function updateUi(rpm, slow) {
   $("rpmS").textContent = !st.n ? "" : (st.wz > 0.5 ? "counter-clockwise" : st.wz < -0.5 ? "clockwise" : "") +
     (st.wSrc === "force" ? " · from the off-centre force (gyro maxed)" : st.wSrc === "maxed" ? " · gyro maxed – calibrate the spin radius for the real value" : "") +
     (slow ? " · shown slowed" : "");
+  $("lastBtn").hidden = !throwsList.length;
   if (!st.n) { if (!connected) showMsg(device ? "" : "Connect the disc to see it here.<small>Chrome or Edge on the computer · disconnect the phone app first</small>"); return; }
   showMsg("");
   const n = Z.clone().applyQuaternion(st.q), tilt = Math.acos(Math.max(-1, Math.min(1, n.z))) * R2D;
@@ -376,13 +865,14 @@ function updateUi(rpm, slow) {
     row("Turning", `${st.rot.toFixed(0)} °/s`) +
     row("Force", `${st.aMag.toFixed(2)} g`, st.mode === "in the air" ? "free fall: no gravity felt" : "1 g = lying still") +
     row("Readings", `${st.rate.toFixed(0)} /s`) +
-    (info.batt > 0 ? row("Battery", `${info.batt.toFixed(2)} V`) : "");
+    (info.batt > 0 ? row("Battery", `${info.batt.toFixed(2)} V`) : "") +
+    (throwsList.length ? `<span class="s">Throw it: each throw replays here in slow motion.</span>` : "");
 }
 const now = () => performance.now();
 requestAnimationFrame(frame);
 
 // ================================================================ test hook (no hardware)
-window.disc3d = { onPacket, st, info, sendCmd };
+window.disc3d = { onPacket, st, info, sendCmd, rp, throwsList, look, faceMe, enterReplay, exitReplay, rateNow, analyzeThrow, headingOffset: () => headingOffset };
 </script>
 </body>
 </html>
