@@ -1155,7 +1155,7 @@ function refreshBias() {
 const realSpin = seg => M.prepSpin(seg, engine.R, engine.biasBoard(), dt()).peakRpm >= 100;
 const Rfit = () => (S.P && S.P.newR) || engine.R;
 const placementChanges = () => !!(S.P && S.P.newR);
-const radiusChosen = () => S.Sp && S.Sp.use && S.Sp.pick && S.Sp.pick.ok ? S.Sp.pick.r : null;
+const radiusChosen = () => !S.Sp || !S.Sp.use ? null : S.Sp.useRuler ? S.Sp.useRuler : S.Sp.pick && S.Sp.pick.ok ? S.Sp.pick.r : null;
 function waitFor(pred, ms) {
   return new Promise(res => {
     const t0 = now(), iv = setInterval(() => { let ok = false; try { ok = pred(); } catch {} if (ok || now() - t0 > ms) { clearInterval(iv); res(ok); } }, 60);
@@ -1165,7 +1165,7 @@ function waitFor(pred, ms) {
 // The SET for everything decided so far; save = false is a dry run (the disc's memory only, back to the saved values
 // at its next restart). Answer: status cal_result 5 / 6 / 7 and an info packet that must show exactly these values.
 async function applySet(save) {
-  const o = { R: S.P && S.P.newR, front: !!(S.P && S.P.frontSet), biasB: S.bias && S.bias.ok ? S.bias.b : null, rM: radiusChosen(), lock: true, save };
+  const o = { R: S.P && S.P.newR, front: !!(S.P && S.P.frontSet), biasB: S.bias && S.bias.ok ? S.bias.b : null, rM: radiusChosen(), lock: !(S.Sp && S.Sp.useRuler), save };
   if (!o.R && !o.biasB && !o.rM && !save) return { ok: true, nothing: true };
   const prob = M.validateSet(o);
   if (prob) return { ok: false, why: `The page refused to send it: ${prob}.` };
@@ -1216,7 +1216,7 @@ const FIG = (() => {
       <rect x="24" y="104" width="10" height="9" rx="2" fill="#fbbf24"/><text x="10" y="134" font-size="11" fill="#fbbf24">USB side on the table</text>`),
     spin: svg(160, `${top(true)}<path d="M120,10 A68,68 0 0 1 188,78" fill="none" stroke="#ff8a1f" stroke-width="3" marker-end="url(#ah)"/>
       <path d="M120,146 A68,68 0 0 1 52,78" fill="none" stroke="#ff8a1f" stroke-width="3" marker-end="url(#ah)"/>
-      <text x="120" y="158" text-anchor="middle" font-size="13" fill="#a7b2c0">label down · spin it like a top</text>`),
+      <text x="120" y="158" text-anchor="middle" font-size="13" fill="#a7b2c0">ruler, skip, or a free spin</text>`),
   };
 })();
 
@@ -1486,7 +1486,7 @@ const STEPS = [
     } },
 
   // ---------------------------------------------------------------- 4 spin radius
-  { key: "spin", nav: "Spin radius", sub: "two table spins",
+  { key: "spin", nav: "Spin radius", sub: "ruler · skip · spin",
     enter() {
       S.Sp = { since: engine.lastSeq, fits: [], seen: new Set(), pick: null, use: false, ruler: S.Sp ? S.Sp.ruler : "", sc: null };
       if (!S.v4 && (S.sens0 || 5) < 5 && !S.sensChanged) { S.sensChanged = true; sendText("sens 5"); }    // old firmware: no counting table spins as throws
@@ -1505,11 +1505,12 @@ const STEPS = [
     },
     view() {
       const Sp = S.Sp, I = engine.info, v = { title: "Spin radius", fig: "spin", gauges: ["spin", "tilt"],
-        instr: `<p>The sensor sits a few millimetres from the disc's centre. Spinning the disc on a table measures exactly how far – the disc needs that to work out spin above 382 rpm.</p>
-          <ol><li>Turn it <b>label DOWN</b> so it rests on its dome, on a <b>smooth, hard surface</b> (a table or hard floor; unplugged).</li>
-          <li>Hold the rim with <b>both hands</b> and twist it so it <em>spins like a top</em> on the dome – either direction, about <b>2–4 turns a second</b>.</li>
-          <li>Let go and let it spin until it <b>stops by itself</b> – don't touch it.</li><li>Do it <b>twice</b>.</li></ol>
-          <p class="muted">Label up the whole rim drags on the table, so it hardly spins. On its dome it spins easily, and the measurement is the same.</p>` };
+        instr: `<p>The sensor sits a few millimetres from the disc's centre. The disc needs that distance to work out spin above 382 rpm (the gyro's limit).
+          <b>Pick whichever is easiest – you don't have to spin it:</b></p>
+          <ol><li><b>Ruler</b> (quickest): measure from the <b>centre of the disc</b> to the <b>centre of the sensor board</b>, in mm, and type it below.</li>
+          <li><b>Skip</b>: the disc keeps learning the distance by itself from gentle throws (under ~380 rpm).</li>
+          <li><b>Spin</b> (most exact, only if your disc can spin freely on its own): set it flat on something smooth, give it a spin of
+            2–4 turns a second and let it stop by itself, twice. The page picks it up automatically.</li></ol>` };
       const rows = Sp.fits.map((f, k) => `<tr><td>${k + 1}</td><td class="r">${fmt(f.peakRpm)}</td><td class="r">${fmt(f.sec, 1)} s</td>
         <td class="r">${f.r > 0 ? (f.r * 1000).toFixed(2) + " mm" : "–"}</td><td class="r">${Number.isFinite(f.rms) ? (f.rms * 1000).toFixed(0) + " mg" : "–"}</td>
         <td>${f.ok ? `<span class="good-t">✓ good</span>` : `<span class="bad-t">✗ ${f.reasons[0][0]}</span><div class="muted">${f.reasons[0][1]}</div>`}</td></tr>`).join("");
@@ -1519,10 +1520,13 @@ const STEPS = [
       if (!pk || !pk.ok) {
         const good = Sp.fits.filter(f => f.ok).length;
         v.result = Sp.spinning ? verdict("wait", "Spinning… let it stop by itself.") : verdict("wait",
-          good === 0 ? (Sp.fits.length ? "Spin it again." : "Waiting for the first spin…") : good === 1 ? "One good spin. Once more, please." : "The good spins don't agree yet (within 5 %). Spin it once more.");
-        v.detail = table;
-        v.next = { label: "Next ▸", enabled: false };
-        v.skip = { act: "skipRadius", label: `Skip – keep ${storedR > 0 ? (storedR * 1000).toFixed(2) + " mm" : "no radius"}` };
+          good === 0 ? (Sp.fits.length ? "That spin didn't measure well – spin again, or use a ruler or Skip." : "Type a ruler measurement below, Skip, or spin it.") : good === 1 ? "One good spin. Once more, please (or use a ruler or Skip)." : "The good spins don't agree yet (within 5 %). Spin it once more.");
+        const rl = Number(Sp.ruler), rulerOk = rl >= 2 && rl <= 20;
+        v.detail = `<h3>Ruler</h3><p class="note">Centre of the disc to the centre of the sensor board, in mm:
+          <input type="number" id="rulerIn" min="0" max="40" step="0.5" value="${Sp.ruler}">
+          ${Sp.ruler !== "" && !rulerOk ? '<span class="warn-t">Expected 2–20 mm.</span>' : ""}</p>` + table;
+        v.next = rulerOk ? { label: `Use ${rl} mm ▸`, enabled: true, act: "useRuler" } : { label: "Next ▸", enabled: false };
+        v.skip = { act: "skipRadius", label: `Skip – keep ${storedR > 0 ? (storedR * 1000).toFixed(2) + " mm" : "no radius"} and keep learning` };
         return v;
       }
       const r = pk.r, rmm = (r * 1000).toFixed(2);
@@ -1545,7 +1549,7 @@ const STEPS = [
     } },
 
   // ---------------------------------------------------------------- 5 verify
-  { key: "verify", nav: "Check it", sub: "turns · flip · spin",
+  { key: "verify", nav: "Check it", sub: "turns · flip",
     enter() {
       S.Vf = { phase: S.v4 ? "apply" : "q", poses: [], psis: [], since: engine.lastSeq, turns: null, flip: null, spin: null, msg: null, lastBad: null, applyRes: null };
       if (S.v4) runApplyForTest();
@@ -1596,7 +1600,9 @@ const STEPS = [
           `four quarter turns · table slope ${t.tauDeg.toFixed(1)}° · tilts read ${t.tilts.map(x => x.toFixed(1)).join(", ")}°`]);
       }
       if (Vf.flip) items.push([Vf.flip.ok, Vf.flip.ok ? "Turned over, it reads upside down" : `Turned over, it reads only ${(-Vf.flip.z).toFixed(3)} of upside down (needs 0.95)`]);
-      if (Vf.flip && S.Sp.pick && S.Sp.pick.ok && S.Sp.use)
+      if (Vf.flip && S.Sp.use && S.Sp.useRuler)
+        items.push([true, `Spin radius ${(S.Sp.useRuler * 1000).toFixed(1)} mm from your ruler – gentle throws will keep refining it`]);
+      else if (Vf.flip && S.Sp.pick && S.Sp.pick.ok && S.Sp.use)
         items.push([true, `Spin radius ${(S.Sp.pick.r * 1000).toFixed(2)} mm: the two spins in step 4 agreed within ${S.Sp.pick.diffPct.toFixed(1)} %`]);
       if (Vf.spin) items.push([Vf.spin.ok, Vf.spin.ok ? `Spinning, its spin from the radius matches the gyro (${sgn(Vf.spin.errPct, 1)} %)` : `Spin from the radius is ${sgn(Vf.spin.errPct, 1)} % off the gyro (limit 3 %)`,
         `${Vf.spin.n} whole turns at 120–360 rpm · turned ${Vf.spin.cw ? "clockwise" : "counter-clockwise"} seen from above`]);
@@ -1757,7 +1763,8 @@ const ACT = {
   v3start: () => { Object.assign(S.P, { phase: "v3pose", v3Since: engine.lastSeq, v3: null }); S.dirty = true; },
   v3cal: () => v3cal(),
   skipRadius: () => { S.Sp.skipped = true; S.Sp.use = false; next(); },
-  useRadius: () => { S.Sp.use = true; S.Sp.skipped = false; next(); },
+  useRadius: () => { S.Sp.use = true; S.Sp.useRuler = null; S.Sp.skipped = false; next(); },
+  useRuler: () => { const mm = Number(S.Sp.ruler); if (!(mm >= 2 && mm <= 20)) return; S.Sp.use = true; S.Sp.useRuler = mm / 1000; S.Sp.skipped = false; next(); },
   spinMore: () => { S.Sp.pick = null; S.Sp.fits = S.Sp.fits.map(f => ({ ...f, ok: false, reasons: [["Set aside.", "Spun again."]] })); S.dirty = true; },
   spincal: () => spincalStart(),
   retryApply: () => runApplyForTest(),
