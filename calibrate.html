@@ -1,0 +1,1834 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>DiscTracker Calibrate</title>
+<meta name="description" content="Step-by-step check and calibration of the DiscTracker disc over Bluetooth: which way is up on its board, the gyro's zero error and the spin radius.">
+<style>
+  :root {
+    --hud: rgba(11, 15, 21, 0.74); --hud2: rgba(11, 15, 21, 0.55); --line: rgba(255, 255, 255, 0.14);
+    --text: #f3f6fa; --muted: #a7b2c0; --accent: #ff8a1f; --good: #34d399; --bad: #f87171; --warn: #fbbf24;
+    --card: rgba(14, 19, 27, 0.97); --field: #1a212b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #0b0f14; color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { min-height: 100vh; background: radial-gradient(1100px 520px at 75% -10%, #17202c 0%, #0b0f14 62%) fixed #0b0f14; }
+  button, select, input { font: inherit; color: var(--text); }
+  button { background: var(--hud); border: 1px solid var(--line); border-radius: 10px; padding: 9px 15px; cursor: pointer; }
+  button:hover:not(:disabled) { border-color: rgba(255, 255, 255, 0.4); }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { background: var(--accent); color: #1c0e00; border-color: transparent; font-weight: 700; }
+  button.big { font-size: 18px; padding: 13px 22px; border-radius: 12px; }
+  button.small { padding: 5px 10px; font-size: 13px; }
+  input { background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  input[type=number] { width: 90px; }
+  input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); vertical-align: -3px; }
+  a { color: #9fd3ff; }
+  kbd { background: #222a35; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; font-size: 12px; }
+
+  header#top { position: sticky; top: 0; z-index: 4; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+               padding: 10px 16px; background: rgba(11, 15, 20, 0.92); border-bottom: 1px solid var(--line); backdrop-filter: blur(6px); }
+  .brand { background: var(--hud); border: 1px solid var(--line); border-radius: 12px; padding: 7px 14px; font-weight: 800; letter-spacing: .02em; }
+  .brand span { color: var(--accent); }
+  .pill { display: inline-flex; gap: 8px; align-items: center; background: var(--hud); border: 1px solid var(--line); border-radius: 999px;
+          padding: 6px 13px; font-size: 14px; white-space: nowrap; }
+  .pill.warn { border-color: var(--warn); } .pill.bad { border-color: var(--bad); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #6b7280; flex: none; }
+  .pill.on .dot { background: var(--good); box-shadow: 0 0 10px var(--good); }
+  .pill.busy .dot { background: var(--warn); }
+  .pill.bad .dot { background: var(--bad); }
+  .spacer { flex: 1; }
+  .links { display: flex; gap: 12px; font-size: 14px; }
+
+  #wrap { max-width: 1180px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
+  #nav { position: sticky; top: 70px; background: var(--hud); border: 1px solid var(--line); border-radius: 14px; padding: 8px; }
+  #nav ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  #nav li { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; padding: 8px 8px; border-radius: 10px; color: var(--muted); }
+  #nav li .n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700;
+               border: 1px solid var(--line); }
+  #nav li.done { color: var(--text); cursor: pointer; }
+  #nav li.done .n { background: rgba(52, 211, 153, 0.18); border-color: var(--good); color: var(--good); }
+  #nav li.cur { color: var(--text); background: rgba(255, 138, 31, 0.14); }
+  #nav li.cur .n { background: var(--accent); border-color: var(--accent); color: #1c0e00; }
+  #nav li .s { font-size: 12px; }
+  #nav li.done:hover { background: rgba(255, 255, 255, 0.05); }
+  #nav .foot { border-top: 1px solid var(--line); margin-top: 6px; padding: 8px 6px 2px; font-size: 12.5px; color: var(--muted); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px 20px; min-width: 0; }
+  .kicker { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  h1 { font-size: clamp(24px, 3.1vw, 34px); line-height: 1.15; margin: 4px 0 12px; }
+  .instr { font-size: clamp(17px, 1.9vw, 20px); line-height: 1.5; color: #e5ebf2; }
+  .instr p { margin: 0 0 10px; }
+  .instr ol, .instr ul { margin: 6px 0 10px; padding-left: 24px; }
+  .instr li { margin: 5px 0; }
+  .instr b { color: #fff; }
+  .instr em { color: var(--accent); font-style: normal; font-weight: 700; }
+  .row2 { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 18px; align-items: start; }
+  #fig:empty { display: none; }
+  #fig svg { width: 100%; height: auto; display: block; }
+  .figcap { font-size: 12.5px; color: var(--muted); text-align: center; margin-top: 2px; }
+
+  .gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 16px 0 6px; }
+  .gauges:empty { display: none; }
+  .gauge { background: var(--hud); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; min-width: 0; }
+  .gauge .k { font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .gauge .v { font-size: clamp(26px, 3vw, 38px); font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1.15; white-space: nowrap; }
+  .gauge .v small { font-size: 0.45em; color: var(--muted); font-weight: 600; margin-left: 3px; }
+  .gauge .s { font-size: 13px; color: var(--muted); min-height: 1.3em; }
+  .gauge.tilt { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 12px; align-items: center; }
+  .bar { position: relative; height: 10px; border-radius: 5px; background: var(--field); overflow: hidden; margin: 6px 0 4px; }
+  .bar i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--muted); border-radius: 5px; transition: width .15s; }
+  .bar b { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255, 255, 255, 0.55); }
+  .good-t { color: var(--good); } .bad-t { color: var(--bad); } .warn-t { color: var(--warn); } .muted { color: var(--muted); }
+
+  .ask { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 14px 0 4px; }
+  .ask:empty { display: none; }
+  .ask .q { flex-basis: 100%; font-size: 18px; font-weight: 700; }
+  .verdict { border-radius: 12px; padding: 12px 15px; border: 1px solid var(--line); border-left: 5px solid var(--muted); background: var(--hud);
+             margin: 12px 0 0; font-size: 16px; }
+  .verdict.good { border-left-color: var(--good); } .verdict.bad { border-left-color: var(--bad); } .verdict.warn { border-left-color: var(--warn); }
+  .verdict.wait { border-left-color: #60a5fa; }
+  .verdict .big { font-size: 19px; font-weight: 750; }
+  .verdict .todo { margin-top: 5px; color: #d6dde6; }
+  .verdict .todo b { color: #fff; }
+  .verdict .why { margin-top: 5px; color: var(--muted); font-size: 14px; }
+  #result:empty, #detail:empty { display: none; }
+  #detail { margin-top: 14px; }
+
+  table.t { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; }
+  table.t th, table.t td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.t th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  table.t td.r, table.t th.r { text-align: right; }
+  .tw { overflow-x: auto; max-width: 100%; }
+  ul.checks { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
+  ul.checks li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 15px; }
+  ul.checks li .i { font-weight: 800; text-align: center; }
+  ul.checks li .x { color: var(--muted); font-size: 13.5px; }
+  h3 { margin: 18px 0 8px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .note { color: var(--muted); font-size: 13.5px; margin: 8px 0 0; }
+  details.more { margin-top: 12px; color: var(--muted); font-size: 14px; }
+  details.more summary { cursor: pointer; }
+
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 7; max-width: min(720px, calc(100vw - 32px));
+           background: var(--hud); border: 1px solid var(--line); border-radius: 12px; padding: 10px 16px; font-weight: 600; display: none; }
+  #toast.show { display: block; } #toast.bad { border-color: var(--bad); } #toast.warn { border-color: var(--warn); } #toast.good { border-color: var(--good); }
+
+  @media (max-width: 860px) {
+    #wrap { grid-template-columns: minmax(0, 1fr); padding: 12px 16px 24px; }
+    #nav { position: static; padding: 6px; }
+    #nav ol { display: flex; overflow-x: auto; gap: 4px; }
+    #nav li { flex: none; grid-template-columns: 24px auto; padding: 6px 8px; }
+    #nav li .s, #nav .foot { display: none; }
+    .row2 { grid-template-columns: minmax(0, 1fr); }
+    #fig { max-width: 300px; margin: 0 auto; width: 100%; }
+    .links { display: none; }
+  }
+  @media (max-width: 420px) {
+    .card { padding: 14px 14px 16px; }
+    .gauges { grid-template-columns: minmax(0, 1fr); }
+    button.big { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<header id="top">
+  <div class="brand">Disc<span>Tracker</span> Calibrate</div>
+  <div class="pill" id="connPill" title="Bluetooth connection to the disc"><span class="dot"></span><span id="connText">Not connected</span></div>
+  <div class="pill" id="battPill" style="display:none"><span id="battText"></span></div>
+  <div class="pill" id="fwPill" style="display:none"><span id="fwText"></span></div>
+  <div class="spacer"></div>
+  <div class="links"><a href="./">Phone app</a><a href="sim.html">Simulator</a></div>
+</header>
+
+<main id="wrap">
+  <nav id="nav" aria-label="Steps"><ol id="navList"></ol>
+    <div class="foot">Every step says what it found. Nothing is stored on the disc until the last step.</div></nav>
+  <section class="card" id="card">
+    <div class="kicker" id="kicker"></div>
+    <h1 id="title"></h1>
+    <div class="row2"><div class="instr" id="instr"></div><div><div id="fig"></div></div></div>
+    <div class="gauges" id="gauges"></div>
+    <div class="ask" id="ask"></div>
+    <div id="result"></div>
+    <div id="detail"></div>
+    <div class="actions"><button id="backBtn">◂ Back</button><span class="spacer"></span>
+      <button id="skipBtn" style="display:none"></button><button id="nextBtn" class="primary big">Next ▸</button></div>
+  </section>
+</main>
+<div id="toast" role="status"></div>
+
+<script id="calmath">
+// DiscCalMath: the calibration page's maths and a synthetic disc, with no page code in it, so the same functions run
+// in the browser and in node (the tests extract this <script>). Packet layouts: disc_tracker_v2.ino (btStreamChr,
+// StatusPacket, applyCalSet) and dtbuild\v4_spec.md.
+//
+// Frames. The disc streams raw counts in DISC axes: disc = R * board, R row-major from the info packet. Every sample
+// is turned back into BOARD axes here (board = R^T * disc): the board is the one thing that never changes while a
+// calibration is worked out, and a candidate R then gives "what the disc would read".
+(function (G) {
+"use strict";
+const D2R = Math.PI / 180, R2D = 180 / Math.PI, GMS = 9.80665, TAU = 2 * Math.PI, RPM = TAU / 60;
+const CLIP = 32000;               // raw counts: a gyro axis this close to full scale is clipped (or pinned by the rotation)
+const f32 = Math.fround;
+const wrap180 = d => ((d % 360) + 540) % 360 - 180;
+
+// ---------------------------------------------------------------- small vector / matrix helpers
+const V = {
+  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2],
+  cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]],
+  norm: a => Math.hypot(a[0], a[1], a[2]),
+  add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]],
+  sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]],
+  mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
+};
+V.unit = a => { const n = V.norm(a); return n > 1e-12 ? V.mul(a, 1 / n) : [0, 0, 1]; };
+V.ang = (a, b) => Math.atan2(V.norm(V.cross(a, b)), V.dot(a, b)) * R2D;           // degrees, robust near 0 and 180
+const M3 = {
+  I: () => [1, 0, 0, 0, 1, 0, 0, 0, 1],
+  mv: (R, v) => [R[0] * v[0] + R[1] * v[1] + R[2] * v[2], R[3] * v[0] + R[4] * v[1] + R[5] * v[2], R[6] * v[0] + R[7] * v[1] + R[8] * v[2]],
+  mtv: (R, v) => [R[0] * v[0] + R[3] * v[1] + R[6] * v[2], R[1] * v[0] + R[4] * v[1] + R[7] * v[2], R[2] * v[0] + R[5] * v[1] + R[8] * v[2]],
+  T: R => [R[0], R[3], R[6], R[1], R[4], R[7], R[2], R[5], R[8]],
+  mm: (A, B) => { const o = []; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) o.push(A[3 * i] * B[j] + A[3 * i + 1] * B[3 + j] + A[3 * i + 2] * B[6 + j]); return o; },
+  row: (R, i) => [R[3 * i], R[3 * i + 1], R[3 * i + 2]],
+  rows: (x, y, z) => [x[0], x[1], x[2], y[0], y[1], y[2], z[0], z[1], z[2]],
+  det: R => R[0] * (R[4] * R[8] - R[5] * R[7]) - R[1] * (R[3] * R[8] - R[5] * R[6]) + R[2] * (R[3] * R[7] - R[4] * R[6]),
+  maxDiff: (A, B) => Math.max(...A.map((v, k) => Math.abs(v - B[k]))),
+  rx: t => { const c = Math.cos(t), s = Math.sin(t); return [1, 0, 0, 0, c, -s, 0, s, c]; },
+  ry: t => { const c = Math.cos(t), s = Math.sin(t); return [c, 0, s, 0, 1, 0, -s, 0, c]; },
+  rz: t => { const c = Math.cos(t), s = Math.sin(t); return [c, -s, 0, s, c, 0, 0, 0, 1]; },
+};
+const median = arr => { const a = Float64Array.from(arr).sort(), m = a.length; return !m ? NaN : (m & 1 ? a[m >> 1] : 0.5 * (a[m / 2 - 1] + a[m / 2])); };
+
+// ---------------------------------------------------------------- quaternion <-> matrix (firmware convention, applyCalSet)
+// R = [1-2(y2+z2) 2(xy-wz) 2(xz+wy); 2(xy+wz) 1-2(x2+z2) 2(yz-wx); 2(xz-wy) 2(yz+wx) 1-2(x2+y2)]
+function matFromQuat(q) {
+  const [w, x, y, z] = q;
+  return [1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y),
+          2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x),
+          2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)];
+}
+function quatFromMat(R) {                     // Shepperd: the largest of w, x, y, z first, for accuracy
+  const [a, b, c, d, e, f, g, h, i] = R, tr = a + e + i;
+  let w, x, y, z, s;
+  if (tr > 0)              { s = Math.sqrt(tr + 1) * 2;         w = s / 4; x = (h - f) / s; y = (c - g) / s; z = (d - b) / s; }
+  else if (a > e && a > i) { s = Math.sqrt(1 + a - e - i) * 2; w = (h - f) / s; x = s / 4; y = (b + d) / s; z = (c + g) / s; }
+  else if (e > i)          { s = Math.sqrt(1 + e - a - i) * 2; w = (c - g) / s; x = (b + d) / s; y = s / 4; z = (f + h) / s; }
+  else                     { s = Math.sqrt(1 + i - a - e) * 2; w = (d - b) / s; x = (c + g) / s; y = (f + h) / s; z = s / 4; }
+  const n = Math.hypot(w, x, y, z) * (w < 0 ? -1 : 1);        // q and -q are the same rotation: keep w >= 0
+  return [w / n, x / n, y / n, z / n];
+}
+// The firmware's own "cal" (calibratePlacement): the shortest rotation taking the measured up u (unit, board axes) onto +Z.
+function calR(u) {
+  const [ux, uy, uz] = u;
+  if (uz < -0.9999) return [1, 0, 0, 0, -1, 0, 0, 0, -1];
+  const vx = uy, vy = -ux, k = 1 / (1 + uz);
+  return [1 - vy * vy * k, vx * vy * k, vy, vx * vy * k, 1 - vx * vx * k, -vx, -vy, vx, 1 - (vx * vx + vy * vy) * k];
+}
+
+// ---------------------------------------------------------------- packets
+// Raw stream type 2 (info): 100 B (firmware v3) or 120 B (v4: calibration commands 0xC7 / 0xC8 understood).
+function parseInfo(dv) {
+  const f = k => dv.getFloat32(16 + 4 * k, true), n = dv.byteLength;
+  const I = { boot: dv.getUint16(2, true), seq: dv.getUint32(4, true), millis: dv.getUint32(8, true), odr: dv.getUint16(12, true) || 416,
+    sens: dv.getUint8(14), logVer: dv.getUint8(15) || 3, alsb: f(0) || 0.000488, glsb: f(1) || 0.070, bias: [f(2), f(3), f(4)],
+    R: [f(5), f(6), f(7), f(8), f(9), f(10), f(11), f(12), f(13)], radius: f(14), batt: f(15),
+    trigG: f(16), trigDps: f(17), freeG: f(18), minPeak: f(19), minSpin: f(20), infoLen: n, v4: n >= 120,
+    relMinRpm: null, relPeakG: null, calSeq: null, calFlags: null, tempC: null, prePeak: null, steadyN: null, biasTol: null };
+  if (n >= 120) {
+    const tc = dv.getInt16(114, true);
+    Object.assign(I, { relMinRpm: dv.getFloat32(100, true), relPeakG: dv.getFloat32(104, true), calSeq: dv.getUint32(108, true),
+      calFlags: dv.getUint16(112, true), tempC: tc ? tc / 100 : null, prePeak: dv.getUint16(116, true), steadyN: dv.getUint8(118),
+      biasTol: dv.getUint8(119) / 10 });
+  }
+  return I;
+}
+// calFlags (info bytes 112-113): what the bits mean
+const CALF = { CALMODE: 1, LOCKED: 2, SAVED: 4, DIRTY: 8, FRONT: 16, FLIPPED: 32, LEVER: 64, BIASKNOWN: 128 };
+// Status characteristic (19B10005), 20 bytes.
+function parseStatus(dv) {
+  const n = dv.byteLength, fl = dv.getUint8(6);
+  return { calState: dv.getUint8(1), calResult: dv.getUint8(2), battery: dv.getUint8(3), tilt: dv.getInt16(4, true) / 100,
+    saved: !!(fl & 1), charging: !!(fl & 2), usb: !!(fl & 4), sens: (fl >> 3) & 7, radiusKnown: !!(fl & 64), spinCal: !!(fl & 128),
+    lastCapture: dv.getUint8(7), throws: dv.getUint16(8, true), rejectPeak: dv.getUint16(10, true) / 10, rejectSpin: dv.getUint16(12, true),
+    captures: n >= 20 ? dv.getUint16(14, true) : 0, endReason: n >= 20 ? dv.getUint8(16) : 0, flight10: n >= 20 ? dv.getUint8(17) : 0,
+    rejectFlags: n >= 20 ? dv.getUint8(18) : 0, mode: n >= 20 ? dv.getUint8(19) : 0 };
+}
+
+// ---------------------------------------------------------------- 0xC7 SET (20 bytes) and 0xC8 calibration mode
+// [0xC7][flags: 1 R, 2 bias, 4 r, 8 lock r, 16 save, 32 front][q w x y z i16 /32767][bias board x y z i16 0.01 dps][r um u16][0]
+function encodeSet(o) {
+  const b = new Uint8Array(20), dv = new DataView(b.buffer);
+  let fl = 0;
+  b[0] = 0xC7;
+  if (o.R) {
+    fl |= 1; if (o.front) fl |= 32;
+    quatFromMat(o.R).forEach((v, k) => dv.setInt16(2 + 2 * k, Math.max(-32767, Math.min(32767, Math.round(v * 32767))), true));
+  }
+  if (o.biasB) { fl |= 2; o.biasB.forEach((v, k) => dv.setInt16(10 + 2 * k, Math.max(-32768, Math.min(32767, Math.round(v * 100))), true)); }
+  if (o.rM) { fl |= 4; if (o.lock) fl |= 8; dv.setUint16(16, Math.max(0, Math.min(65535, Math.round(o.rM * 1e6))), true); }
+  if (o.save) fl |= 16;
+  b[1] = fl;
+  return b;
+}
+function decodeSet(b) {
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength), fl = b[1];
+  const q = [0, 1, 2, 3].map(k => dv.getInt16(2 + 2 * k, true) / 32767), nq = Math.hypot(...q) || 1;
+  return { setR: !!(fl & 1), setB: !!(fl & 2), setr: !!(fl & 4), lock: !!(fl & 8), save: !!(fl & 16), front: !!(fl & 32), qLen: nq,
+    R: matFromQuat(q.map(v => v / nq)), bb: [0, 1, 2].map(k => dv.getInt16(10 + 2 * k, true) * 0.01), rUm: dv.getUint16(16, true) };
+}
+// The firmware's own limits (applyCalSet): checked here first so a SET is never sent that the disc would refuse.
+function validateSet(o) {
+  if (o.R && (Math.abs(M3.det(o.R) - 1) > 1e-3 || M3.maxDiff(M3.mm(o.R, M3.T(o.R)), M3.I()) > 1e-3)) return "the new placement is not a pure rotation";
+  if (o.biasB && V.norm(o.biasB) > 20) return "the gyro zero error is over 20 °/s";
+  if (o.rM && !(Math.round(o.rM * 1e6) >= 500 && Math.round(o.rM * 1e6) <= 30000)) return "the spin radius is outside 0.5–30 mm";
+  if (!o.R && !o.biasB && !o.rM && !o.save) return "nothing to send";
+  return null;
+}
+// What the next info packet must say once the disc has applied SET `b` on top of the state in info packet `I`.
+function expectAfterSet(b, I) {
+  const s = decodeSet(b);
+  const out = { R: I.R.slice(), bias: I.bias.slice(), radius: I.radius, locked: I.calFlags != null && !!(I.calFlags & CALF.LOCKED), save: s.save };
+  if (s.setR) { if (!s.setB) out.bias = M3.mv(s.R, M3.mtv(I.R, I.bias)); out.R = s.R; }
+  if (s.setB) out.bias = M3.mv(out.R, s.bb);
+  if (s.setr) { out.radius = f32(s.rUm * 1e-6); out.locked = s.lock; }
+  return out;
+}
+function infoMatches(I, exp) {
+  if (M3.maxDiff(I.R, exp.R) > 2e-4 || M3.maxDiff(I.bias, exp.bias) > 0.011 || Math.abs(I.radius - exp.radius) > 2e-7) return false;
+  if (I.calFlags == null) return true;
+  if (!!(I.calFlags & CALF.LOCKED) !== exp.locked) return false;
+  return !exp.save || (!!(I.calFlags & CALF.SAVED) && !(I.calFlags & CALF.DIRTY));
+}
+
+// ---------------------------------------------------------------- what a rotation R means to a person
+function describeR(R) {
+  const tilt = Math.acos(Math.max(-1, Math.min(1, R[8]))) * R2D, down = tilt > 90;
+  return { tilt, chipDown: down, off: down ? 180 - tilt : tilt };
+}
+// R from "up" n and "front" f (both board axes): rows x = front, y = n x front, z = n. Proper by construction.
+function buildR(n, f) {
+  const z = V.unit(n), x = V.unit(V.sub(f, V.mul(z, V.dot(f, z))));
+  return M3.rows(x, V.cross(z, x), z);
+}
+// New "up" n, keeping the old R's in-plane direction (no front measured): the smallest possible change.
+function keepYawR(n, Rold) {
+  const z = V.unit(n);
+  let f = M3.row(Rold, 0);
+  if (Math.abs(V.dot(f, z)) > 0.9) f = V.cross(M3.row(Rold, 1), z);
+  return buildR(z, f);
+}
+
+// ---------------------------------------------------------------- still detector
+// Blocks of 52 samples (1/8 s). A block is quiet when every gyro axis varies less than 0.2 deg/s (SD), every
+// accelerometer axis less than 8 mg, the gyro's mean is within 2 deg/s of its known zero error (a steady slow turn
+// varies little, but its mean is off) and the force is 1 g. Quiet blocks whose means agree (0.3 deg/s, 6 mg) make one
+// still "run"; runs of 2 s or more are poses: their mean accelerometer is "up" and their mean gyro the zero error.
+class StillTracker {
+  constructor(o = {}) {
+    this.B = o.block || 52; this.gSd = o.gSd ?? 0.2; this.aSd = o.aSd ?? 0.008; this.gTol = o.gTol ?? 0.3; this.aTol = o.aTol ?? 0.006;
+    this.gRefTol = o.gRefTol ?? 2.0; this.minRun = o.minRun || 832;
+    this.runs = []; this.cur = null; this.blk = null; this.nextId = 1;
+  }
+  reset() { this.end(); this.blk = null; }
+  push(seq, g, a, yaw, gRef) {
+    let b = this.blk;
+    if (!b) b = this.blk = { seq0: seq, n: 0, sg: [0, 0, 0], sg2: [0, 0, 0], sa: [0, 0, 0], sa2: [0, 0, 0], yaw0: yaw };
+    for (let k = 0; k < 3; k++) { b.sg[k] += g[k]; b.sg2[k] += g[k] * g[k]; b.sa[k] += a[k]; b.sa2[k] += a[k] * a[k]; }
+    b.n++; b.seq1 = seq; b.yaw1 = yaw;
+    if (b.n >= this.B) { this.blk = null; this.block(b, gRef || [0, 0, 0]); }
+  }
+  block(b, gRef) {
+    const n = b.n, mg = b.sg.map(v => v / n), ma = b.sa.map(v => v / n);
+    const sdg = Math.max(...b.sg2.map((v, k) => Math.sqrt(Math.max(0, v / n - mg[k] * mg[k]))));
+    const sda = Math.max(...b.sa2.map((v, k) => Math.sqrt(Math.max(0, v / n - ma[k] * ma[k]))));
+    const quiet = sdg < this.gSd && sda < this.aSd && V.norm(V.sub(mg, gRef)) < this.gRefTol && Math.abs(V.norm(ma) - 1) < 0.06, c = this.cur;
+    if (quiet && c) {
+      const fits = mg.every((v, k) => Math.abs(v - c.sg[k] / c.n) < this.gTol) && ma.every((v, k) => Math.abs(v - c.sa[k] / c.n) < this.aTol);
+      if (fits) {
+        for (let k = 0; k < 3; k++) { c.sg[k] += b.sg[k]; c.sa[k] += b.sa[k]; }
+        c.n += n; c.seq1 = b.seq1; c.yawEnd = b.yaw1; c.sdg = Math.max(c.sdg, sdg); c.sda = Math.max(c.sda, sda);
+        return;
+      }
+    }
+    this.end();
+    if (quiet) this.cur = { id: this.nextId++, seq0: b.seq0, seq1: b.seq1, n, sg: b.sg.slice(), sa: b.sa.slice(), sdg, sda,
+                            yawStart: b.yaw0, yawEnd: b.yaw1, open: true };
+  }
+  end() {
+    const c = this.cur;
+    if (!c) return;
+    c.open = false; this.cur = null;
+    if (c.n >= this.minRun) { this.runs.push(c); if (this.runs.length > 120) this.runs.shift(); }
+  }
+}
+// A frozen copy of a run: mean gyro (deg/s) and accelerometer (g), board axes.
+function viewRun(r, dt) {
+  return { id: r.id, seq0: r.seq0, seq1: r.seq1, n: r.n, sec: r.n * dt, g: r.sg.map(v => v / r.n), a: r.sa.map(v => v / r.n),
+           sdg: r.sdg, sda: r.sda, yawStart: r.yawStart, yawEnd: r.yawEnd, open: r.open };
+}
+
+// ---------------------------------------------------------------- spin collector
+// A table spin starts when the rotation passes 60 rpm and ends when it drops under 50 rpm (or at a gap / after 25 s).
+// Samples are kept in board axes, so the analysis can use whichever R is being tested.
+class SpinCollector {
+  constructor() { this.seg = null; this.done = []; this.maxN = 25 * 420; this.nextId = 1; }
+  push(seq, gb, ab, clip, wmag) {
+    if (!this.seg) { if (wmag < 360) return; this.seg = { id: this.nextId++, seq0: seq, s: [] }; }
+    this.seg.s.push([seq, gb[0], gb[1], gb[2], ab[0], ab[1], ab[2], clip ? 1 : 0]);
+    if (wmag < 300) this.finish("slowed");
+    else if (this.seg.s.length >= this.maxN) this.finish("long");
+  }
+  gap() { this.finish("gap"); }
+  finish(why) {
+    const s = this.seg;
+    this.seg = null;
+    if (!s || s.s.length < 100) return;
+    s.why = why; s.seq1 = s.s[s.s.length - 1][0];
+    this.done.push(s); if (this.done.length > 16) this.done.shift();
+  }
+}
+
+// Disc-frame series of a spin segment, and the part of it that is a free spin on the table: from 0.15 s after the
+// flick's peak (and after any gyro clipping) to 0.1 s before a hand stops it. Friction slows a table spin steadily;
+// a hand stops it several times faster than the spin's own slowing at the start, so that is the "caught" test.
+function prepSpin(seg, R, biasB, dt) {
+  const S = seg.s, N = S.length, bD = M3.mv(R, biasB);
+  const w = new Float64Array(N), ax = new Float64Array(N), ay = new Float64Array(N), wxy = new Float64Array(N);
+  const ws = new Float64Array(N), P = new Float64Array(N + 1);
+  let azSum = 0, clipLast = -1;
+  for (let i = 0; i < N; i++) {
+    const s = S[i], gd = M3.mv(R, [s[1], s[2], s[3]]), ad = M3.mv(R, [s[4], s[5], s[6]]);
+    w[i] = (gd[2] - bD[2]) * D2R; ax[i] = ad[0]; ay[i] = ad[1]; azSum += ad[2];
+    wxy[i] = Math.hypot(gd[0] - bD[0], gd[1] - bD[1]) * D2R;
+    if (s[7]) clipLast = i;
+    P[i + 1] = P[i] + w[i];
+  }
+  const h = 12;
+  for (let i = 0; i < N; i++) { const a = Math.max(0, i - h), b = Math.min(N, i + h + 1); ws[i] = (P[b] - P[a]) / (b - a); }
+  const alpha = i => { const a = Math.max(0, i - h), b = Math.min(N - 1, i + h); return b > a ? (ws[b] - ws[a]) / ((b - a) * dt) : 0; };
+  let iPk = 0;
+  for (let i = 0, e = Math.min(N, Math.round(2.5 / dt)); i < e; i++) if (Math.abs(ws[i]) > Math.abs(ws[iPk])) iPk = i;
+  const i0 = Math.max(iPk, clipLast) + Math.round(0.15 / dt);
+  const ref = [];
+  for (let i = i0, e = Math.min(N - h, i0 + Math.round(0.5 / dt)); i < e; i++) ref.push(Math.abs(alpha(i)));
+  const aRef = ref.length ? median(ref) : 0, lim = Math.max(60, 4 * aRef + 20);
+  let i1 = N, caught = false;
+  for (let i = Math.max(i0, h); i < N - h; i++) if (Math.abs(alpha(i)) > lim) { i1 = Math.max(i0, i - Math.round(0.1 / dt)); caught = true; break; }
+  return { N, w, ax, ay, wxy, ws, alpha, i0, i1, caught, aRef, azMean: azSum / Math.max(1, N), clipped: clipLast >= 0,
+           peakRpm: Math.abs(ws[iPk]) / RPM };
+}
+
+// Solve A x = b (n x n, row-major array of arrays) by Gaussian elimination with partial pivoting.
+function solve(A, b) {
+  const n = b.length, M = A.map((r, i) => [...r, b[i]]);
+  for (let c = 0; c < n; c++) {
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    if (Math.abs(M[p][c]) < 1e-300) return null;
+    [M[c], M[p]] = [M[p], M[c]];
+    for (let r = c + 1; r < n; r++) { const k = M[r][c] / M[c][c]; for (let j = c; j <= n; j++) M[r][j] -= k * M[c][j]; }
+  }
+  const x = new Array(n).fill(0);
+  for (let r = n - 1; r >= 0; r--) { let s = M[r][n]; for (let j = r + 1; j < n; j++) s -= M[r][j] * x[j]; x[r] = s / M[r][r]; }
+  return x;
+}
+
+// Spin radius from one table spin, by linear least squares in disc axes (w = spin rate, a = dw/dt, th = angle turned):
+//   ax = -w^2 rx - a ry + ox + cx cos th + cy sin th
+//   ay = -w^2 ry + a rx + oy - cx sin th + cy cos th
+// r = the IMU's offset from the spin axis; o = what stays fixed on the disc (accelerometer offset, mounting tilt);
+// c = the table's slope, which turns the other way as seen from the spinning disc. Uses 60-360 rpm, gyro not clipped,
+// spinning flat; a second pass drops the few readings more than 3.5 x the typical error away (a knock) and solves again.
+function fitSpin(seg, R, biasB, dt) {
+  const p = prepSpin(seg, R, biasB, dt), lo = 60 * RPM, hi = 360 * RPM;
+  const use = [];
+  let th = 0, nBand = 0, nWob = 0, wMin = Infinity, wMax = 0, neg = 0;
+  for (let i = p.i0; i < p.i1; i++) {
+    if (i > p.i0) th += 0.5 * (p.w[i - 1] + p.w[i]) * dt;
+    const wi = p.w[i], aw = Math.abs(wi);
+    if (aw < lo || aw > hi) continue;
+    nBand++;
+    if (p.wxy[i] > 0.15 * aw + 20 * D2R) { nWob++; continue; }               // rocking, not spinning flat
+    const al = p.alpha(i), w2 = wi * wi, c = Math.cos(th), s = Math.sin(th);
+    use.push([[-w2, -al, 1, 0, c, s], [al, -w2, 0, 1, -s, c], p.ax[i] * GMS, p.ay[i] * GMS]);
+    wMin = Math.min(wMin, aw); wMax = Math.max(wMax, aw); if (wi < 0) neg++;
+  }
+  const lsq = rows => {
+    const A = Array.from({ length: 6 }, () => new Array(6).fill(0)), b = new Array(6).fill(0);
+    const add = (r, y) => { for (let i = 0; i < 6; i++) { b[i] += r[i] * y; for (let j = 0; j < 6; j++) A[i][j] += r[i] * r[j]; } };
+    for (const [rx, ry, yx, yy] of rows) { add(rx, yx); add(ry, yy); }
+    return rows.length >= 60 ? solve(A, b) : null;
+  };
+  const resid = (x, [rx, ry, yx, yy]) => { let ex = yx, ey = yy; for (let k = 0; k < 6; k++) { ex -= rx[k] * x[k]; ey -= ry[k] * x[k]; } return Math.hypot(ex, ey); };
+  const n = use.length;
+  const out = { id: seg.id, seq0: seg.seq0, n, sec: n * dt, rpmMin: n ? wMin / RPM : 0, rpmMax: n ? wMax / RPM : 0, peakRpm: p.peakRpm,
+                ratio: n ? wMax / wMin : 0, cw: n ? neg > n / 2 : null, labelUp: p.azMean > 0.8, clipped: p.clipped, caught: p.caught,
+                wobFrac: nBand ? nWob / nBand : 0, r: NaN, rVec: null, o: NaN, c: NaN, rms: NaN, drop: 0, ok: false, reasons: [] };
+  let x = lsq(use);
+  if (x) {
+    const e1 = use.map(u => resid(x, u)), sig = Math.sqrt(e1.reduce((a, v) => a + v * v, 0) / n);
+    const keep = use.filter((u, k) => e1[k] <= 3.5 * sig);
+    const x2 = keep.length >= 60 ? lsq(keep) : null;
+    if (x2) {
+      x = x2;
+      const e2 = keep.map(u => resid(x, u));
+      Object.assign(out, { rms: Math.sqrt(e2.reduce((a, v) => a + v * v, 0) / (2 * keep.length)) / GMS, drop: 1 - keep.length / n });
+    } else out.rms = sig / Math.SQRT2 / GMS;
+    Object.assign(out, { r: Math.hypot(x[0], x[1]), rVec: [x[0], x[1]], o: Math.hypot(x[2], x[3]) / GMS, c: Math.hypot(x[4], x[5]) / GMS });
+  }
+  // Pass / fail, each with a reason a person can act on: [what happened, what to do].
+  const R_ = out.reasons;
+  if (!out.labelUp) R_.push(["It wasn't spinning label up.", "Lay it label up on the table and spin it again."]);
+  if (out.peakRpm < 120) R_.push([`Too slow: it only reached ${out.peakRpm.toFixed(0)} rpm.`, "Flick it harder – about 3 to 5 turns a second."]);
+  else if (out.n < 400) R_.push([`Too short: only ${out.sec.toFixed(1)} s of clean spinning between 60 and 360 rpm (needs 1 s).`,
+                                 out.wobFrac > 0.3 ? "It rocked instead of spinning flat – flick it more gently, level with the table."
+                                   : "Use a smoother, harder table and let it spin until it stops by itself – don't touch it."]);
+  else if (out.ratio < 1.8) R_.push([`It didn't slow down enough while it was measured (${out.rpmMax.toFixed(0)} → ${out.rpmMin.toFixed(0)} rpm).`,
+                                     "Let it spin all the way down until it stops by itself."]);
+  if (x && out.n >= 400) {
+    if (out.rms > 0.03) R_.push([`The readings didn't fit a clean spin (error ${(out.rms * 1000).toFixed(0)} mg, limit 30).`,
+                                 "It probably wobbled, slid or bounced. Use a smooth, hard, level table and a gentler flick."]);
+    else if (out.drop > 0.1) R_.push([`Part of the spin was bumpy (${(out.drop * 100).toFixed(0)} % of the readings).`, "Spin it again and don't touch it or the table."]);
+    if (!(out.r > 0.002 && out.r < 0.020)) R_.push([`The result (${(out.r * 1000).toFixed(1)} mm) is outside 2–20 mm.`, "Spin it again."]);
+    if (out.o > 0.08) R_.push([`A large steady sideways force (${(out.o * 1000).toFixed(0)} mg).`, "Make sure it lies flat on the table, label up."]);
+    if (out.c > 0.06) R_.push([`The table slopes too much (${(Math.asin(Math.min(1, out.c)) * R2D).toFixed(1)}°).`, "Use a level table."]);
+  }
+  if (!x && out.n >= 60) R_.push(["The maths could not separate the parts of the force.", "Spin it again."]);
+  out.ok = !!x && R_.length === 0;
+  return out;
+}
+// Two good spins that agree within 5 % (or 0.4 mm): the newest such pair.
+function pickSpins(fits) {
+  const good = fits.filter(f => f.ok);
+  for (let i = good.length - 1; i > 0; i--) for (let j = i - 1; j >= 0; j--) {
+    const a = good[i].r, b = good[j].r, m = 0.5 * (a + b);
+    if (Math.abs(a - b) <= Math.max(0.05 * m, 0.0004)) return { ok: true, r: m, pair: [good[j], good[i]], diff: Math.abs(a - b), diffPct: Math.abs(a - b) / m * 100 };
+  }
+  return { ok: false, good: good.length };
+}
+// The disc's own spin estimate (centripetal: w = sqrt(a / r), with a = the steady in-plane force) against the gyro,
+// over whole turns at 200-360 rpm (a whole turn cancels the table's slope, as the turning disc sees it).
+function centripCheck(seg, R, biasB, rM, dt) {
+  const p = prepSpin(seg, R, biasB, dt), ratios = [];
+  let i = p.i0, neg = 0, n = 0;
+  while (i < p.i1) {
+    let th = 0, j = i, sx = 0, sy = 0, sw = 0, bad = false;
+    while (j < p.i1 && Math.abs(th) < TAU) {
+      const aw = Math.abs(p.w[j]);
+      if (aw < 120 * RPM || aw > 360 * RPM) bad = true;   // a table spin slows fast: from ~280 rpm it is below 200 within 3 turns
+      sx += p.ax[j]; sy += p.ay[j]; sw += aw; th += p.w[j] * dt; j++;
+    }
+    if (Math.abs(th) >= TAU && !bad) {
+      const k = j - i, ac = Math.hypot(sx / k, sy / k) * GMS, wg = sw / k;
+      ratios.push(Math.sqrt(ac / rM) / wg); n++; if (th < 0) neg++;
+    }
+    i = j;
+  }
+  const med = median(ratios);
+  return { n, ratio: med, errPct: (med - 1) * 100, cw: n ? neg > n / 2 : null, peakRpm: p.peakRpm, ok: n >= 3 && Math.abs(med - 1) < 0.03 };
+}
+
+// ---------------------------------------------------------------- pose maths
+const inplane = u => [u[0], u[1]];
+// Complex helpers for in-plane vectors (re, im).
+const Cx = {
+  sub: (a, b) => [a[0] - b[0], a[1] - b[1]],
+  mul: (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]],
+  div: (a, b) => { const d = b[0] * b[0] + b[1] * b[1]; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; },
+  conj: a => [a[0], -a[1]],
+  ex: t => [Math.cos(t), Math.sin(t)],
+};
+// One pose lying on a surface: what the disc (with R) reads.
+function readPose(pose, R) {
+  const u = V.unit(M3.mv(R, pose.a));
+  return { u, tilt: Math.acos(Math.max(-1, Math.min(1, u[2]))) * R2D, labelUp: u[2] > 0, mag: V.norm(pose.a) };
+}
+// Label up, then the same pose turned by psi (about 180 deg, measured by the gyro) on the same spot. In the stored R's
+// disc axes the in-plane reading is z = e + rot(-psi) t: e = where the disc thinks "up" is wrong (the mounting error),
+// t = the table's slope, which turns with the disc. Two poses give both. n (board axes) = the direction that reads
+// "up" when the disc lies on a LEVEL surface - including the accelerometer's small offset, which is what makes a level
+// disc read level. A turn under 120 deg can't separate the two (turnOk false).
+function halfTurn(p0, p1, R, turnDeg) {
+  const r0 = readPose(p0, R), r1 = readPose(p1, R);
+  const flippedOver = r0.labelUp !== r1.labelUp || V.ang(r0.u, r1.u) > 30;
+  const psiDeg = Number.isFinite(turnDeg) ? wrap180(turnDeg) : 180, psi = psiDeg * D2R;
+  const w = Cx.ex(-psi), z0 = inplane(r0.u), z1 = inplane(r1.u);
+  const t = Cx.div(Cx.sub(z1, z0), Cx.sub(w, [1, 0])), e = Cx.sub(z0, t);
+  const sgn = r0.labelUp ? 1 : -1, ez = sgn * Math.sqrt(Math.max(0, 1 - e[0] * e[0] - e[1] * e[1]));
+  const n = V.unit(M3.mtv(R, [e[0], e[1], ez]));
+  const tau = Math.asin(Math.min(1, Math.hypot(t[0], t[1]))) * R2D;
+  const err = V.ang(n, M3.row(R, 2));
+  const simple = { tau: V.ang(r0.u, r1.u) / 2, n: V.unit(V.add(V.unit(p0.a), V.unit(p1.a))) };
+  const grade = err <= 1.5 ? "good" : err <= 3 ? "ok" : err <= 90 ? "redo" : "flipped";
+  return { n, tau, err, grade, flippedOver, labelUp0: r0.labelUp, psiDeg, turnOk: Math.abs(psiDeg) >= 120, simple,
+           surface: tau < 2 ? "good" : tau <= 3 ? "warn" : "bad" };
+}
+// Label-down: must be within 15 deg of -n. The |a| difference gives the accelerometer's offset along the normal.
+function labelDown(pd, n, upMag) {
+  const ang = V.ang(V.unit(pd.a), V.mul(n, -1));
+  return { ang, ok: ang <= 15, zOffMg: Number.isFinite(upMag) ? (upMag - V.norm(pd.a)) / 2 * 1000 : NaN };
+}
+// Front: the USB-C side tipped down. "Up" then leans away from it: front = -(the in-plane part of up).
+function frontFrom(pt, n) {
+  const u = V.unit(pt.a), h = V.sub(u, V.mul(n, V.dot(u, n))), tipDeg = V.ang(u, n);
+  return { tipDeg, f: V.mul(V.unit(h), -1), ok: tipDeg >= 15 && tipDeg <= 70 };
+}
+// Quarter turns (any number of poses, turns from the gyro): least squares for e (mounting error) and t (slope).
+function turnsCheck(poses, psisDeg, R) {
+  const rd = poses.map(p => readPose(p, R)), N = rd.length;
+  let Sw = [0, 0], Sz = [0, 0], Swz = [0, 0];
+  rd.forEach((r, k) => {
+    const w = Cx.ex(-psisDeg[k] * D2R), z = inplane(r.u);
+    Sw = [Sw[0] + w[0], Sw[1] + w[1]]; Sz = [Sz[0] + z[0], Sz[1] + z[1]];
+    const wz = Cx.mul(Cx.conj(w), z); Swz = [Swz[0] + wz[0], Swz[1] + wz[1]];
+  });
+  const det = N * N - (Sw[0] * Sw[0] + Sw[1] * Sw[1]);
+  let e, t;
+  if (det > 0.5) {               // [N Sw; conj(Sw) N] [e; t] = [Sz; Swz]
+    e = Cx.sub([N * Sz[0], N * Sz[1]], Cx.mul(Sw, Swz)).map(v => v / det);
+    t = Cx.sub([N * Swz[0], N * Swz[1]], Cx.mul(Cx.conj(Sw), Sz)).map(v => v / det);
+  } else { e = [Sz[0] / N, Sz[1] / N]; t = [0, 0]; }
+  const errDeg = Math.asin(Math.min(1, Math.hypot(e[0], e[1]))) * R2D;
+  const tilts = rd.map(r => r.tilt);
+  return { errDeg, tauDeg: Math.asin(Math.min(1, Math.hypot(t[0], t[1]))) * R2D, tilts, zs: rd.map(r => r.u[2]), mags: rd.map(r => r.mag),
+           ok: errDeg <= 1.0 && rd.every(r => r.u[2] > 0.995) };
+}
+// Gyro bias = per-axis median over still poses of 2 s or more. They should agree within 0.3 deg/s ("agree"); up to
+// 1 deg/s (a gyro still warming up) the median is still used, beyond that it is not trusted.
+function biasFrom(runs) {
+  const rs = runs.filter(r => r.n >= 800);
+  if (!rs.length) return null;
+  const b = [0, 1, 2].map(k => median(rs.map(r => r.g[k])));
+  const spread = rs.length > 1 ? Math.max(...rs.map(r => Math.max(...[0, 1, 2].map(k => Math.abs(r.g[k] - b[k]))))) : 0;
+  return { b, spread, n: rs.length, sec: rs.reduce((a, r) => a + r.sec, 0), agree: spread <= 0.3,
+           ok: b.every(v => Math.abs(v) < 10) && spread <= 1.0 };
+}
+
+// ---------------------------------------------------------------- the engine: raw stream in, board-axis samples out
+class CalEngine {
+  constructor() { this.reset(); }
+  reset() {
+    this.info = null; this.firstInfo = null; this.epochs = []; this.status = null;
+    this.infoN = 0; this.statusN = 0; this.infoT = 0; this.statusT = 0;
+    this.lastSeq = -1; this.nSamples = 0; this.nDup = 0; this.prevC = null; this.gaps = 0; this.lost = 0; this.gapPkts = 0;
+    this.still = new StillTracker(); this.spins = new SpinCollector(); this.yaw = 0; this.drop = null; this.biasB = null;
+    this.live = { up: null, ax: [0, 0, 1], rpm: 0, wz: 0, gmag: 0, clip: false, seq: -1 };
+    this.rxLog = []; this.rebooted = false;
+    this.now = () => (typeof performance !== "undefined" ? performance.now() : Date.now());
+  }
+  // samples per second of the disc's own clock (sequence numbers against its millis), over >= 5 s of one boot
+  get rate() {
+    const a = this.firstInfo, b = this.info;
+    if (!a || !b || a.boot !== b.boot || b.millis - a.millis < 5000) return null;
+    return (b.seq - a.seq) / (b.millis - a.millis) * 1000;
+  }
+  get dt() { const r = this.rate; return 1 / (r && r > 380 && r < 460 ? r : (this.info ? this.info.odr : 416)); }
+  get v4() { return !!(this.info && this.info.v4); }
+  get R() { return this.epochs.length ? this.epochs[this.epochs.length - 1].R : (this.info ? this.info.R : M3.I()); }
+  // readings arriving per second (wall clock), over the last 2 s
+  get rxRate() {
+    const L = this.rxLog; if (L.length < 2) return 0;
+    const span = this.now() - L[0][0]; return span > 300 ? L.reduce((a, x) => a + x[1], 0) / span * 1000 : 0;
+  }
+  // gyro zero error in board axes: the page's own measurement once there is one, else the disc's
+  biasBoard() { return this.biasB || (this.info ? M3.mtv(this.R, this.info.bias) : [0, 0, 0]); }
+  onPacket(dv) {
+    if (dv.byteLength < 2) return 0;
+    const type = dv.getUint8(0);
+    if (type === 2 && dv.byteLength >= 100) this.onInfo(parseInfo(dv));
+    else if (type === 1 && dv.byteLength >= 6) {
+      const n = Math.min(dv.getUint8(1), Math.floor((dv.byteLength - 6) / 12)), seq = dv.getUint32(2, true), c = new Int16Array(6);
+      for (let j = 0; j < n; j++) {
+        for (let k = 0; k < 6; k++) c[k] = dv.getInt16(6 + 12 * j + 2 * k, true);
+        this.onSample(seq + j, c);
+      }
+      const t = this.now(); this.rxLog.push([t, n]); while (this.rxLog.length && t - this.rxLog[0][0] > 2000) this.rxLog.shift();
+    } else if (type === 4 && dv.byteLength >= 10) this.gapPkts++;
+    return type;
+  }
+  onStatus(dv) { this.status = parseStatus(dv); this.statusN++; this.statusT = this.now(); return this.status; }
+  // The page sends "cal" to firmware v3: samples from now until the next info packet may use either R - skip them.
+  expectNewR() { this.drop = { from: this.lastSeq + 1, until: null }; }
+  onInfo(I) {
+    if (this.info && I.boot !== this.info.boot) {       // the disc restarted: sequence numbers start again
+      this.epochs = []; this.lastSeq = -1; this.still = new StillTracker(); this.spins = new SpinCollector(); this.firstInfo = null;
+      this.rebooted = true; this.drop = null; this.biasB = null;
+    }
+    const last = this.epochs[this.epochs.length - 1];
+    if (!last || M3.maxDiff(last.R, I.R) > 1e-6) {
+      // v4 says exactly which sample was the first one rotated with this R; v3 doesn't: only samples after this packet.
+      const from = !last ? (I.v4 ? I.calSeq : 0) : (I.v4 ? I.calSeq : I.seq);
+      this.epochs.push({ from, R: I.R.slice() });
+      if (this.epochs.length > 8) this.epochs.shift();
+    }
+    if (this.drop && this.drop.until === null) this.drop.until = I.seq;
+    if (!this.firstInfo) this.firstInfo = I;
+    this.info = I; this.infoN++; this.infoT = this.now();
+  }
+  epochFor(seq) {
+    for (let i = this.epochs.length - 1; i >= 0; i--) if (seq >= this.epochs[i].from) return this.epochs[i];
+    return null;
+  }
+  onSample(seq, c) {
+    if (!this.info || seq <= this.lastSeq) return;                  // nothing to convert with yet / resent after a reconnect
+    if (this.drop) {
+      if (seq >= this.drop.from && (this.drop.until === null || seq < this.drop.until)) return;
+      if (this.drop.until !== null && seq >= this.drop.until) this.drop = null;
+    }
+    const ep = this.epochFor(seq);
+    if (!ep) return;
+    if (this.lastSeq >= 0 && seq !== this.lastSeq + 1) { this.gaps++; this.lost += seq - this.lastSeq - 1; this.still.reset(); this.spins.gap(); }
+    this.lastSeq = seq; this.nSamples++;
+    const p = this.prevC;
+    if (p && p[0] === c[0] && p[1] === c[1] && p[2] === c[2] && p[3] === c[3] && p[4] === c[4] && p[5] === c[5]) this.nDup++;
+    this.prevC = Int16Array.from(c);
+    const I = this.info, GL = I.glsb, AL = I.alsb, R = ep.R;
+    const gd = [c[0] * GL, c[1] * GL, c[2] * GL], ad = [c[3] * AL, c[4] * AL, c[5] * AL];
+    const gb = M3.mtv(R, gd), ab = M3.mtv(R, ad);
+    const clip = Math.abs(c[0]) >= CLIP || Math.abs(c[1]) >= CLIP || Math.abs(c[2]) >= CLIP;
+    const bB = this.biasBoard(), bD = M3.mv(R, bB), wz = gd[2] - bD[2], dt = this.dt;
+    this.yaw += wz * dt;
+    this.still.push(seq, gb, ab, this.yaw, bB);
+    const gm = V.norm(V.sub(gb, bB));
+    this.spins.push(seq, gb, ab, clip, gm);
+    const L = this.live, k = 1 - Math.exp(-dt / 0.15);
+    L.ax = L.ax.map((v, i) => v + k * (ad[i] - v)); L.up = V.unit(L.ax);
+    L.wz = wz; L.gmag += (1 - Math.exp(-dt / 0.1)) * (gm - L.gmag); L.rpm += (1 - Math.exp(-dt / 0.08)) * (Math.abs(wz) / 6 - L.rpm);
+    L.clip = clip; L.seq = seq;
+  }
+  stillNow() { return this.still.cur ? viewRun(this.still.cur, this.dt) : null; }
+  // every pose of 2 s or more so far (finished, plus the current one)
+  poses() {
+    const out = this.still.runs.map(r => viewRun(r, this.dt));
+    if (this.still.cur && this.still.cur.n >= this.still.minRun) out.push(viewRun(this.still.cur, this.dt));
+    return out;
+  }
+  runById(id) {
+    if (this.still.cur && this.still.cur.id === id) return viewRun(this.still.cur, this.dt);
+    const r = this.still.runs.find(x => x.id === id);
+    return r ? viewRun(r, this.dt) : null;
+  }
+}
+
+// ---------------------------------------------------------------- synthetic disc (node tests and the page's test hook)
+// A rigid disc on a table that can slope, with the board mounted at M (rows: the TRUE disc axes in board coordinates;
+// x = the USB-C side), a stored calibration R that may be off or upside down, gyro zero error and accelerometer offset
+// in board axes, and the IMU off the spin axis by rDisc. It answers commands like the firmware (bton, btoff, sens N,
+// wake, cal, spincal, 0xC7 SET, 0xC8 calibration mode) and streams raw-stream packets in DISC axes (round(R * board)).
+const SENS_V4 = [null, [1.4, 120, 1.25, 1.4, 0, 0, 1.4], [2.0, 250, 1.6, 2.0, 15, 40, 1.5], [2.5, 400, 3.0, 2.0, 30, 100, 2.0],
+                 [3.0, 500, 3.0, 2.0, 45, 150, 2.0], [3.5, 600, 3.0, 2.0, 60, 150, 2.0]];   // trigG trigDps freeG minPeakG minSpin relMinRpm relPeakG
+function rng(seed) { let s = (seed >>> 0) || 1; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const clamp16 = v => Math.max(-32768, Math.min(32767, Math.round(v)));
+function encodeInfo(fw, seq, ms) {
+  const n = fw.v4 ? 120 : 100, b = new Uint8Array(n), dv = new DataView(b.buffer), L = SENS_V4[fw.sens] || SENS_V4[5];
+  b[0] = 2; b[1] = 1; dv.setUint16(2, fw.boot, true); dv.setUint32(4, seq >>> 0, true); dv.setUint32(8, ms >>> 0, true); dv.setUint16(12, 416, true);
+  b[14] = fw.sens; b[15] = fw.v4 ? 4 : 3;
+  const f = [0.000488, 0.070, ...fw.bias, ...fw.R, fw.radius, fw.batt, L[0], L[1], L[2], fw.v4 ? L[3] : [0, 1.4, 2, 2.5, 3, 3.5][fw.sens], L[4]];
+  f.forEach((v, k) => dv.setFloat32(16 + 4 * k, v, true));
+  if (fw.v4) {
+    dv.setFloat32(100, L[5], true); dv.setFloat32(104, L[6], true); dv.setUint32(108, fw.calSeq >>> 0, true);
+    const cf = (fw.calMode ? 1 : 0) | (fw.locked ? 2 : 0) | (fw.calSaved ? 4 : 0) | (fw.calDirty ? 8 : 0) | (fw.front ? 16 : 0) |
+               (fw.calState === 2 ? 32 : 0) | 64 | 128;
+    dv.setUint16(112, cf, true); dv.setInt16(114, 2650, true); dv.setUint16(116, 208, true); b[118] = 20; b[119] = 15;
+  }
+  return b;
+}
+function encodeStatus(fw) {
+  const b = new Uint8Array(20), dv = new DataView(b.buffer);
+  const v0 = fw.v4 ? 3.45 : 3.30, pct = Math.max(0, Math.min(100, Math.floor((fw.batt - v0) / (4.10 - v0) * 100)));
+  b[0] = 1; b[1] = fw.calState; b[2] = fw.calResult; b[3] = pct;
+  dv.setInt16(4, Math.round(describeR(fw.R).tilt * 100), true);
+  b[6] = (fw.calSaved ? 1 : 0) | (fw.charging ? 2 : 0) | (fw.usb ? 4 : 0) | ((fw.sens & 7) << 3) | (fw.radius > 0 ? 64 : 0) | (fw.spinCal ? 128 : 0);
+  b[19] = fw.mode;
+  return b;
+}
+class VirtualDisc {
+  constructor(o = {}) {
+    this.rand = rng(o.seed ?? 7);
+    this.rate = o.rate ?? 418.6; this.dupP = o.dupP ?? 0.04; this.noiseG = o.noiseG ?? 0.08; this.noiseA = o.noiseA ?? 0.0018;
+    const mt = (o.mountTiltDeg ?? 5.2) * D2R, md = (o.mountDirDeg ?? 40) * D2R, ud = (o.usbDeg ?? 70) * D2R;
+    const nB = [Math.sin(mt) * Math.cos(md), Math.sin(mt) * Math.sin(md), -Math.cos(mt)];   // chip side down, a few degrees off
+    this.M = o.M || buildR(nB, [Math.cos(ud), Math.sin(ud), 0]);
+    this.biasB = o.biasB || [0.45, -2.50, -0.85];
+    this.accOff = o.accOff || [0.004, -0.003, -0.0075];
+    const ra = (o.rDirDeg ?? 25) * D2R, rr = o.rTrue ?? 0.009;
+    this.rDisc = [rr * Math.cos(ra), rr * Math.sin(ra), 0];
+    this.table = { tilt: (o.tableTiltDeg ?? 1.2) * D2R, dir: (o.tableDirDeg ?? 30) * D2R };
+    const v4 = o.v4 ?? true;
+    // the calibration it has stored: by default the one "cal" made on a table sloping calTableDeg (so R is nearly right)
+    let R = o.R;
+    if (!R) {
+      const ct = (o.calTableDeg ?? 0.6) * D2R, up = [Math.sin(ct), 0, Math.cos(ct) * (o.storedFlipped ? -1 : 1)];
+      R = calR(V.unit(V.add(M3.mtv(this.M, up), this.accOff)));
+    }
+    this.fw = { v4, boot: o.boot ?? 4242, sens: o.sens ?? 5, R, bias: M3.mv(R, V.add(this.biasB, o.storedBiasErr || [0.02, -0.03, 0.01])),
+      radius: o.radius ?? 0.007271, locked: false, calSaved: true, calDirty: false, front: false, calMode: false, calState: 0, calResult: 1,
+      batt: o.batt ?? 3.95, usb: !!o.usb, charging: !!o.usb, mode: 0, calSeq: 0, streaming: false, infoDue: false, lastInfoMs: -1e9,
+      lastBattMs: 0, spinCal: false, spinCalT0: 0, spinEst: [], ema: [0, 0], cmdLog: [] };
+    this.seq = 0; this.ms0 = o.ms0 ?? 123456; this.pend = []; this.pendSeq0 = 0; this.prevOut = null; this.out = []; this.pending = [];
+    this.ph = { yaw: (o.yaw0 ?? 10) * D2R, flip: 0, tip: 0 };
+    this.queue = []; this.cur = null; this.w = 0; this.phys = { w: [0, 0, 0] };
+  }
+  get ms() { return Math.round(this.ms0 + this.seq / this.rate * 1000); }
+  T() { const { tilt, dir } = this.table; return M3.mm(M3.rz(dir), M3.mm(M3.ry(tilt), M3.rz(-dir))); }
+  D() { return M3.mm(this.T(), M3.mm(M3.rz(this.ph.yaw), M3.mm(M3.rx(this.ph.flip), M3.ry(this.ph.tip)))); }
+  // ---- motions: {still:s} {turn:deg, sec} {flip:sec} {tip:deg, sec} {untip:sec} {hand:sec} {spin:rpm, dir:-1|1, decay, visc, catchAt}
+  script(list) { this.queue.push(...list); return this; }
+  idle() { return !this.cur && !this.queue.length; }
+  nextMotion() {
+    const m = this.queue.shift();
+    if (!m) return null;
+    const ease = x => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, x)));
+    if (m.still != null) return { kind: "still", dur: m.still, t: 0 };
+    if (m.turn != null) { const y0 = this.ph.yaw, d = m.turn * D2R * (this.ph.flip ? -1 : 1); return { kind: "move", dur: m.sec || 2, t: 0, f: x => { this.ph.yaw = y0 + d * ease(x); } }; }
+    if (m.flip != null) { const a0 = this.ph.flip, a1 = a0 ? 0 : Math.PI; return { kind: "move", hand: true, dur: m.flip || 1.2, t: 0, f: x => { this.ph.flip = a0 + (a1 - a0) * ease(x); } }; }
+    if (m.tip != null) { const a0 = this.ph.tip, a1 = m.tip * D2R; return { kind: "move", hand: true, dur: m.sec || 1, t: 0, f: x => { this.ph.tip = a0 + (a1 - a0) * ease(x); } }; }
+    if (m.untip != null) { const a0 = this.ph.tip; return { kind: "move", hand: true, dur: m.untip || 1, t: 0, f: x => { this.ph.tip = a0 * (1 - ease(x)); } }; }
+    if (m.hand != null) return { kind: "hand", dur: m.hand, t: 0 };
+    if (m.spin != null) return { kind: "spin", t: 0, dur: 60, w0: m.spin * RPM * (m.dir ?? -1), decay: m.decay ?? 9, visc: m.visc ?? 0.12, catchAt: m.catchAt ?? null, flick: 0.12, w: 0, stopAt: null };
+    return { kind: "still", dur: 0.1, t: 0 };
+  }
+  // one physical sample: board gyro (deg/s) and accelerometer (g), before the sensor's counts
+  physSample() {
+    const dt = 1 / this.rate;
+    if (!this.cur || this.cur.t >= this.cur.dur) this.cur = this.nextMotion();
+    const m = this.cur, D0 = this.D();
+    let wD = [0, 0, 0], aK = [0, 0, 0], jitA = [0, 0, 0], jitG = [0, 0, 0];
+    const g = () => this.gauss();
+    if (m) m.t += dt;
+    if (m && m.kind === "move") { m.f(m.t / m.dur); if (m.hand) { jitA = [0.01 * g(), 0.01 * g(), 0.01 * g()]; jitG = [1.5 * g(), 1.5 * g(), 1.5 * g()]; } }
+    if (m && m.kind === "hand") { jitA = [0.03 * g(), 0.03 * g(), 0.03 * g()]; jitG = [4 * g(), 4 * g(), 4 * g()]; }
+    if (m && m.kind === "spin") {
+      const w0 = m.w; let al;
+      if (m.t < m.flick) { al = m.w0 / m.flick; jitA = [0.08 * g(), 0.08 * g(), 0.05 * g()]; }      // the hand flicks it up to speed
+      else if (m.catchAt != null && m.t > m.flick + m.catchAt) { al = -Math.sign(w0) * 300; jitA = [0.1 * g(), 0.1 * g(), 0.1 * g()]; }
+      else al = -Math.sign(w0) * (m.decay + m.visc * Math.abs(w0));                                    // table friction
+      let w1 = w0 + al * dt;
+      if (m.t >= m.flick && Math.sign(w1) !== Math.sign(w0)) { w1 = 0; al = -w0 / dt; m.dur = m.t; }   // stopped
+      m.w = w1;
+      const wm = 0.5 * (w0 + w1);
+      this.ph.yaw += wm * dt;
+      wD = [0, 0, wm]; const p = this.rDisc;
+      aK = [-wm * wm * p[0] - al * p[1], -wm * wm * p[1] + al * p[0], 0];
+    } else {
+      const D1 = this.D(), d = M3.mm(M3.T(D0), D1);
+      wD = [(d[7] - d[5]) / (2 * dt), (d[2] - d[6]) / (2 * dt), (d[3] - d[1]) / (2 * dt)];
+    }
+    this.w = wD[2];
+    const D = this.D(), fD = V.add(M3.mtv(D, [0, 0, 1]), V.mul(aK, 1 / GMS));
+    const fb = V.add(V.add(M3.mtv(this.M, fD), this.accOff), V.add(jitA, [this.noiseA * g(), this.noiseA * g(), this.noiseA * g()]));
+    const gb = V.add(V.add(M3.mtv(this.M, V.mul(wD, R2D)), this.biasB), V.add(jitG, [this.noiseG * g(), this.noiseG * g(), this.noiseG * g()]));
+    return { gb, fb, fD };
+  }
+  gauss() { let u = 0; while (u === 0) u = this.rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * this.rand()); }
+  counts(s) { return [...s.gb.map(v => clamp16(v / 0.070)), ...s.fb.map(v => clamp16(v / 0.000488))]; }
+  // ---- commands, as onCmdWrite + loop() handle them
+  write(bytes) {
+    const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes), fw = this.fw;
+    if (b.length >= 1 && b[0] === 0xC7) { fw.cmdLog.push("SET"); this.pending.push(b.length === 20 ? { set: b.slice() } : { badLen: true }); return; }
+    if (b.length >= 1 && b[0] === 0xC8) { fw.cmdLog.push("CALMODE " + (b[1] ? 1 : 0)); if (b.length >= 2 && fw.v4) this.pending.push({ calMode: !!b[1] }); return; }
+    const c = String.fromCharCode(...b.slice(0, 24));
+    fw.cmdLog.push(c);
+    const pre = s => c.startsWith(s);
+    if (pre("clear") || pre("dump")) return;
+    if (pre("cal")) { this.pending.push({ cal: true }); return; }
+    if (pre("bias") || pre("standby")) return;
+    if (pre("wake")) { fw.mode = 0; return; }
+    if (pre("off") || pre("findstop") || pre("find") || pre("ledon") || pre("ledoff")) return;
+    if (pre("spincal")) { this.pending.push({ spincal: true }); return; }
+    if (pre("streamon") || pre("streamoff") || pre("logclear") || pre("logread")) return;
+    if (pre("bton")) { fw.streaming = true; fw.infoDue = true; return; }
+    if (pre("btoff")) { fw.streaming = false; return; }
+    if (pre("sens") && c.length >= 6 && c[5] >= "1" && c[5] <= "5") this.pending.push({ sens: +c[5] });
+  }
+  emitStatus() { this.out.push({ ch: "status", bytes: encodeStatus(this.fw) }); }
+  // firmware applyCalSet, in float32 like the disc
+  applySet(b) {
+    const fw = this.fw, fl = b[1], dv = new DataView(b.buffer, b.byteOffset, 20);
+    const rej = () => { fw.calResult = 7; this.emitStatus(); };
+    const setR = fl & 1, setB = fl & 2, setr = fl & 4, lockR = fl & 8, save = fl & 16, front = fl & 32;
+    if (fl & 0xC0) return rej();
+    if (!(setR || setB || setr || save)) return rej();
+    let q = [0, 1, 2, 3].map(k => f32(dv.getInt16(2 + 2 * k, true) / 32767));
+    const bb = [0, 1, 2].map(k => f32(dv.getInt16(10 + 2 * k, true) * f32(0.01))), rUm = dv.getUint16(16, true);
+    if (setR) { const nq = f32(Math.hypot(...q)); if (nq < 0.98 || nq > 1.02) return rej(); q = q.map(v => f32(v / nq)); }
+    if (setB && Math.hypot(...bb) > 20) return rej();
+    if (setr && (rUm < 500 || rUm > 30000)) return rej();
+    fw.calState = 0;
+    if (setR) {
+      const R = matFromQuat(q).map(f32);
+      if (!setB) fw.bias = M3.mv(R, M3.mtv(fw.R, fw.bias)).map(f32);
+      fw.R = R; fw.calSeq = this.seq; fw.front = !!front;
+    }
+    if (setB) fw.bias = M3.mv(fw.R, bb).map(f32);
+    if (setr) { fw.locked = !!lockR; fw.radius = f32(rUm * f32(1e-6)); }
+    let saved = false;
+    if (save) { saved = true; fw.calSaved = true; }
+    fw.calDirty = !saved; fw.infoDue = true; fw.calResult = saved ? 6 : 5;
+    this.emitStatus();
+  }
+  // firmware calibratePlacement: 400 still samples with the rotation off (they never reach the stream), then R
+  doCal() {
+    const fw = this.fw; fw.calState = 1; this.emitStatus();
+    const sa = [0, 0, 0], sg = [0, 0, 0]; let peak = 0;
+    for (let i = 0; i < 400; i++) { const s = this.physSample(); for (let k = 0; k < 3; k++) { sa[k] += s.fb[k]; sg[k] += s.gb[k]; } peak = Math.max(peak, V.norm(s.gb)); }
+    const a = sa.map(v => v / 400), gm = sg.map(v => v / 400), u = V.unit(a), tilt = Math.acos(u[2]) * R2D;
+    fw.calState = 0;
+    if (peak >= 60 || Math.abs(V.norm(a) - 1) >= 0.15) { fw.calResult = 2; this.emitStatus(); return; }
+    if (tilt > 45 && tilt < 135) { fw.calResult = 3; this.emitStatus(); return; }
+    const flipped = fw.v4 && fw.calSaved && V.dot(M3.row(fw.R, 2), u) < 0;
+    fw.R = calR(u).map(f32); fw.calSeq = this.seq; fw.bias = M3.mv(fw.R, gm).map(f32); fw.front = false; fw.calResult = 1; fw.calSaved = true;
+    fw.calDirty = false; if (fw.v4) fw.infoDue = true;
+    if (flipped) fw.calState = 2;
+    this.emitStatus();
+  }
+  service() {
+    const fw = this.fw;
+    while (this.pending.length) {
+      const p = this.pending.shift();
+      if (p.set) this.applySet(p.set);
+      else if (p.badLen) { fw.calResult = 7; this.emitStatus(); }
+      else if (p.calMode != null) { fw.calMode = p.calMode; fw.infoDue = true; }
+      else if (p.cal) this.doCal();
+      else if (p.sens) { fw.sens = p.sens; if (fw.v4) fw.infoDue = true; this.emitStatus(); }
+      else if (p.spincal) { if (fw.v4 && fw.locked) this.emitStatus(); else { fw.spinCal = true; fw.spinCalT0 = this.ms; fw.spinEst = []; this.emitStatus(); } }
+    }
+    if (fw.spinCal && this.ms - fw.spinCalT0 > 15000) {
+      fw.spinCal = false;
+      if (fw.spinEst.length >= 20) { const r = median(fw.spinEst); if (r > 0.0005 && r < 0.03) { fw.radius = f32(r); fw.infoDue = fw.v4 || fw.infoDue; } }
+      this.emitStatus();
+    }
+    if (this.ms - fw.lastBattMs >= 30000) { fw.lastBattMs = this.ms; this.emitStatus(); }          // updateBattery every 30 s
+    if (fw.streaming && (fw.infoDue || this.ms - fw.lastInfoMs > 10000)) {
+      this.out.push({ ch: "stream", bytes: encodeInfo(fw, this.seq, this.ms) }); fw.infoDue = false; fw.lastInfoMs = this.ms;
+    }
+  }
+  // Advance n samples; returns the packets the disc sent meanwhile, in order: { ch: "stream" | "status", bytes }.
+  step(n) {
+    const fw = this.fw;
+    for (let k = 0; k < n; k++) {
+      this.service();
+      const s = this.physSample();
+      let cb = this.counts(s);
+      let cd = [...M3.mv(fw.R, cb.slice(0, 3)), ...M3.mv(fw.R, cb.slice(3))].map(clamp16);
+      if (this.prevOut && this.rand() < this.dupP) cd = this.prevOut.slice();            // FIFO fill: the last set again
+      this.prevOut = cd;
+      // the disc's own spincal estimate (inPlaneEma / gz^2 every 100 ms), for the old-firmware path
+      const kE = 1 / (0.5 * 416), ax = cd[3] * 0.000488, ay = cd[4] * 0.000488;
+      fw.ema[0] += kE * (ax - fw.ema[0]); fw.ema[1] += kE * (ay - fw.ema[1]);
+      if (fw.spinCal && this.seq % 42 === 0 && this.ms - fw.spinCalT0 > 1500) {
+        const gz = Math.abs(cd[2] * 0.070 - fw.bias[2]), rpm = gz / 6;
+        if (rpm > 120 && rpm < 320 && fw.spinEst.length < 120) fw.spinEst.push(Math.hypot(...fw.ema) * GMS / Math.pow(gz * D2R, 2));
+      }
+      if (fw.streaming) {
+        if (!this.pend.length) this.pendSeq0 = this.seq;
+        this.pend.push(cd);
+        if (this.pend.length >= 19) this.flush();
+      }
+      this.seq++;
+    }
+    const o = this.out; this.out = [];
+    return o;
+  }
+  flush() {
+    const k = this.pend.length; if (!k) return;
+    const b = new Uint8Array(6 + 12 * k), dv = new DataView(b.buffer);
+    b[0] = 1; b[1] = k; dv.setUint32(2, this.pendSeq0 >>> 0, true);
+    this.pend.forEach((c, j) => c.forEach((v, i) => dv.setInt16(6 + 12 * j + 2 * i, v, true)));
+    this.pend = []; this.out.push({ ch: "stream", bytes: b });
+  }
+  statusPacket() { return encodeStatus(this.fw); }
+  // Truth, for the tests: the board direction that reads "up" on a level surface, the table slope, the gyro zero error.
+  truth() { return { nLevel: V.unit(V.add(M3.mtv(this.M, [0, 0, 1]), this.accOff)), nGeom: M3.row(this.M, 2), front: M3.row(this.M, 0),
+                     tauDeg: this.table.tilt * R2D, biasB: this.biasB.slice(), r: V.norm(this.rDisc), M: this.M.slice() }; }
+}
+
+G.DiscCalMath = { D2R, R2D, GMS, RPM, CLIP, V, M3, Cx, median, wrap180, matFromQuat, quatFromMat, calR, parseInfo, parseStatus, CALF,
+  encodeSet, decodeSet, validateSet, expectAfterSet, infoMatches, describeR, buildR, keepYawR, StillTracker, viewRun, SpinCollector,
+  prepSpin, solve, fitSpin, pickSpins, centripCheck, readPose, halfTurn, labelDown, frontFrom, turnsCheck, biasFrom, CalEngine,
+  encodeInfo, encodeStatus, VirtualDisc, rng };
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+
+<script>
+"use strict";
+// ================================================================ the calibration page
+// One step at a time: 0 connect and health, 1 label check, 2 gyro zero error, 3 placement (half turn, flip, optional
+// front, fix), 4 spin radius, 5 verify (the new values applied in the disc's memory only), 6 save + before/after.
+// Firmware v4 (120-byte info packet) takes the result as one binary SET (0xC7) and pauses throw detection while this
+// page works (0xC8). Older firmware (100 bytes) gets "Phase 1": the placement is redone with its own "cal" after a
+// label-up check, and the spin radius is shown but can't be stored.
+const M = window.DiscCalMath, { V, M3, R2D } = M;
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 0) => Number.isFinite(v) ? v.toFixed(d) : "–";
+const sgn = (v, d = 2) => Number.isFinite(v) ? (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(d) : "–";
+const vec = (v, d = 2) => v ? v.map(x => sgn(x, d)).join("  ") : "–";
+const mm = r => r > 0 ? (r * 1000).toFixed(2) + " mm" : "not known";
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const now = () => performance.now();
+let toastTimer = 0;
+function toast(text, kind = "", ms = 5000) {
+  const el = $("toast"); el.textContent = text; el.className = "show " + kind;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.className = "", ms);
+}
+
+// ================================================================ Bluetooth (connect / reconnect / sendCmd as in sim.html)
+const SVC = "19b10000-e8f2-537e-4f6c-d104768a1214", CMD = "19b10002-e8f2-537e-4f6c-d104768a1214",
+      STATUS = "19b10005-e8f2-537e-4f6c-d104768a1214", BTSTREAM = "19b10009-e8f2-537e-4f6c-d104768a1214";
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error("timed out")), ms))]);
+let device = null, looping = false, userStop = false, connected = false, cmdChar = null, fake = null;
+const engine = new M.CalEngine();
+let lastStatus = null, statusN = 0, writeChain = Promise.resolve();
+const sentLog = [];                        // every command this page sent (the test hook reads it)
+
+// Writes go out one at a time (Web Bluetooth refuses overlapping GATT operations).
+function rawWrite(bytes, label) {
+  const job = writeChain.then(async () => {
+    sentLog.push({ t: Math.round(now()), cmd: label });
+    if (fake) { fake.write(bytes); return true; }
+    if (!cmdChar) return false;
+    try { await (cmdChar.writeValueWithResponse ? cmdChar.writeValueWithResponse(bytes) : cmdChar.writeValue(bytes)); return true; }
+    catch (e) { console.warn("command failed", label, e); return false; }
+  });
+  writeChain = job.catch(() => false);
+  return job;
+}
+// Text commands are prefix matches on the disc: anything starting with "cal" recalibrates, "off" switches it off,
+// "find" starts find mode. Only these exact words ever leave this page; "cal" only after the label-up question.
+const SAFE_TEXT = /^(bton|btoff|wake|spincal|sens [1-5])$/;
+function sendText(cmd, why) {
+  if (cmd === "cal" ? why !== "label-up confirmed" : !SAFE_TEXT.test(cmd)) { console.error("blocked command", cmd); return Promise.resolve(false); }
+  return rawWrite(new TextEncoder().encode(cmd), cmd);
+}
+function sendSet(bytes) {
+  if (!(bytes instanceof Uint8Array) || bytes.length !== 20 || bytes[0] !== 0xC7) return Promise.resolve(false);
+  return rawWrite(bytes, "SET " + Array.from(bytes, x => x.toString(16).padStart(2, "0")).join(""));
+}
+function sendCalMode(on) {
+  if (!S.v4) return Promise.resolve(false);
+  S.calModeSentAt = now();
+  return rawWrite(new Uint8Array([0xC8, on ? 1 : 0]), "CALMODE " + (on ? 1 : 0));
+}
+
+function setConn(state, n = 0) {
+  connected = state === "on";
+  $("connPill").className = "pill " + ({ on: "on", connecting: "busy", retry: "busy", lost: "busy", bad: "bad" }[state] || "");
+  $("connText").textContent = { on: "Disc connected", connecting: "Connecting…", retry: `Looking for the disc (${n})…`,
+    lost: "Connection lost – reconnecting…", bad: "Bluetooth unavailable", off: "Not connected" }[state] || "Not connected";
+  S.dirty = true;
+}
+async function pickDisc() {
+  if (!navigator.bluetooth) {
+    setConn("bad");
+    toast("This browser can't use Bluetooth. Use Chrome or Edge on a computer or Android phone (on iPhone: the Bluefy browser).", "bad", 10000);
+    return;
+  }
+  try {
+    const d = await navigator.bluetooth.requestDevice({ filters: [{ services: [SVC] }, { name: "DiscTracker" }], optionalServices: [SVC] });
+    if (device && device !== d) { userStop = true; try { device.gatt.disconnect(); } catch {} }
+    device = d; hookDevice(d);
+  } catch (e) {
+    if (e && e.name === "NotFoundError") return;              // picker cancelled
+    toast("Bluetooth: " + (e && e.message ? e.message : e), "bad"); return;
+  }
+  userStop = false; connectLoop();
+}
+function hookDevice(d) {
+  if (d._hooked) return; d._hooked = true;
+  d.addEventListener("gattserverdisconnected", () => {
+    if (d !== device) return;
+    cmdChar = null;
+    setConn(userStop ? "off" : "lost");
+    if (!userStop) connectLoop();
+  });
+}
+async function connectLoop() {
+  if (looping || !device) return;
+  looping = true; let n = 0;
+  while (device && !userStop && !device.gatt.connected) {
+    n++; setConn(n === 1 ? "connecting" : "retry", n);
+    try { await withTimeout(setupGatt(), 12000); }
+    catch (e) { console.warn("connect attempt failed", e); try { device.gatt.disconnect(); } catch {} await sleep(Math.min(1000 * n, 3000)); }
+  }
+  looping = false;
+}
+async function setupGatt() {
+  const server = await device.gatt.connect();
+  const svc = await server.getPrimaryService(SVC);
+  const st = await svc.getCharacteristic(STATUS);
+  st.addEventListener("characteristicvaluechanged", e => onStatusDv(e.target.value));
+  await st.startNotifications();
+  onStatusDv(await st.readValue());
+  let bt;
+  try { bt = await svc.getCharacteristic(BTSTREAM); }
+  catch (e) { S.noStream = true; toast("This disc's firmware can't stream its readings – update the firmware first.", "bad", 12000); throw e; }
+  bt.addEventListener("characteristicvaluechanged", e => onStreamDv(e.target.value));
+  await bt.startNotifications();
+  cmdChar = await svc.getCharacteristic(CMD);
+  setConn("on");
+  await onLinkUp();
+}
+async function disconnect() {
+  userStop = true;
+  if (fake) { fake.stop(); fake = null; setConn("off"); return; }
+  if (device) { try { device.gatt.disconnect(); } catch {} }
+  device = null; setConn("off");
+}
+// Chrome remembers discs this page was allowed to use: reconnect after a reload without asking again.
+if (navigator.bluetooth && navigator.bluetooth.getDevices) {
+  navigator.bluetooth.getDevices().then(list => {
+    const d = list.find(x => (x.name || "").startsWith("Disc"));
+    if (d && !device && !fake) { device = d; hookDevice(d); userStop = false; connectLoop(); }
+  }).catch(() => {});
+}
+
+// (Re)connected: the raw stream on (it also makes the disc send its info packet at once).
+async function onLinkUp() {
+  S.linkAt = now();
+  await sendText("bton");
+  if (S.v4 && !S.finished) await sendCalMode(true);          // calibration mode ends whenever the link drops
+}
+function onStatusDv(dv) {
+  if (dv.byteLength < 8) return;
+  lastStatus = engine.onStatus(dv); statusN = engine.statusN;
+  if (!S.status0) S.status0 = lastStatus;
+  if (lastStatus.mode === 1 && now() - (S.wakeAt || 0) > 4000 && !S.finished) { S.wakeAt = now(); sendText("wake"); }   // standby: no readings
+  renderPills(); S.dirty = true;
+}
+function onStreamDv(dv) {
+  const type = engine.onPacket(dv);
+  if (type !== 2) return;
+  const I = engine.info;
+  if (engine.rebooted) { engine.rebooted = false; onReboot(); }
+  if (!S.info0) { S.info0 = I; S.sens0 = I.sens; }
+  S.v4 = I.v4;
+  if (S.v4 && !S.finished && !(I.calFlags & M.CALF.CALMODE) && now() - (S.calModeSentAt || 0) > 3000) sendCalMode(true);
+  renderPills(); S.dirty = true;
+}
+// Calibration mode switches itself off after 10 min: renew it while the page is in use.
+setInterval(() => { if (S.v4 && (connected || fake) && !S.finished && engine.info) sendCalMode(true); }, 240000);
+function onReboot() {
+  toast("The disc restarted, so its readings started again. Please do this step again.", "warn", 9000);
+  S.applied = null;
+  if (S.step > 1) { resetMeasurements(); goTo(1); }
+}
+// Leaving the page: stream off and calibration mode off (the disc also ends calibration mode on disconnect).
+window.addEventListener("pagehide", () => { if (!S.finished && (connected || fake)) { sendCalMode(false); sendText("btoff"); } });
+
+function renderPills() {
+  const I = engine.info, st = lastStatus;
+  if (I || st) {
+    $("battPill").style.display = "";
+    const v = I ? I.batt : null, low = v != null && v < 3.7 && !(st && st.usb);
+    $("battPill").className = "pill" + (low ? " bad" : "");
+    $("battText").textContent = `Battery ${v != null ? v.toFixed(2) + " V" : ""}${st && st.battery <= 100 ? ` · ${st.battery} %` : ""}${st && st.usb ? " · USB" : ""}`;
+  }
+  if (I) {
+    $("fwPill").style.display = "";
+    $("fwPill").className = "pill" + (I.v4 ? "" : " warn");
+    $("fwText").textContent = I.v4 ? (I.calFlags & M.CALF.CALMODE ? "Firmware v4 · throws paused" : "Firmware v4") : `Older firmware (v${I.logVer})`;
+  }
+}
+
+// ================================================================ page state
+const S = {
+  step: 0, maxStep: 0, dirty: true, v4: null, info0: null, status0: null, sens0: null, finished: false,
+  L: null, poseA: null, bias: null, B: null, P: null, Sp: null, Vf: null, Sv: null, applied: null, sensChanged: false,
+};
+function resetMeasurements() { Object.assign(S, { L: null, poseA: null, bias: null, B: null, P: null, Sp: null, Vf: null, Sv: null }); engine.biasB = null; }
+const usbIn = () => !!(lastStatus && lastStatus.usb);
+const dt = () => engine.dt;
+// The newest still pose (2 s or more) passing `pred`.
+function newestPose(pred) { const ps = engine.poses().filter(pred); return ps.length ? ps[ps.length - 1] : null; }
+// Every still pose since step 1 began (the gyro zero error comes from all of them, up to the end of step 3).
+function stillSince(seq) { return engine.poses().filter(p => p.seq1 > seq); }
+function refreshBias() {
+  if (!S.L) return null;
+  const b = M.biasFrom(stillSince(S.L.since));
+  if (b) { S.bias = b; if (b.ok) engine.biasB = b.b; }
+  return b;
+}
+// A spin worth showing: it reached 100 rpm about the disc's axis (picking the disc up can turn it fast too).
+const realSpin = seg => M.prepSpin(seg, engine.R, engine.biasBoard(), dt()).peakRpm >= 100;
+const Rfit = () => (S.P && S.P.newR) || engine.R;
+const placementChanges = () => !!(S.P && S.P.newR);
+const radiusChosen = () => S.Sp && S.Sp.use && S.Sp.pick && S.Sp.pick.ok ? S.Sp.pick.r : null;
+function waitFor(pred, ms) {
+  return new Promise(res => {
+    const t0 = now(), iv = setInterval(() => { let ok = false; try { ok = pred(); } catch {} if (ok || now() - t0 > ms) { clearInterval(iv); res(ok); } }, 60);
+  });
+}
+
+// The SET for everything decided so far; save = false is a dry run (the disc's memory only, back to the saved values
+// at its next restart). Answer: status cal_result 5 / 6 / 7 and an info packet that must show exactly these values.
+async function applySet(save) {
+  const o = { R: S.P && S.P.newR, front: !!(S.P && S.P.frontSet), biasB: S.bias && S.bias.ok ? S.bias.b : null, rM: radiusChosen(), lock: true, save };
+  if (!o.R && !o.biasB && !o.rM && !save) return { ok: true, nothing: true };
+  const prob = M.validateSet(o);
+  if (prob) return { ok: false, why: `The page refused to send it: ${prob}.` };
+  if (!engine.info || !engine.info.v4) return { ok: false, why: "This disc's firmware can't take the values." };
+  const bytes = M.encodeSet(o), exp = M.expectAfterSet(bytes, engine.info), n0 = statusN, i0 = engine.infoN;
+  let rejAt = 0;
+  if (!(await sendSet(bytes))) return { ok: false, why: "The command didn't go out – is the disc still connected?" };
+  const ok = await waitFor(() => {
+    if (engine.infoN > i0 && M.infoMatches(engine.info, exp)) return true;
+    if (statusN > n0 && lastStatus.calResult === 7 && !rejAt) rejAt = now();
+    return rejAt && now() - rejAt > 1500;
+  }, 9000);
+  const matched = engine.infoN > i0 && M.infoMatches(engine.info, exp);
+  if (matched) return { ok: true, bytes, calSeq: engine.info.calSeq, o };
+  if (rejAt) return { ok: false, why: "The disc refused the values (answer 7)." };
+  const I = engine.info;
+  if (save && I && M.M3.maxDiff(I.R, exp.R) < 2e-4 && (I.calFlags & M.CALF.DIRTY)) return { ok: false, why: "The disc took the values but couldn't save them to its memory." };
+  return { ok: false, why: "No answer from the disc. Check it is awake and close by, then try again." };
+}
+
+// ================================================================ pictures
+const FIG = (() => {
+  const disc = (cx, cy, rx, ry, label) => `
+    <ellipse cx="${cx}" cy="${cy + 9}" rx="${rx}" ry="${ry}" fill="#10161f" stroke="#536173" stroke-width="2"/>
+    <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#1d2735" stroke="#8796a8" stroke-width="2"/>
+    ${label ? `<text x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="17" font-weight="800" fill="#ff8a1f" letter-spacing="2">LABEL</text>` : ""}`;
+  const table = y => `<line x1="8" y1="${y}" x2="232" y2="${y}" stroke="#536173" stroke-width="3" stroke-linecap="round"/>`;
+  const arrowHead = `<marker id="ah" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ff8a1f"/></marker>`;
+  const top = (label, rot = 0) => `<circle cx="120" cy="78" r="58" fill="#1d2735" stroke="#8796a8" stroke-width="2"/>
+    <circle cx="120" cy="78" r="44" fill="none" stroke="#536173" stroke-width="1.5"/>
+    ${label ? `<text x="120" y="84" text-anchor="middle" font-size="17" font-weight="800" fill="#ff8a1f" letter-spacing="2" transform="rotate(${rot} 120 78)">LABEL</text>` : ""}
+    <rect x="173" y="72" width="9" height="12" rx="2" fill="#fbbf24"/><text x="190" y="82" font-size="10" fill="#fbbf24">USB</text>`;
+  const svg = (h, body) => `<svg viewBox="0 0 240 ${h}" role="img" xmlns="http://www.w3.org/2000/svg"><defs>${arrowHead}</defs>${body}</svg>`;
+  return {
+    up: svg(130, `${table(108)}${disc(120, 72, 92, 26, true)}
+      <path d="M120,38 L120,10" stroke="#ff8a1f" stroke-width="3" marker-end="url(#ah)"/><text x="132" y="24" font-size="12" fill="#a7b2c0">label up</text>`),
+    turn: svg(160, `${top(true, 180)}<path d="M52,78 A68,68 0 0 1 188,78" fill="none" stroke="#ff8a1f" stroke-width="3" marker-end="url(#ah)"/>
+      <text x="120" y="156" text-anchor="middle" font-size="13" fill="#a7b2c0">half a turn (180°), label still up</text>`),
+    quarter: svg(160, `${top(true, 90)}<path d="M120,10 A68,68 0 0 1 188,78" fill="none" stroke="#ff8a1f" stroke-width="3" marker-end="url(#ah)"/>
+      <text x="120" y="156" text-anchor="middle" font-size="13" fill="#a7b2c0">a quarter turn (90°)</text>`),
+    down: svg(130, `${table(108)}<path d="M28,96 Q120,40 212,96" fill="#1d2735" stroke="#8796a8" stroke-width="2"/>
+      <path d="M28,96 L212,96" stroke="#8796a8" stroke-width="2"/><text x="120" y="88" text-anchor="middle" font-size="12" fill="#a7b2c0">label underneath</text>
+      <path d="M120,30 L120,6" stroke="#ff8a1f" stroke-width="3" marker-start="url(#ah)"/><text x="132" y="22" font-size="12" fill="#a7b2c0">upside down</text>`),
+    front: svg(140, `${table(118)}<rect x="168" y="80" width="56" height="38" rx="3" fill="#2a3442" stroke="#536173"/>
+      <text x="196" y="104" text-anchor="middle" font-size="11" fill="#a7b2c0">book</text>
+      <g transform="rotate(-22 30 114)"><rect x="30" y="104" width="190" height="12" rx="6" fill="#1d2735" stroke="#8796a8" stroke-width="2"/>
+      <text x="125" y="100" text-anchor="middle" font-size="13" font-weight="800" fill="#ff8a1f" letter-spacing="2">LABEL</text></g>
+      <rect x="24" y="104" width="10" height="9" rx="2" fill="#fbbf24"/><text x="10" y="134" font-size="11" fill="#fbbf24">USB side on the table</text>`),
+    spin: svg(160, `${top(true)}<path d="M120,10 A68,68 0 0 1 188,78" fill="none" stroke="#ff8a1f" stroke-width="3" marker-end="url(#ah)"/>
+      <path d="M120,146 A68,68 0 0 1 52,78" fill="none" stroke="#ff8a1f" stroke-width="3" marker-end="url(#ah)"/>
+      <text x="120" y="158" text-anchor="middle" font-size="13" fill="#a7b2c0">clockwise · 3–5 turns a second</text>`),
+  };
+})();
+
+// ================================================================ live gauges
+function gaugeHtml(kind) {
+  if (kind === "tilt") return `<div class="gauge tilt"><svg viewBox="-37 -37 74 74" width="74" height="74" aria-hidden="true">
+      <circle r="34" fill="#10161f" stroke="#536173" stroke-width="1.5"/><circle r="17" fill="none" stroke="#2c3644"/>
+      <line x1="-34" y1="0" x2="34" y2="0" stroke="#2c3644"/><line x1="0" y1="-34" x2="0" y2="34" stroke="#2c3644"/>
+      <circle id="gBub" r="7" fill="#34d399"/></svg>
+      <div><div class="k">Tilt the disc reads</div><div class="v" id="gTilt">–</div><div class="s" id="gTiltS"></div></div></div>`;
+  if (kind === "still") return `<div class="gauge"><div class="k">Stillness</div><div class="v" id="gStill">–</div>
+      <div class="bar"><i id="gStillBar"></i><b style="left:100%"></b></div><div class="s" id="gStillS"></div></div>`;
+  if (kind === "spin") return `<div class="gauge"><div class="k">Spin</div><div class="v"><span id="gSpin">–</span><small>rpm</small></div>
+      <div class="bar"><i id="gSpinBar"></i><b style="left:37.5%"></b><b style="left:87.5%"></b><b style="left:92.5%"></b></div><div class="s" id="gSpinS"></div></div>`;
+  if (kind === "turn") return `<div class="gauge"><div class="k">Turned so far</div><div class="v"><span id="gTurn">–</span><small>°</small></div>
+      <div class="bar"><i id="gTurnBar"></i></div><div class="s" id="gTurnS"></div></div>`;
+  return "";
+}
+function updateGauges() {
+  const L = engine.live, have = engine.info && L.seq >= 0 && engine.lastSeq >= 0;
+  const set = (id, v) => { const e = $(id); if (e) e.innerHTML = v; };
+  if ($("gTilt")) {
+    if (!have || !L.up) { set("gTilt", "–"); set("gTiltS", "waiting for readings"); }
+    else {
+      const u = L.up, tilt = Math.acos(Math.max(-1, Math.min(1, u[2]))) * R2D, up = u[2] > 0, k = 34 / Math.sin(10 * M.D2R);
+      const bx = Math.max(-1, Math.min(1, u[0] * k / 34)) * 27, by = Math.max(-1, Math.min(1, u[1] * k / 34)) * 27;
+      const b = $("gBub"); b.setAttribute("cx", up ? bx : 0); b.setAttribute("cy", up ? -by : 0);
+      b.setAttribute("fill", !up ? "#6b7280" : tilt < 2 ? "#34d399" : tilt < 6 ? "#fbbf24" : "#f87171");
+      set("gTilt", up ? `${tilt.toFixed(1)}°` : `${(180 - tilt).toFixed(1)}°`);
+      set("gTiltS", up ? (tilt < 25 ? "reads label up" : "not flat") : `<span class="warn-t">reads UPSIDE DOWN</span>`);
+    }
+  }
+  if ($("gStill")) {
+    const r = engine.stillNow(), sec = r ? r.sec : 0, moving = L.gmag > 5;
+    set("gStill", !have ? "–" : r ? (sec >= 2 ? `<span class="good-t">Still ✓</span>` : `${sec.toFixed(1)} s`) : moving ? "Moving" : "Settling…");
+    const bar = $("gStillBar"); bar.style.width = Math.min(100, sec / 2 * 100) + "%"; bar.style.background = sec >= 2 ? "var(--good)" : "var(--warn)";
+    set("gStillS", !have ? "" : r ? (sec >= 2 ? `held still ${sec.toFixed(1)} s` : "hands off… needs 2 s") : `moving ${fmt(L.gmag)} °/s – let go of it`);
+  }
+  if ($("gSpin")) {
+    const rpm = have ? L.rpm : NaN;
+    set("gSpin", fmt(rpm));
+    const bar = $("gSpinBar"); bar.style.width = Math.min(100, (rpm || 0) / 400 * 100) + "%";
+    bar.style.background = rpm > 370 ? "var(--bad)" : rpm > 350 ? "var(--warn)" : rpm >= 150 ? "var(--good)" : "var(--muted)";
+    set("gSpinS", !have ? "" : rpm > 370 ? `<span class="bad-t">too fast – the gyro stops at 382 rpm</span>` : rpm > 350 ? `<span class="warn-t">a bit fast</span>`
+      : rpm >= 150 ? "good speed" : rpm > 20 ? "slowing…" : "aim for 150–350 rpm");
+  }
+  if ($("gTurn")) {
+    const ref = S.turnRef;
+    if (!have || !ref) { set("gTurn", "–"); set("gTurnS", ""); }
+    else {
+      const d = Math.abs(M.wrap180(engine.yaw - ref.yaw)), want = ref.want;
+      set("gTurn", d.toFixed(0));
+      const bar = $("gTurnBar"); bar.style.width = Math.min(100, d / 180 * 100) + "%";
+      bar.style.background = Math.abs(d - want) < want * 0.3 ? "var(--good)" : "var(--warn)";
+      set("gTurnS", `aim for about ${want}°`);
+    }
+  }
+}
+
+// ================================================================ the steps
+// Each step: enter() (fresh state), tick() (5 x a second: look at the readings) and view() (what the card shows).
+const verdict = (kind, big, todo, why) => `<div class="verdict ${kind}"><div class="big">${big}</div>${todo ? `<div class="todo">${todo}</div>` : ""}${why ? `<div class="why">${why}</div>` : ""}</div>`;
+const checks = items => `<ul class="checks">${items.map(([ok, t, x]) => `<li><span class="i ${ok === true ? "good-t" : ok === false ? "bad-t" : ok === "warn" ? "warn-t" : "muted"}">${ok === true ? "✓" : ok === false ? "✗" : ok === "warn" ? "!" : "•"}</span><span>${t}${x ? `<div class="x">${x}</div>` : ""}</span></li>`).join("")}</ul>`;
+const btn = (act, text, cls = "") => `<button class="${cls}" data-act="${act}">${text}</button>`;
+
+function storedSummary(I) {
+  const d = M.describeR(I.R), cf = I.calFlags, bB = M3.mtv(I.R, I.bias);
+  const rows = [
+    ["Placement (board → disc)", `board chip side ${d.chipDown ? "down" : "up"}, ${d.off.toFixed(1)}° from flat` + (lastStatus && lastStatus.saved ? " · saved on the disc" : " · NOT saved")],
+    ["Gyro zero error (board axes)", `${vec(bB)} °/s`],
+    ["Spin radius", mm(I.radius) + (cf != null ? (cf & M.CALF.LOCKED ? " · set on this page (locked)" : I.radius > 0 ? " · learned from throws" : "") : "")],
+  ];
+  if (cf != null) rows.push(["Front (USB direction)", cf & M.CALF.FRONT ? "set on this page" : "not set (the phone's “Set front” is used)"]);
+  rows.push(["Throw detection level", String(I.sens)]);
+  const warn = [];
+  if (cf != null && (cf & M.CALF.FLIPPED)) warn.push("The last “Calibrate” came out upside down compared with the one before it.");
+  if (cf != null && (cf & M.CALF.DIRTY)) warn.push("New values are active in the disc's memory but not saved.");
+  return `<div class="tw"><table class="t"><tbody>${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join("")}</tbody></table></div>` +
+    (warn.length ? `<p class="note warn-t">${warn.join(" ")}</p>` : "");
+}
+
+const STEPS = [
+  // ---------------------------------------------------------------- 0 connect + health
+  { key: "connect", nav: "Connect", sub: "health check",
+    enter() {}, tick() { if (now() - (S.lastHealth || 0) > 1000) { S.lastHealth = now(); S.dirty = true; } },
+    health() {
+      const I = engine.info, st = lastStatus || {}, rx = engine.rxRate, rate = engine.rate;
+      const items = [], flowing = rx > 250 || (fake && rx > 0);
+      items.push([flowing, flowing ? `Readings are arriving (${fmt(rate || rx)} a second)` : "No readings arriving yet",
+        flowing ? "" : st.mode === 1 ? "The disc is in standby – pick it up or give it a little shake." : "Pick the disc up or give it a shake to wake it."]);
+      items.push([!st.usb, st.usb ? "The USB cable is plugged in" : "USB cable unplugged",
+        st.usb ? "Unplug it: the cable tilts the disc, and the spin test needs it free. (On USB the battery can't be checked either.)" : ""]);
+      const v = I ? I.batt : 0, battOk = st.usb || v >= 3.7;
+      items.push([st.usb ? null : battOk, `Battery ${v ? v.toFixed(2) + " V" : "–"}${st.battery <= 100 ? ` (${st.battery} %)` : ""}`,
+        st.usb ? "checked once it is unplugged" : battOk ? "" : "Charge it first: this needs at least 3.7 V. Below 3.45 V the disc switches itself off."]);
+      items.push([I.v4 ? true : "warn", I.v4 ? "Firmware v4: everything this page measures can be saved on the disc"
+        : `Older firmware (log version ${I.logVer})`, I.v4 ? "Throw detection is paused while this page is connected." :
+        "This page can check everything and redo the placement with the disc's own “Calibrate”, but this firmware can't store the spin radius. Update the firmware to store it."]);
+      const dup = engine.nSamples ? engine.nDup / engine.nSamples * 100 : 0;
+      items.push([null, rate ? `The disc's clock: ${rate.toFixed(1)} readings a second (it assumes 416)` : "Measuring the disc's clock…",
+        `${dup.toFixed(1)} % of readings repeated by the sensor (about 4 % is normal)${engine.lost ? ` · ${engine.lost} readings lost in the air` : ""}`]);
+      return { ok: flowing && !st.usb && battOk, html: checks(items) };
+    },
+    view() {
+      if (!connected && !fake) return { title: "Check and calibrate the disc",
+        instr: `<p>This page checks the disc's calibration one step at a time and fixes only what needs fixing. It takes about 5 minutes.</p>
+          <ol><li>Close the phone app and the simulator page – the disc talks to one device at a time.</li>
+          <li><b>Unplug the USB cable</b> and wake the disc (pick it up or give it a little shake).</li>
+          <li>Click <b>Connect</b> and choose <b>DiscTracker</b>.</li></ol>`,
+        ask: btn("connect", "Connect to the disc", "primary big") + (navigator.bluetooth ? "" : `<p class="note bad-t">This browser has no Bluetooth: use Chrome or Edge (Windows, Mac, Android) or the Bluefy browser on iPhone.</p>`),
+        next: null };
+      if (!engine.info) return { title: "Connected", instr: "<p>Waiting for the disc's readings… If nothing comes within a few seconds, pick the disc up to wake it.</p>", next: { label: "Start ▸", enabled: false } };
+      const h = this.health();
+      return { title: "Disc health", instr: "<p>First a quick look at the disc and what it has stored now.</p>",
+        result: h.ok ? verdict("good", "Ready to start.", "Have a flat table or a hard floor at hand – the next steps lay the disc on it.") :
+          verdict("bad", "Not ready yet.", "Fix the items marked ✗ below – this list updates by itself."),
+        detail: h.html + `<h3>What the disc has stored now</h3>` + storedSummary(engine.info), next: { label: "Start ▸", enabled: h.ok } };
+    } },
+
+  // ---------------------------------------------------------------- 1 label check
+  { key: "label", nav: "Label up?", sub: "which way is up",
+    enter() { S.L = { ans: null, since: engine.lastSeq, A: null, read: null, msg: null }; S.poseA = null; },
+    tick() {
+      const L = S.L;
+      if (L.ans !== true || L.A || usbIn()) return;
+      const p = newestPose(q => q.seq1 >= L.since);
+      if (!p) return;
+      const rd = M.readPose(p, engine.R);
+      if (rd.tilt > 25 && rd.tilt < 155) { if (L.msg !== "flat") { L.msg = "flat"; S.dirty = true; } return; }
+      L.A = p.id; L.read = rd; S.poseA = p.id; S.dirty = true;
+    },
+    view() {
+      const L = S.L, v = { title: "Is the label facing up?", fig: "up", gauges: ["tilt", "still"],
+        instr: `<p>Lay the disc <b>flat</b> on a table or the floor with the <em>label (the printed side) facing UP</em>. Let go and don't touch it.</p>` };
+      if (usbIn()) { v.result = verdict("bad", "Unplug the USB cable first.", "It tilts the disc and the readings would be wrong."); v.next = { label: "Next ▸", enabled: false }; return v; }
+      if (L.ans !== true) {
+        v.ask = `<div class="q">Is the label facing up right now?</div>${btn("labelYes", "Yes, the label is up", "primary big")}${btn("labelNo", "No", "big")}`;
+        if (L.ans === false) v.result = verdict("warn", "Turn it over so the label faces up.", "Lay it flat, let go, then answer again.");
+        v.next = { label: "Next ▸", enabled: false }; return v;
+      }
+      if (!L.A) {
+        v.result = L.msg === "flat" ? verdict("bad", "It isn't lying flat.", "Lay it flat on its rim, label up, and let go.")
+          : verdict("wait", "Hold on – waiting for it to lie still for 2 seconds…", "Don't touch it or the table.");
+        v.ask = btn("labelReset", "Change my answer", "small");
+        v.next = { label: "Next ▸", enabled: false }; return v;
+      }
+      const rd = L.read;
+      v.result = rd.labelUp ? verdict("good", `✓ The disc agrees: it reads label up (${rd.tilt.toFixed(1)}° from level).`,
+          "Its stored calibration is the right way up. The next steps check the last few degrees.",
+          "That tilt still includes any slope of the table; step 3 separates the two.")
+        : verdict("bad", "✗ The disc reads UPSIDE DOWN although its label is up.", "Its stored calibration is upside down – step 3 fixes that.",
+          "Hyzer and nose angles read about 180° off and the spin direction is reversed until then.");
+      v.ask = btn("labelReset", "Start this step again", "small");
+      v.next = { label: "Next ▸", enabled: true };
+      return v;
+    } },
+
+  // ---------------------------------------------------------------- 2 gyro zero error
+  { key: "bias", nav: "Gyro zero", sub: "zero error",
+    enter() { S.B = { need: 4 }; },
+    tick() { const b = refreshBias(); if (b && (!S.B.last || b.sec.toFixed(1) !== S.B.last)) { S.B.last = b.sec.toFixed(1); S.dirty = true; } },
+    view() {
+      const b = S.bias, v = { title: "The gyro's zero error", gauges: ["still"],
+        instr: `<p><b>Leave the disc lying still.</b> A gyro never reads exactly 0 when it isn't turning. This measures by how much, so the disc can take it off.</p>` };
+      const sec = b ? b.sec : 0;
+      if (!b || sec < S.B.need) {
+        v.result = verdict("wait", `Measuring… ${sec.toFixed(1)} of ${S.B.need} seconds of stillness.`, "If it doesn't count up, the disc or the table is being touched.");
+        v.next = { label: "Next ▸", enabled: false }; return v;
+      }
+      const I = engine.info, stored = M3.mtv(engine.R, I.bias), diff = V.norm(V.sub(b.b, stored));
+      v.result = b.ok ? verdict("good", `✓ Gyro zero error: ${vec(b.b)} °/s`, diff < 0.3 ? `Same as the disc has stored (within ${diff.toFixed(2)} °/s).`
+          : `The disc has ${vec(stored)} °/s stored (${diff.toFixed(2)} °/s different) – the new value will be saved.`,
+          "The disc also re-measures this at every power-on when it is lying still; the saved value is used when it is moving then.")
+        : verdict("bad", `✗ That doesn't look right: ${vec(b.b)} °/s${b.spread > 1 ? `, changing by ${b.spread.toFixed(1)} °/s` : ""}.`,
+          "Was it really lying still? Leave it on the table and don't touch it, then go back one step.");
+      v.next = { label: "Next ▸", enabled: b.ok };
+      return v;
+    } },
+
+  // ---------------------------------------------------------------- 3 placement: half turn, flip, (front), fix
+  { key: "place", nav: "Placement", sub: "turn · flip",
+    enter() { S.P = { phase: "turn", B: null, C: null, F: null, half: null, down: null, front: null, newR: null, frontSet: false, choice: null, msg: null, lastBad: null, v3: null };
+              const A = engine.runById(S.poseA); S.turnRef = A ? { yaw: A.yawEnd, want: 180 } : null; },
+    tick() {
+      const P = S.P, A = engine.runById(S.poseA);
+      if (!A) { if (!P.lost) { P.lost = true; S.dirty = true; } return; }
+      if (!P.choice) refreshBias();                      // the poses of this step count for the gyro zero error too
+      const bad = (p, msg) => { if (P.lastBad !== p.id || P.msg !== msg) { P.lastBad = p.id; P.msg = msg; S.dirty = true; } };
+      if (P.phase === "turn") {
+        if (S.turnRef) S.turnRef.yaw = A.yawEnd;
+        const p = newestPose(q => q.seq0 > A.seq1);
+        if (!p) return;
+        const psi = M.wrap180(p.yawStart - A.yawEnd), h = M.halfTurn(A, p, engine.R, psi);
+        if (h.flippedOver) return bad(p, "It was turned over. Keep the label up: turn it around on the table without lifting it, then let go.");
+        if (!h.turnOk) return bad(p, `It turned only ${Math.abs(psi).toFixed(0)}°. Turn it about half a turn (180°) and let go.`);
+        Object.assign(P, { B: p.id, half: h, msg: null, phase: h.surface === "bad" ? "surface" : "flip" });
+        S.turnRef = null; S.dirty = true;
+      } else if (P.phase === "flip") {
+        const B = engine.runById(P.B), p = B && newestPose(q => q.seq0 > B.seq1);
+        if (!p) return;
+        const d = M.labelDown(p, P.half.n, V.norm(A.a));
+        if (!d.ok) return bad(p, `It doesn't read upside down (${d.ang.toFixed(0)}° off). Turn it over – label DOWN – lay it flat and let go.`);
+        Object.assign(P, { C: p.id, down: d, msg: null, phase: "decide" }); S.dirty = true;
+      } else if (P.phase === "front") {
+        const p = newestPose(q => q.seq0 > P.frontSince);
+        if (!p) return;
+        const fr = M.frontFrom(p, P.half.n);
+        if (fr.tipDeg > 90) return bad(p, "Label up, please – then lift the edge opposite the USB port.");
+        if (!fr.ok) return bad(p, fr.tipDeg < 15 ? `It is tipped only ${fr.tipDeg.toFixed(0)}°. Lift the far edge higher (about 5 cm).` : `It is tipped ${fr.tipDeg.toFixed(0)}° – too steep. Use a lower support.`);
+        Object.assign(P, { F: p.id, front: fr, newR: M.buildR(P.half.n, fr.f), frontSet: true, choice: "front", msg: null, phase: "decided" }); S.dirty = true;
+      } else if (P.phase === "v3pose") {
+        const p = newestPose(q => q.seq1 > P.v3Since);
+        const ok = !!p && !p.open === false && V.ang(V.unit(p.a), P.half.n) < 10;
+        if (ok !== !!P.v3Ready) { P.v3Ready = ok; S.dirty = true; }
+      }
+    },
+    view() {
+      const P = S.P, h = P.half, v = { title: "Placement: half a turn, then flip it" };
+      const msg = P.msg ? verdict("bad", P.msg) : "";
+      if (P.lost) return { title: "Placement", result: verdict("bad", "The first pose was lost (the disc restarted or the link dropped).", "Go back to step 1."), next: null };
+      if (P.phase === "turn") return { ...v, fig: "turn", gauges: ["turn", "still"],
+        instr: `<p>Without lifting it, <em>turn the disc about half a turn (180°)</em> on the same spot. Keep the label up. Let go.</p>`,
+        result: msg || verdict("wait", "Waiting for it to lie still in its new position…"), next: { label: "Next ▸", enabled: false } };
+      const surf = h.surface === "good" ? verdict("good", `✓ The surface is flat enough (it slopes ${h.tau.toFixed(1)}°).`)
+        : h.surface === "warn" ? verdict("warn", `The surface slopes ${h.tau.toFixed(1)}° – just acceptable.`, "A flatter table would be better, but the maths takes the slope out.")
+        : verdict("bad", `✗ This surface slopes ${h.tau.toFixed(1)}° – too much (limit 3°).`, "Move to a flatter table or a hard floor and start again from step 1.");
+      if (P.phase === "surface") return { ...v, result: surf, ask: btn("restartLabel", "Start again on another surface", "primary big"), next: { label: "Next ▸", enabled: false } };
+      if (P.phase === "flip") return { ...v, fig: "down", gauges: ["tilt", "still"],
+        instr: `<p>Now <em>turn it over</em> so the <b>label faces DOWN</b>, flat on the same surface. Let go.</p>`,
+        result: surf + (msg || verdict("wait", "Waiting for it to lie still upside down…")), next: { label: "Next ▸", enabled: false } };
+      // decide / front / decided / v3
+      const g = h.grade, err = h.err.toFixed(1);
+      let res = surf + verdict("good", `✓ Flipped: it reads upside down (${P.down.ang.toFixed(1)}° from exactly opposite).`);
+      if (g === "good") res += verdict("good", `✓ The placement is already good: the disc's “up” is ${err}° from the true up (limit 1.5°).`,
+        "Nothing needs changing here.", "So the stored calibration is right – no need to redo it.");
+      else if (g === "ok") res += verdict("warn", `The placement is ${err}° off – small.`, "Angles (hyzer, nose) can be off by up to that much; speed and spin are not affected. Fixing it is recommended.");
+      else if (g === "redo") res += verdict("bad", `✗ The placement is ${err}° off.`, "Fix it below.");
+      else res += verdict("bad", "✗ The stored placement is upside down.", "Fix it below.");
+      const v4 = S.v4;
+      if (P.phase === "front") return { ...v, title: "Set the front (optional)", fig: "front", gauges: ["tilt", "still"],
+        instr: `<p>Lay it <b>label up</b>. Leave the <b>USB-C side on the table</b> and rest the <b>opposite edge on a book or a phone</b> (about 5 cm high). Let go.</p>
+          <p class="note">This tells the disc where its front is, so recalibrating never moves the phone's “front” again.</p>`,
+        result: msg || verdict("wait", "Waiting for it to rest still on the support…"), ask: btn("frontCancel", "Don't set the front", "small"), next: { label: "Next ▸", enabled: false } };
+      if (P.phase === "v3pose" || P.phase === "v3busy" || P.phase === "v3done") {
+        const vv = P.v3 || {};
+        return { ...v, title: "Redo the placement", fig: "up", gauges: ["tilt", "still"],
+          instr: `<p>Turn it back over: <em>label UP</em>, flat on the same surface. Let go, then press <b>Recalibrate</b>. The disc measures for about 2 seconds – don't touch it.</p>`,
+          result: P.phase === "v3busy" ? verdict("wait", "The disc is measuring… don't touch it.") : vv.res || (P.v3Ready ? verdict("good", "It lies still, label up.") : verdict("wait", "Waiting for it to lie still, label up…")),
+          ask: P.phase === "v3done" && vv.ok ? "" : btn("v3cal", "Recalibrate", "primary big") + (P.phase === "v3pose" ? "" : ""),
+          next: { label: "Next ▸", enabled: !!vv.ok }, skip: P.phase === "v3done" && vv.ok ? null : { act: "keepPlacement", label: "Keep the old placement" } };
+      }
+      let ask = "";
+      if (P.phase === "decide") {
+        if (g === "good") ask = btn("keepPlacement", "Keep it (recommended)", "primary big") + (v4 ? btn("setFront", "Also set the front (optional)", "big") : "");
+        else if (v4) ask = btn("fixPlacement", g === "ok" ? "Fix it (recommended)" : "Fix it", "primary big") + btn("setFront", "Fix it and set the front", "big") + (g === "ok" ? btn("keepPlacement", "Keep it") : "");
+        else ask = btn("v3start", "Redo the placement", "primary big") + (g === "ok" ? btn("keepPlacement", "Keep it") : "");
+      }
+      const chosen = P.choice === "keep" ? verdict("good", "Placement: keep as it is.")
+        : P.choice === "fix" ? verdict("good", `Placement: will be corrected (to within ${(0.1).toFixed(1)}° – checked in step 5).`, "The disc's front stays where it was, so the phone's “Set front” stays valid.")
+        : P.choice === "front" ? verdict("good", `Placement: will be corrected and the front set (USB side tipped ${P.front.tipDeg.toFixed(0)}°).`, "After saving, redo “Set front” in the phone app once.") : "";
+      return { ...v, title: "Placement result", result: res + chosen, ask,
+        detail: `<details class="more"><summary>The numbers</summary>${checks([
+          [null, `Table slope ${h.tau.toFixed(2)}°, turned ${Math.abs(h.psiDeg).toFixed(0)}° between the two poses`],
+          [null, `True up in board axes: ${vec(h.n, 4)}`], [null, `Stored up (R's third row): ${vec(M3.row(engine.R, 2), 4)}`],
+          [null, `Accelerometer offset along the normal: ${fmt(P.down.zOffMg, 1)} mg (from the flip)`]])}</details>`,
+        next: { label: "Next ▸", enabled: !!P.choice } };
+    } },
+
+  // ---------------------------------------------------------------- 4 spin radius
+  { key: "spin", nav: "Spin radius", sub: "two table spins",
+    enter() {
+      S.Sp = { since: engine.lastSeq, fits: [], seen: new Set(), pick: null, use: false, ruler: S.Sp ? S.Sp.ruler : "", sc: null };
+      if (!S.v4 && (S.sens0 || 5) < 5 && !S.sensChanged) { S.sensChanged = true; sendText("sens 5"); }    // old firmware: no counting table spins as throws
+    },
+    tick() {
+      const Sp = S.Sp;
+      for (const seg of engine.spins.done) {
+        if (seg.seq0 <= Sp.since || Sp.seen.has(seg.id)) continue;
+        Sp.seen.add(seg.id);
+        Sp.fits.push(M.fitSpin(seg, Rfit(), engine.biasBoard(), dt()));
+        Sp.pick = M.pickSpins(Sp.fits); S.dirty = true;
+      }
+      const spinning = !!engine.spins.seg;
+      if (spinning !== Sp.spinning) { Sp.spinning = spinning; S.dirty = true; }
+      if (Sp.sc && Sp.sc.state === "run" && lastStatus && !lastStatus.spinCal && now() - Sp.sc.t0 > 3000) { Sp.sc.state = "fetch"; spincalFetch(); }
+    },
+    view() {
+      const Sp = S.Sp, I = engine.info, v = { title: "Spin radius", fig: "spin", gauges: ["spin", "tilt"],
+        instr: `<p>The sensor sits a few millimetres from the disc's centre. Spinning the disc on a table measures exactly how far – the disc needs that to work out spin above 382 rpm.</p>
+          <ol><li>Lay it <b>label up</b> on a <b>smooth, hard table</b> (unplugged).</li>
+          <li>Hold the rim and flick it so it spins <em>flat on the table, clockwise</em> (seen from above), about <b>3–5 turns a second</b>.</li>
+          <li>Let it spin until it <b>stops by itself</b> – don't touch it.</li><li>Do it <b>twice</b>.</li></ol>` };
+      const rows = Sp.fits.map((f, k) => `<tr><td>${k + 1}</td><td class="r">${fmt(f.peakRpm)}</td><td class="r">${fmt(f.sec, 1)} s</td>
+        <td class="r">${f.r > 0 ? (f.r * 1000).toFixed(2) + " mm" : "–"}</td><td class="r">${Number.isFinite(f.rms) ? (f.rms * 1000).toFixed(0) + " mg" : "–"}</td>
+        <td>${f.ok ? `<span class="good-t">✓ good</span>${f.cw === false ? ' <span class="muted">(turned counter-clockwise)</span>' : ""}` : `<span class="bad-t">✗ ${f.reasons[0][0]}</span><div class="muted">${f.reasons[0][1]}</div>`}</td></tr>`).join("");
+      const table = Sp.fits.length ? `<h3>Spins measured</h3><div class="tw"><table class="t"><thead><tr><th>#</th><th class="r">Top rpm</th><th class="r">Clean</th>
+        <th class="r">Radius</th><th class="r">Error</th><th>Result</th></tr></thead><tbody>${rows}</tbody></table></div>` : "";
+      const pk = Sp.pick, storedR = I.radius;
+      if (!pk || !pk.ok) {
+        const good = Sp.fits.filter(f => f.ok).length;
+        v.result = Sp.spinning ? verdict("wait", "Spinning… let it stop by itself.") : verdict("wait",
+          good === 0 ? (Sp.fits.length ? "Spin it again." : "Waiting for the first spin…") : good === 1 ? "One good spin. Once more, please." : "The good spins don't agree yet (within 5 %). Spin it once more.");
+        v.detail = table;
+        v.next = { label: "Next ▸", enabled: false };
+        v.skip = { act: "skipRadius", label: `Skip – keep ${storedR > 0 ? (storedR * 1000).toFixed(2) + " mm" : "no radius"}` };
+        return v;
+      }
+      const r = pk.r, rmm = (r * 1000).toFixed(2);
+      let cmp = "";
+      if (storedR > 0) {
+        const k = Math.sqrt(r / storedR), pct = (k - 1) * 100;
+        cmp = Math.abs(pct) < 1.5 ? `The disc already uses ${(storedR * 1000).toFixed(2)} mm – the same.`
+          : `The disc uses ${(storedR * 1000).toFixed(2)} mm now, so its spin readings above 382 rpm are ${Math.abs(pct).toFixed(0)} % too ${pct > 0 ? "high" : "low"}. This fixes that.`;
+      } else cmp = "The disc has no radius yet, so above 382 rpm it could only use the drag-wave method.";
+      const ruler = Number(Sp.ruler);
+      const rulerTxt = ruler > 0 ? (Math.abs(ruler - r * 1000) <= Math.max(1.5, 0.15 * ruler) ? `<span class="good-t">✓ Your ruler says ${ruler} mm – close enough (a ruler can't find the balance point exactly).</span>`
+        : `<span class="warn-t">Your ruler says ${ruler} mm, ${Math.abs(ruler - r * 1000).toFixed(1)} mm different. Measure from the disc's balance point, not the centre of the label.</span>`) : "";
+      v.result = verdict("good", `✓ Spin radius: ${rmm} mm`, `Two spins agree within ${pk.diffPct.toFixed(1)} %. ${cmp}`) +
+        (!S.v4 ? verdict("warn", "This firmware can't store it.", "Update the disc's firmware, then run this page again to save it. (Or let the disc measure it itself below.)") : "");
+      v.detail = table + `<h3>Optional: check with a ruler</h3><p class="note">Distance from the disc's balance point (where it balances on a fingertip) to the centre of the sensor chip, in mm:
+        <input type="number" id="rulerIn" min="0" max="40" step="0.5" value="${Sp.ruler}"> ${rulerTxt}</p>` + (!S.v4 ? spincalHtml() : "");
+      v.next = { label: S.v4 ? `Use ${rmm} mm ▸` : "Next ▸", enabled: true, act: "useRadius" };
+      v.skip = { act: "spinMore", label: "Spin again" };
+      return v;
+    } },
+
+  // ---------------------------------------------------------------- 5 verify
+  { key: "verify", nav: "Check it", sub: "turns · flip · spin",
+    enter() {
+      S.Vf = { phase: S.v4 ? "apply" : "q", poses: [], psis: [], since: engine.lastSeq, turns: null, flip: null, spin: null, msg: null, lastBad: null, applyRes: null };
+      if (S.v4) runApplyForTest();
+    },
+    tick() {
+      const Vf = S.Vf; if (!Vf) return;
+      const bad = (p, msg) => { if (Vf.lastBad !== p.id || Vf.msg !== msg) { Vf.lastBad = p.id; Vf.msg = msg; S.dirty = true; } };
+      if (Vf.phase === "q") {
+        const k = Vf.poses.length, prev = Vf.poses[k - 1];
+        const p = newestPose(q => q.seq0 > (prev ? prev.seq1 : Vf.since) && (!S.applied || q.seq0 >= S.applied.calSeq));
+        S.turnRef = prev ? { yaw: prev.yawEnd, want: 90 } : null;
+        if (!p) return;
+        const rd = M.readPose(p, engine.R);
+        if (!rd.labelUp || rd.tilt > 25) return bad(p, "It should lie flat with the label up.");
+        let psi = 0;
+        if (prev) {
+          psi = M.wrap180(p.yawStart - prev.yawEnd);
+          if (Math.abs(psi) < 45 || Math.abs(psi) > 135) return bad(p, `It turned ${Math.abs(psi).toFixed(0)}°. Turn it about a quarter turn (90°) and let go.`);
+        }
+        Vf.poses.push(p); Vf.psis.push((Vf.psis[k - 1] || 0) + psi); Vf.msg = null; S.dirty = true;
+        if (Vf.poses.length === 4) { Vf.turns = M.turnsCheck(Vf.poses, Vf.psis, engine.R); Vf.phase = "flip"; S.turnRef = null; }
+      } else if (Vf.phase === "flip") {
+        const last = Vf.poses[3], p = newestPose(q => q.seq0 > last.seq1);
+        if (!p) return;
+        const rd = M.readPose(p, engine.R);
+        if (rd.u[2] > 0) return bad(p, "Turn it over: label DOWN, flat, and let go.");
+        Vf.flip = { z: rd.u[2], ok: rd.u[2] < -0.95, seq1: p.seq1 }; Vf.msg = null;
+        Vf.phase = vRadius() ? "spin" : "done"; Vf.spinSince = engine.lastSeq; S.dirty = true;
+      } else if (Vf.phase === "spin") {
+        const seg = engine.spins.done.filter(s => s.seq0 > Vf.spinSince).pop();
+        if (!seg || seg.id === Vf.spinSeg) return;
+        Vf.spinSeg = seg.id;
+        const c = M.centripCheck(seg, engine.R, engine.biasBoard(), vRadius(), dt());
+        if (c.n < 3) { Vf.msg = c.peakRpm < 220 ? "Spin it a bit faster for this one – about 4–5 turns a second." : "That spin was too short – let it spin until it stops by itself."; S.dirty = true; return; }
+        Vf.spin = c; Vf.msg = null; Vf.phase = "done"; S.dirty = true;
+      }
+    },
+    view() {
+      const Vf = S.Vf, v = { title: "Check it" };
+      if (Vf.phase === "apply") return { ...v, result: Vf.applyRes ? verdict("bad", "✗ " + Vf.applyRes.why, "", "") : verdict("wait", "Trying the new values on the disc (in its memory only – nothing is saved yet)…"),
+        ask: Vf.applyRes ? btn("retryApply", "Try again", "primary") : "", next: { label: "Next ▸", enabled: false } };
+      const items = [];
+      const ap = S.applied;
+      if (S.v4) items.push([true, ap && !ap.nothing ? "The new values are active in the disc's memory (not saved yet)" : "Nothing to change – checking what the disc has stored"]);
+      if (Vf.turns) {
+        const t = Vf.turns;
+        items.push([t.ok, t.ok ? `Lying label up, the disc reads level: its “up” is ${t.errDeg.toFixed(2)}° from the true up` : `Its “up” is ${t.errDeg.toFixed(2)}° from the true up (limit 1°)`,
+          `four quarter turns · table slope ${t.tauDeg.toFixed(1)}° · tilts read ${t.tilts.map(x => x.toFixed(1)).join(", ")}°`]);
+      }
+      if (Vf.flip) items.push([Vf.flip.ok, Vf.flip.ok ? "Turned over, it reads upside down" : `Turned over, it reads only ${(-Vf.flip.z).toFixed(3)} of upside down (needs 0.95)`]);
+      if (Vf.spin) items.push([Vf.spin.ok, Vf.spin.ok ? `Spinning, its spin from the radius matches the gyro (${sgn(Vf.spin.errPct, 1)} %)` : `Spin from the radius is ${sgn(Vf.spin.errPct, 1)} % off the gyro (limit 3 %)`,
+        `${Vf.spin.n} whole turns at 120–360 rpm · turned ${Vf.spin.cw ? "clockwise" : "counter-clockwise"} seen from above`]);
+      if (Vf.skippedSpin) items.push([null, "Spin check skipped"]);
+      let instr = "", fig = null, gauges = ["tilt", "still"];
+      if (Vf.phase === "q") {
+        const k = Vf.poses.length;
+        if (k === 0) { instr = `<p>Lay it <em>label up</em>, flat on the table. Let go.</p>`; fig = "up"; }
+        else { instr = `<p>Turn it <em>a quarter turn (90°)</em> on the same spot, label up. Let go. <span class="muted">(${k} of 3)</span></p>`; fig = "quarter"; gauges = ["turn", "still", "tilt"]; }
+      } else if (Vf.phase === "flip") { instr = `<p>Now <em>turn it over</em>: label DOWN, flat. Let go.</p>`; fig = "down"; }
+      else if (Vf.phase === "spin") { instr = `<p>Last one: lay it <b>label up</b> and <em>spin it once more</em> like before – about 4–5 turns a second – and let it stop by itself.</p>`; fig = "spin"; gauges = ["spin", "tilt"]; }
+      else { instr = ""; gauges = []; }
+      const allOk = Vf.phase === "done" && items.every(i => i[0] !== false);
+      const res = Vf.phase === "done" ? (allOk ? verdict("good", "✓ Everything checks out.", S.v4 ? "Next: save it on the disc." : "")
+          : verdict("bad", "✗ Something didn't check out.", "Go back to the step it belongs to (the list on the left) and redo it, or save anyway if you know why."))
+        : Vf.msg ? verdict("bad", Vf.msg) : verdict("wait", "Waiting for it to lie still…");
+      return { ...v, instr, fig, gauges, result: res, detail: items.length ? checks(items) : "",
+        skip: Vf.phase === "spin" ? { act: "skipVerifySpin", label: "Skip the spin check" } : null,
+        next: { label: S.v4 ? "Next: save ▸" : "Next ▸", enabled: Vf.phase === "done" } };
+    } },
+
+  // ---------------------------------------------------------------- 6 save + before/after
+  { key: "save", nav: "Save", sub: "before / after",
+    enter() { S.Sv = S.Sv && S.Sv.state === "saved" ? S.Sv : { state: "ready", sens5: true, res: null, after: null }; },
+    tick() {},
+    view() {
+      const Sv = S.Sv, v = { title: S.v4 ? "Save it on the disc" : "Done" };
+      const before = S.info0, after = Sv.after || engine.info;
+      const table = beforeAfter(before, after);
+      if (!S.v4) {
+        v.instr = `<p>The placement${S.P && S.P.v3 && S.P.v3.ok ? " was redone and saved by the disc itself" : " was kept"}. This firmware can't store the gyro zero error or the spin radius${radiusChosen() ? ` (${(radiusChosen() * 1000).toFixed(2)} mm)` : ""} – update the firmware, then run this page again.</p>`;
+        v.result = Sv.state === "finished" ? verdict("good", "✓ Finished.", "Throw detection is back to normal. You can close this page.") : "";
+        v.detail = table; v.next = { label: Sv.state === "finished" ? "Close" : "Finish ▸", enabled: true, act: "finish" };
+        return v;
+      }
+      const sensNow = engine.info ? engine.info.sens : 5;
+      if (Sv.state === "ready" || Sv.state === "failed") {
+        v.instr = `<p>Everything below goes into the disc's memory and stays there when it is switched off.</p>`;
+        v.ask = btn("save", "Save to the disc", "primary big") + (sensNow !== 5 ? `<label class="note" style="font-size:15px"><input type="checkbox" id="sens5" ${Sv.sens5 ? "checked" : ""}> Also set throw detection to level 5 (real throws; it is ${sensNow} now)</label>` : "");
+        v.result = Sv.state === "failed" ? verdict("bad", "✗ " + Sv.res.why, "Try again.") : "";
+        v.detail = table; v.next = null; v.back = true;
+        return v;
+      }
+      if (Sv.state === "saving") return { ...v, result: verdict("wait", "Saving…"), detail: table, next: null };
+      v.result = verdict("good", "✓ Saved on the disc.", "Read back from the disc: the values below are what it now uses.") +
+        (S.P && S.P.choice === "front" ? verdict("warn", "Redo “Set front” in the phone app once", "The disc's axes now have a fixed front, so the phone's old front direction is off.") : "") +
+        (Sv.state === "finished" ? verdict("good", "✓ Finished.", "Throw detection is back on. Open the phone app or the simulator and throw.") : "");
+      v.detail = table;
+      v.next = Sv.state === "finished" ? { label: "Open the phone app", enabled: true, act: "goPhone" } : { label: "Finish ▸", enabled: true, act: "finish" };
+      return v;
+    } },
+];
+const vRadius = () => radiusChosen() || (engine.info && engine.info.radius > 0 && S.v4 && !(S.Sp && S.Sp.skipped === false) ? engine.info.radius : null);
+
+function beforeAfter(b, a) {
+  if (!b || !a) return "";
+  const db = M.describeR(b.R), da = M.describeR(a.R), place = d => `chip side ${d.chipDown ? "down" : "up"}, ${d.off.toFixed(1)}° from flat`;
+  const lock = I => I.calFlags != null && (I.calFlags & M.CALF.LOCKED) ? " (locked)" : "";
+  const savedTxt = I => I.calFlags == null ? "–" : (I.calFlags & M.CALF.DIRTY) ? "no – memory only" : (I.calFlags & M.CALF.SAVED) ? "yes" : "no";
+  const err0 = S.P && S.P.half ? `${S.P.half.err.toFixed(2)}°${S.P.half.grade === "flipped" ? " (upside down)" : ""}` : "–";
+  const err1 = S.Vf && S.Vf.turns ? `${S.Vf.turns.errDeg.toFixed(2)}°` : "–";
+  const rows = [
+    ["Disc's “up” vs the true up", err0, err1],
+    ["Placement (board → disc)", place(db), place(da)],
+    ["Gyro zero error, board axes (°/s)", vec(M3.mtv(b.R, b.bias)), vec(M3.mtv(a.R, a.bias))],
+    ["Spin radius", mm(b.radius) + lock(b), mm(a.radius) + lock(a)],
+    ["Front set on the disc", b.calFlags == null ? "–" : (b.calFlags & M.CALF.FRONT) ? "yes" : "no", a.calFlags == null ? "–" : (a.calFlags & M.CALF.FRONT) ? "yes" : "no"],
+    ["Throw detection level", String(b.sens), String(a.sens)],
+    ["Saved on the disc", savedTxt(b), savedTxt(a)],
+  ];
+  return `<h3>Before and after</h3><div class="tw"><table class="t"><thead><tr><th></th><th>Before</th><th>After</th></tr></thead><tbody>${
+    rows.map(([k, x, y]) => `<tr><th>${k}</th><td>${x}</td><td${x !== y ? ' class="good-t"' : ""}>${y}</td></tr>`).join("")}</tbody></table></div>`;
+}
+
+// ---- actions behind the buttons
+async function runApplyForTest() {
+  const Vf = S.Vf; Vf.applyRes = null; S.dirty = true;
+  const r = await applySet(false);
+  if (S.Vf !== Vf) return;
+  if (!r.ok) { Vf.applyRes = r; S.dirty = true; return; }
+  S.applied = r.nothing ? { nothing: true, calSeq: 0 } : { calSeq: r.calSeq, bytes: r.bytes };
+  Vf.since = engine.lastSeq; Vf.phase = "q"; S.dirty = true;
+}
+async function v3cal() {
+  const P = S.P;
+  if (!confirm("Is the disc lying flat with the LABEL facing UP, unplugged, and is nobody touching it?")) return;
+  P.phase = "v3busy"; P.v3 = null; S.dirty = true;
+  const n0 = statusN; let sawRun = false;
+  engine.expectNewR();
+  await sendText("cal", "label-up confirmed");
+  const answered = await waitFor(() => { if (statusN > n0 && lastStatus.calState === 1) sawRun = true; return sawRun && lastStatus.calState !== 1; }, 12000);
+  const res = lastStatus ? lastStatus.calResult : 0;
+  const fail = (big, todo) => { P.v3 = { ok: false, res: verdict("bad", big, todo) }; P.phase = "v3pose"; S.dirty = true; };
+  if (!answered) return fail("✗ No answer from the disc.", "Make sure it is awake and close by, then try again.");
+  if (res !== 1) return fail({ 2: "✗ The disc moved while it measured.", 3: "✗ It wasn't lying flat.", 4: "✗ The disc had no sensor readings." }[res] || `✗ Calibration failed (${res}).`, "Lay it flat, label up, hands off, and try again.");
+  const i0 = engine.infoN;
+  await sendText("bton");                                          // older firmware sends the new R only when asked
+  if (!(await waitFor(() => engine.infoN > i0, 6000))) return fail("✗ The disc didn't send its new calibration.", "Try again.");
+  const ang = V.ang(M3.row(engine.R, 2), P.half.n), lim = Math.max(1.5, P.half.tau + 0.5);
+  P.v3 = { ok: ang <= lim, ang, res: ang <= lim ? verdict("good", `✓ Redone: the disc's new “up” is ${ang.toFixed(2)}° from the true up.`, "The disc saved it itself.")
+    : verdict("bad", `✗ The new “up” is ${ang.toFixed(1)}° from the true up (limit ${lim.toFixed(1)}°).`, "Was it lying flat and still on the same surface? Try again.") };
+  if (P.v3.ok) P.choice = "v3"; P.phase = P.v3.ok ? "v3done" : "v3pose"; S.dirty = true;
+}
+function spincalHtml() {
+  const sc = S.Sp.sc;
+  const t = !sc ? "" : sc.state === "run" ? verdict("wait", "The disc is measuring for 15 s: keep spinning it on the table, 2–5 turns a second, again and again.")
+    : sc.state === "fetch" ? verdict("wait", "Reading the disc's result…") : sc.res || "";
+  return `<h3>Optional: let the disc measure it itself</h3><p class="note">Its own method reads a little high on a slowing spin and REPLACES the radius it has stored.
+    Use it only if this firmware stays on the disc for a while.</p><div class="ask">${btn("spincal", "Let the disc measure it", "small")}</div>${t}`;
+}
+async function spincalStart() {
+  if (!confirm("The disc will replace its stored spin radius with its own measurement. Continue?")) return;
+  S.Sp.sc = { state: "run", t0: now() }; S.dirty = true;
+  await sendText("wake"); await sendText("spincal");
+}
+async function spincalFetch() {
+  const i0 = engine.infoN, sc = S.Sp.sc;
+  await sendText("bton");
+  await waitFor(() => engine.infoN > i0, 6000);
+  const rd = engine.info.radius, pk = S.Sp.pick;
+  const pct = pk && pk.ok && rd > 0 ? (rd / pk.r - 1) * 100 : NaN;
+  sc.state = "done";
+  sc.res = !(rd > 0) ? verdict("bad", "The disc didn't get a result.", "Keep it spinning flat at 2–5 turns a second for the whole 15 s.")
+    : Number.isFinite(pct) && Math.abs(pct) <= 5 ? verdict("good", `✓ The disc stored ${(rd * 1000).toFixed(2)} mm – within ${Math.abs(pct).toFixed(1)} % of this page's value.`)
+    : verdict("warn", `The disc stored ${(rd * 1000).toFixed(2)} mm${Number.isFinite(pct) ? ` – ${sgn(pct, 1)} % from this page's value` : ""}.`, "This page's value is more accurate; it can be stored after a firmware update.");
+  S.dirty = true;
+}
+async function doSave() {
+  const Sv = S.Sv, cb = $("sens5"); if (cb) Sv.sens5 = cb.checked;
+  Sv.state = "saving"; S.dirty = true;
+  const r = await applySet(true);
+  if (!r.ok) { Sv.state = "failed"; Sv.res = r; S.dirty = true; return; }
+  if (Sv.sens5 && engine.info.sens !== 5) {
+    const i0 = engine.infoN; await sendText("sens 5");
+    await waitFor(() => engine.infoN > i0 && engine.info.sens === 5, 5000);
+  }
+  Sv.after = engine.info; Sv.state = "saved"; S.dirty = true;
+}
+async function finish() {
+  S.finished = true;
+  if (S.v4) await sendCalMode(false);
+  if (!S.v4 && S.sensChanged && S.sens0 && S.sens0 !== 5) await sendText("sens " + S.sens0);   // old firmware: back to the level it had
+  await sendText("btoff");
+  if (S.Sv) S.Sv.state = "finished";
+  S.dirty = true; renderPills();
+  toast("Finished. The disc is back to normal.", "good");
+}
+const ACT = {
+  connect: () => pickDisc(),
+  labelYes: () => { S.L.ans = true; S.L.msg = null; S.dirty = true; },
+  labelNo: () => { S.L.ans = false; S.dirty = true; },
+  labelReset: () => { STEPS[1].enter(); S.dirty = true; },
+  restartLabel: () => { resetMeasurements(); goTo(1); },
+  keepPlacement: () => { Object.assign(S.P, { choice: "keep", newR: null, frontSet: false, phase: "decided" }); S.dirty = true; },
+  fixPlacement: () => { Object.assign(S.P, { choice: "fix", newR: M.keepYawR(S.P.half.n, engine.R), frontSet: false, phase: "decided" }); S.dirty = true; },
+  setFront: () => { Object.assign(S.P, { phase: "front", frontSince: engine.lastSeq, msg: null }); S.dirty = true; },
+  frontCancel: () => { Object.assign(S.P, { phase: "decide", msg: null }); S.dirty = true; },
+  v3start: () => { Object.assign(S.P, { phase: "v3pose", v3Since: engine.lastSeq, v3: null }); S.dirty = true; },
+  v3cal: () => v3cal(),
+  skipRadius: () => { S.Sp.skipped = true; S.Sp.use = false; next(); },
+  useRadius: () => { S.Sp.use = true; S.Sp.skipped = false; next(); },
+  spinMore: () => { S.Sp.pick = null; S.Sp.fits = S.Sp.fits.map(f => ({ ...f, ok: false, reasons: [["Set aside.", "Spun again."]] })); S.dirty = true; },
+  spincal: () => spincalStart(),
+  retryApply: () => runApplyForTest(),
+  skipVerifySpin: () => { S.Vf.skippedSpin = true; S.Vf.phase = "done"; S.dirty = true; },
+  save: () => doSave(),
+  finish: () => S.Sv && S.Sv.state === "finished" ? window.close() : finish(),
+  goPhone: () => { location.href = "./"; },
+};
+
+// ================================================================ rendering and navigation
+function goTo(i) { S.step = i; S.maxStep = Math.max(S.maxStep, i); STEPS[i].enter(); S.turnRef = S.turnRef && i === 3 ? S.turnRef : (i === 3 ? S.turnRef : null); S.dirty = true; render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+function next() { if (S.step < STEPS.length - 1) goTo(S.step + 1); }
+function render() {
+  S.dirty = false;
+  const st = STEPS[S.step], v = st.view();
+  $("kicker").textContent = S.step === 0 ? "Start" : `Step ${S.step} of ${STEPS.length - 1}`;
+  $("title").textContent = v.title || "";
+  $("instr").innerHTML = v.instr || "";
+  $("fig").innerHTML = v.fig ? FIG[v.fig] : "";
+  const gk = (v.gauges || []).join(",");
+  if ($("gauges").dataset.k !== gk) { $("gauges").dataset.k = gk; $("gauges").innerHTML = (v.gauges || []).map(gaugeHtml).join(""); }
+  $("ask").innerHTML = v.ask || "";
+  $("result").innerHTML = v.result || "";
+  const keepRuler = document.activeElement && document.activeElement.id === "rulerIn";
+  if (!keepRuler) $("detail").innerHTML = v.detail || "";
+  const nb = $("nextBtn"), sb = $("skipBtn");
+  nb.style.display = v.next ? "" : "none";
+  if (v.next) { nb.textContent = v.next.label; nb.disabled = !v.next.enabled; nb.dataset.act = v.next.act || ""; }
+  sb.style.display = v.skip ? "" : "none";
+  if (v.skip) { sb.textContent = v.skip.label; sb.dataset.act = v.skip.act; }
+  $("backBtn").style.visibility = S.step > 0 && !(S.Sv && S.Sv.state === "finished" && S.step === 6) ? "visible" : "hidden";
+  $("navList").innerHTML = STEPS.map((x, i) => `<li data-i="${i}" class="${i === S.step ? "cur" : i < S.step || i <= S.maxStep && i < S.step ? "done" : ""}">
+    <span class="n">${i < S.step ? "✓" : i}</span><span>${x.nav}<div class="s">${x.sub}</div></span></li>`).join("");
+  updateGauges();
+}
+$("card").addEventListener("click", e => {
+  const b = e.target.closest("[data-act]");
+  if (!b || b.disabled || !b.dataset.act) return;
+  const f = ACT[b.dataset.act]; if (f) f(b);
+});
+$("card").addEventListener("input", e => { if (e.target.id === "rulerIn" && S.Sp) { S.Sp.ruler = e.target.value; } });
+$("card").addEventListener("change", e => { if (e.target.id === "rulerIn") S.dirty = true; if (e.target.id === "sens5" && S.Sv) S.Sv.sens5 = e.target.checked; });
+$("nextBtn").addEventListener("click", () => { if ($("nextBtn").dataset.act) return; next(); });
+$("backBtn").addEventListener("click", () => { if (S.step > 0) goTo(S.step - 1); });
+$("navList").addEventListener("click", e => { const li = e.target.closest("li.done"); if (li) goTo(+li.dataset.i); });
+setInterval(() => {
+  try { const st = STEPS[S.step]; if (st.tick) st.tick(); } catch (e) { console.error(e); }
+  if (S.dirty) render(); else updateGauges();
+}, 200);
+STEPS[0].enter(); render();
+
+// ================================================================ test hook (no hardware): window.discCal
+// connectFake() plugs in a synthetic disc (DiscCalMath.VirtualDisc) that answers commands like the firmware and streams
+// its readings through the same handlers as Bluetooth; `speed` runs it faster than real time. feed() injects one raw
+// packet (stream or status channel). act() presses a button by its action name.
+window.discCal = {
+  math: M, engine, S, STEPS, ACT, sent: () => sentLog.slice(),
+  connectFake(opts = {}, speed = 1) {
+    if (fake) fake.stop();
+    const vd = new M.VirtualDisc(opts);
+    let iv = 0;
+    fake = { vd, write: b => vd.write(b), stop: () => clearInterval(iv) };
+    const pump = n => { for (const p of vd.step(n)) { const dv = new DataView(p.bytes.buffer); p.ch === "status" ? onStatusDv(dv) : onStreamDv(dv); } };
+    iv = setInterval(() => pump(Math.max(1, Math.round(vd.rate * 0.04 * speed))), 40);
+    onStatusDv(new DataView(vd.statusPacket().buffer));
+    setConn("on"); onLinkUp();
+    return vd;
+  },
+  disconnectFake() { if (fake) { fake.stop(); fake = null; setConn("off"); } },
+  feed(bytes, ch = "stream") { const u = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes); const dv = new DataView(u.buffer, u.byteOffset, u.byteLength); ch === "status" ? onStatusDv(dv) : onStreamDv(dv); },
+  act(name) { const f = ACT[name]; if (!f) throw new Error("no action " + name); return f(); },
+  next() { const nb = $("nextBtn"); if (nb.disabled) return false; nb.dataset.act ? ACT[nb.dataset.act]() : next(); return true; },
+  goTo,
+};
+</script>
+</body>
+</html>

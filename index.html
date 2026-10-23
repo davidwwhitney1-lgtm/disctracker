@@ -353,9 +353,11 @@
       <div class="label">Calibrate &amp; test</div>
       <div class="note" id="calSaved"></div>
     </div>
+    <p class="note"><b>Best:</b> the step-by-step <a href="calibrate.html">calibration page</a> checks the calibration first,
+      then measures the gyro offset and the spin radius properly (Chrome on a computer, or Bluefy).</p>
     <ol class="steps">
       <li>Mount the board in the <b>center</b> of the disc, under the flight plate, lying flat.</li>
-      <li>Lay the disc <b>flat, top side up</b>, on a table or the floor.</li>
+      <li>Lay the disc <b>flat, label facing UP</b>, on a table or the floor (unplug the USB cable first).</li>
       <li>Tap <b>Calibrate</b> and don't touch the disc for 3 seconds.</li>
     </ol>
     <button class="primary wide" id="calBtn" disabled>Calibrate</button>
@@ -363,13 +365,14 @@
     <p class="note">Do this once after mounting (and again if the board moves). It's saved on
       the disc, so turning it off doesn't lose it.</p>
     <div class="spinCal">
-      <div class="result-head"><div class="label">Spin above 333 rpm</div><div class="note" id="spinCalState">–</div></div>
-      <p class="note">The gyro tops out at 333 rpm. Above that the disc estimates spin two ways: the drag "wave" in
+      <div class="result-head"><div class="label">Spin above 382 rpm</div><div class="note" id="spinCalState">–</div></div>
+      <p class="note">The gyro tops out at 382 rpm. Above that the disc estimates spin two ways: the drag "wave" in
         flight, and centripetal force – which needs to know how far the sensor sits from the spin axis.
-        It <b>learns that by itself from gentle spinning throws (under ~330 rpm)</b>, or calibrate it here:</p>
+        It <b>learns that by itself from gentle spinning throws (under ~380 rpm)</b>, or calibrate it here:</p>
       <ol class="steps">
-        <li>Lay the disc <b>flat</b> on a lazy Susan, turntable or a fixture on a drill press (low speed).</li>
-        <li>Tap <b>Calibrate spin</b>, then spin it steadily at <b>120–320 rpm</b> (2–5 turns a second) for about 10 seconds.</li>
+        <li>Lay the disc <b>flat, label up</b>, on a smooth table (not a turntable: that measures the turntable's axis).</li>
+        <li>Tap <b>Calibrate spin</b>, then flick it into a spin of <b>120–320 rpm</b> (2–5 turns a second) and let it spin for about 10 seconds.
+        (The <a href="calibrate.html">calibration page</a> does this more accurately.)</li>
       </ol>
       <button id="spinCalBtn" class="wide" disabled>Calibrate spin</button>
     </div>
@@ -442,8 +445,8 @@
 
   <p class="note"><b>On a computer?</b> <a href="sim.html">Open the big-screen simulator</a> – it connects to the disc
     and flies every throw automatically.</p>
-  <p class="note">Version 2026-10-21b. Roll/pitch are only accurate while the disc is still.
-    Spin above ~333 rpm exceeds the gyro's range; the board then estimates it from the accelerometer.</p>
+  <p class="note">Version 2026-10-22. Roll/pitch are only accurate while the disc is still.
+    Spin above ~382 rpm exceeds the gyro's range; the board then estimates it from the accelerometer.</p>
   </div>
 
   <div id="tab-rec" class="tab hidden">
@@ -475,7 +478,7 @@
           <button id="panL">◀</button><button id="panR">▶</button>
         </div>
         <canvas id="recChart" class="recChart"></canvas>
-        <p class="note" style="margin:4px 0 10px">Top: total force (g). Bottom: spin from the gyro (rpm; flat at 333 = gyro maxed out).
+        <p class="note" style="margin:4px 0 10px">Top: total force (g). Bottom: spin from the gyro (rpm; flat at 382 = gyro maxed out).
           Coloured lines = test markers, shaded = captures (green counted, grey rejected). Tap a row below to zoom in.</p>
         <div class="tableWrap"><table id="capTable"></table></div>
         <div class="row" style="margin-top:12px">
@@ -656,7 +659,7 @@ const fmt = (v, d = 0) => Number.isFinite(v) ? v.toFixed(d) : "–";
 const signed = (v, d = 1) => Number.isFinite(v) ? (v > 0 ? "+" : "") + v.toFixed(d) : "–";
 
 function showLive(s) {
-  // above 333 rpm the gyro is maxed; show the centripetal estimate instead
+  // above 382 rpm the gyro is maxed; show the centripetal estimate instead
   const est = (s.flags & LIVE_GYRO_SAT) && s.spinAlt > 0;
   $("spin").textContent = est ? "~" + fmt(s.spinAlt) : fmt(s.spin);
   $("g").innerHTML = fmt(s.g, 2) + "<small> g</small>";
@@ -665,7 +668,7 @@ function showLive(s) {
   $("pitch").innerHTML = signed(s.pitch) + "<small>°</small>";
   const st = $("state");
   if (s.flags & LIVE_CAPTURING)      { st.textContent = "Capturing throw…"; st.className = "pill capturing"; }
-  else if (s.flags & LIVE_GYRO_SAT)  { st.textContent = est ? "Above gyro range – centripetal estimate" : "Gyro maxed (>333 rpm) – calibrate spin for an estimate";
+  else if (s.flags & LIVE_GYRO_SAT)  { st.textContent = est ? "Above gyro range – centripetal estimate" : "Gyro maxed (>382 rpm) – calibrate spin for an estimate";
                                         st.className = "pill clipped"; }
   else if (s.flags & LIVE_STILL)     { st.textContent = "Still · armed"; st.className = "pill still"; }
   else                               { st.textContent = "Moving"; st.className = "pill moving"; }
@@ -843,7 +846,8 @@ function noteThrowCount(n) {
   }
 }
 
-const END = { 1: "hit something (net/catch)", 2: "full flight window", 3: "3 s limit – release never detected" };
+const END = { 1: "hit something (net/catch)", 2: "full flight window", 3: "3 s limit – release never detected",
+              4: "a gap in the readings (samples lost)" };
 function captureInfo(st) {
   if (!st.captures) return "No throw detected yet since the disc powered on.";
   let txt = `Recordings since power-on: ${st.captures} · counted throws: ${st.throws}.`;
@@ -852,11 +856,17 @@ function captureInfo(st) {
   if (st.flight10 && st.flight10 < 15 && st.endReason === 1) txt += " That's short – stand further from the net for spin/wobble.";
   return txt;
 }
+// Firmware v4 accept rules per sensitivity level (SENS[] in disc_tracker_v2.ino): min peak g, min spin rpm,
+// and the steady spin a release needs.
+const SENS_RULES = { 1: [1.4, 0, 0], 2: [2.0, 15, 40], 3: [2.0, 30, 100], 4: [2.0, 45, 150], 5: [2.0, 60, 150] };
 function rejectReason(st) {
+  const [minPeak, minSpin, relRpm] = SENS_RULES[st.sens] || SENS_RULES[5];
+  if (st.endReason === 4) return "some readings were lost during the recording (try again)";
   if (st.rejectFlags & F.NO_RELEASE)
-    return "no clean release – the force never dropped below 3 g after the pull (a board far off-center does this)";
-  if (st.rejectPeak < 3.5) return `too gentle – peak ${st.rejectPeak.toFixed(1)} g, needs 3.5 g`;
-  if (st.rejectSpin <= 60) return `not enough spin – ${st.rejectSpin} rpm, needs over 60`;
+    return relRpm ? `no release with a freely spinning disc – it needs a steady spin of at least ${relRpm} rpm right after ` +
+      "leaving the hand, and a catch or bump straight away can hide it" : "no clean release found";
+  if (st.rejectPeak <= minPeak) return `too gentle – peak ${st.rejectPeak.toFixed(1)} g, needs over ${minPeak} g`;
+  if (st.rejectSpin < minSpin) return `not enough spin – ${st.rejectSpin} rpm, needs ${minSpin}`;
   return `peak ${st.rejectPeak.toFixed(1)} g, spin ${st.rejectSpin} rpm`;
 }
 
@@ -944,6 +954,8 @@ function setCalMsg(text, kind) { const m = $("calMsg"); m.textContent = text; m.
 
 async function startCalibration() {
   if (!cmdChar) return;
+  // "cal" can't tell label-up from label-down: an upside-down calibration flips hyzer, nose and spin direction.
+  if (!confirm("Is the disc lying flat with the LABEL FACING UP, and unplugged?\n\nCalibrating it label-down would make every throw read upside down.")) return;
   $("calBtn").disabled = true;
   for (let i = 3; i > 0; i--) { setCalMsg(`Hands off the disc… ${i}`, "busy"); await sleep(1000); }
   if (!cmdChar) { setCalMsg("Disconnected – reconnect and try again.", "bad"); $("calBtn").disabled = false; return; }

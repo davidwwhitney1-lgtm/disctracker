@@ -289,3 +289,25 @@ Plan: side-by-side test (both trackers on one disc) with radar gun, laser tachom
   basket plus an aim offset (← →). Through the chains (within 1.15 ft of the pole, 1.9-4.6 ft up) = in; landing
   inside the tap-in distance (Settings, default 10 ft, for soft indoor putts) = one more throw to finish; 10-throw
   cap. Mulligan, restart hole, scorecard; the round is kept in localStorage.
+
+## 10. Updates 2026-10-22: firmware v4 (LOG_VER 4) - detection fixes, calibration page
+
+- **Why throws were missed (found by code review + simulation; no real throw existed in any log):** a release was accepted
+  with no evidence of free flight (a reach-back or bump passed), then 1.2 s of refractory hid the real throw; a mid-pull
+  false release when the gyro clipped in the look-ahead window; the pull-peak gate only counted force after the trigger
+  (gentle flicks trip the gyro trigger late); short flights pushed the spin window into the catch; no-still-moment
+  re-throws seeded orientation from one sample. Also: battery cut-off at 3.45 V while the % scale started at 3.30 V.
+- **v4 fixes:** release needs steady one-sign spin >= relMinRpm (150 at L4-5, 100 L3, 40 L2, 0 L1) over 20 samples;
+  pull peak counted from 208 samples before the trigger against relPeakG (2.0 g); refractory 300 ms after a counted
+  throw, 0 after a reject, ring re-armed from the capture tail; quiet-window fallback when never still; flight window
+  never past the impact, centripetal mean kept for windows >= 6 samples, wrong-sense drag-wave fits rejected; per-throw
+  bias only within 1.5 dps of the stored bias; lever-arm (w x r) speed correction; battery 0 % = 3.45 V. SENS minPeakG
+  2.0 / freeG 3.0 at L3-L5. Synthetic results: 5-ft throw-and-catch 384/384 counted (v3 336), reach-backs 24/24 with no
+  false throws (v3 9/24 + 5 false), re-throws 48/48. Flash 188,064 B.
+- **Calibration:** placement R was correct (label-up reads level); the "upside down" reading was the disc lying label-down
+  on USB. New `web/calibrate.html` (health, label check, gyro bias, placement with half-turn + flip, spin radius by
+  least-squares fit of table spins, verify, save) uses new binary commands: 0xC7 SET (20 B: flags R|bias|r|lock|save|front,
+  quaternion int16/32767, bias board axes 0.01 dps, r um) and 0xC8 calmode; info packet now 120 B. Radius locked by the
+  page disables auto-learning. Spec: v4_spec.md (dtbuild).
+- disclab.py (log version >= 4 path), sim.html analyzeCapture and the firmware's own Python copy agree on all decisions for
+  2377 synthetic analyses; v3 behaviour unchanged for old logs.
