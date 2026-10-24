@@ -44,11 +44,11 @@
   body.replay .liveOnly { display: none !important; }
   #opts { position: fixed; right: 12px; top: 64px; z-index: 3; display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
   #opts label { background: var(--hud); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 13px; display: flex; gap: 6px; align-items: center; cursor: pointer; }
-  #msg { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%); z-index: 2; text-align: center; font-size: clamp(18px, 2.4vw, 30px);
+  #msg { position: fixed; left: 16px; right: 16px; top: 40%; transform: translateY(-50%); z-index: 2; text-align: center; font-size: clamp(18px, 2.4vw, 30px);
          font-weight: 700; text-shadow: 0 3px 16px rgba(0,0,0,.6); pointer-events: none; }
   #msg small { display: block; font-size: 0.55em; font-weight: 500; color: var(--muted); margin-top: 6px; }
-  #hint { position: fixed; left: 50%; top: 66px; transform: translateX(-50%); z-index: 6; max-width: min(560px, calc(100vw - 32px)); font-size: 14px;
-          border-color: rgba(255, 138, 31, 0.5); }
+  #hint { position: fixed; left: 16px; right: 16px; top: 66px; margin-inline: auto; width: max-content; max-width: min(560px, calc(100vw - 32px));
+          z-index: 6; font-size: 14px; border-color: rgba(255, 138, 31, 0.5); cursor: pointer; }
   /* how the disc looks */
   #lookPanel { position: fixed; right: 12px; top: 64px; z-index: 4; width: 310px; max-height: calc(100vh - 80px); overflow: auto; background: rgba(11, 15, 21, 0.96); }
   .row { display: flex; gap: 8px; align-items: center; margin: 7px 0; flex-wrap: wrap; }
@@ -71,8 +71,11 @@
   table.cmp td.old { color: var(--muted); }
   .now { margin-top: 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
   .now b { color: var(--accent); }
-  .notes { margin: 8px 0 0; padding-left: 16px; font-size: 12.5px; color: var(--muted); }
+  .notes { margin: 6px 0 0; padding-left: 16px; font-size: 12.5px; color: var(--muted); }
   .notes li { margin: 2px 0; }
+  details summary { cursor: pointer; font-size: 12.5px; color: #cbd5e1; margin-top: 8px; user-select: none; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 11.5px; color: var(--muted); }
+  .legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
   .ctl { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
   .ctl button { padding: 5px 10px; }
   .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
@@ -80,11 +83,16 @@
   .seg button.on { background: rgba(255, 138, 31, 0.22); color: var(--accent); }
   #timeline { position: fixed; left: 12px; right: 12px; bottom: 12px; height: 162px; z-index: 3; padding: 0; overflow: hidden; }
   #tl { width: 100%; height: 100%; display: block; cursor: ew-resize; touch-action: none; }
+  @media (max-width: 520px) {
+    header { gap: 6px; } header button, header .pill, .brand { padding: 5px 10px; font-size: 13.5px; }
+    #timeline { height: 150px; } body.replay #replayPanel { bottom: 172px; }
+  }
   @media (max-width: 760px) {
     #panel { width: auto; right: 12px; bottom: 120px; } #opts { top: auto; bottom: 12px; left: 12px; right: auto; flex-direction: row; flex-wrap: wrap; }
-    #spinBig { bottom: 200px; } body.replay #spinBig { display: none; }
-    #replayPanel { right: 12px; width: auto; bottom: 184px; max-height: 42vh; } body.replay #opts { display: none; }
-    #lookPanel { left: 12px; right: 12px; width: auto; }
+    #spinBig { bottom: auto; top: 136px; } body.replay #spinBig { display: none; }
+    #hint { top: 136px; }
+    #replayPanel { right: 12px; width: auto; bottom: 184px; max-height: 38vh; } body.replay #opts { display: none; }
+    #lookPanel { left: 12px; right: 12px; width: auto; top: auto; bottom: 12px; max-height: 72vh; z-index: 6; }
   }
 </style>
 <script type="importmap">{ "imports": {
@@ -133,7 +141,7 @@
 </div>
 <div id="replayPanel" class="card" hidden>
   <h3>Throw replay <span class="spacer"></span><select id="rpSel" title="Earlier throws"></select></h3>
-  <div id="rpBody"></div>
+  <div id="rpTable"></div>
   <div class="now" id="rpNow"></div>
   <div class="ctl">
     <button id="rpPlay" title="Play / pause (space)">Pause</button>
@@ -141,6 +149,7 @@
     <span class="spacer"></span>
     <button id="rpExit" title="Back to the live disc (Esc)">Back to live</button>
   </div>
+  <div id="rpMore"></div>
 </div>
 <div id="timeline" class="card" hidden><canvas id="tl" aria-label="The throw over time: force and spin, measured and rebuilt"></canvas></div>
 <div id="spinBig"><div><span class="n" id="rpmN">0</span><span class="u">rpm</span></div><div class="s" id="rpmS"></div></div>
@@ -176,10 +185,16 @@ const st = {
   wz: 0, wzRaw: 0, clipped: false, wSrc: "gyro", a: [0, 0, 1], aMag: 1, rot: 0, still: 0, mode: "–",
   axy: [0, 0], v: new THREE.Vector3(), p: new THREE.Vector3(), started: false, freeFall: 0, faced: false,
 };
-// Samples per second, by the disc's own clock: two info packets at least 8 s apart (samples counted / milliseconds).
-// Its chip runs a little fast of the nominal 416; 418.6 is what this disc measured.
-const rateObs = []; let rateRef = null;
-function rateNow() { if (!rateObs.length) return 418.6; const a = rateObs.slice().sort((x, y) => x - y); return a[a.length >> 1]; }
+// Samples per second, by the disc's own clock: pairs of info packets 8-30 s apart (samples counted / milliseconds). Its
+// chip runs a little fast of the nominal 416; 418.6 is what this disc measured, used until the stream says otherwise.
+// Standby or a calibration stops the count while the clock runs on, so a pair spanning one reads low: only rates of
+// 405-430 count, and the middle one is used once two agree within 0.3 %.
+const rateObs = []; let rateRef = null, lastBoot = null;
+function rateNow() {
+  if (rateObs.length < 2) return 418.6;
+  const a = rateObs.slice().sort((x, y) => x - y), m = a[a.length >> 1];
+  return a.filter(r => Math.abs(r - m) < 0.003 * m).length >= 2 ? m : 418.6;
+}
 function onSample(c) {
   const dt = 1 / rateNow(), GL = info.glsb, AL = info.alsb;
   const g = [c[0] * GL - info.bias[0], c[1] * GL - info.bias[1], c[2] * GL - info.bias[2]];   // deg/s, zero error removed
@@ -246,19 +261,6 @@ function onSample(c) {
 // ================================================================ packets: readings, the disc's settings, throws
 const LRING = 16384, ring = new Int16Array(LRING * 6), seqs = new Float64Array(LRING).fill(-1);   // ~39 s of readings
 const pendingCaps = [], throwsList = [];
-// What slower throws (the gyro still seeing the spin) teach about this disc, for the fast ones it can't see (kept in
-// this browser): kI = how fast its wobble turns for its spin (the disc's shape), and how far off the axis the sensor
-// sits (used when the disc has no calibrated radius). Middle value of the last 15.
-const LEARN_KEY = "disc3d.learn.v1";
-const learn = (() => { try { return Object.assign({ kI: [], r: [] }, JSON.parse(localStorage.getItem(LEARN_KEY)) || {}); } catch { return { kI: [], r: [] }; } })();
-const learned = k => learn[k].length >= 2 ? DiscTrack.median(learn[k]) : 0;
-function teach(spin) {
-  let changed = false;
-  if (spin.kIObs > 0.8 && spin.kIObs < 1.02) { learn.kI.push(+spin.kIObs.toFixed(4)); changed = true; }
-  if (spin.radiusObs > 0.002 && spin.radiusObs < 0.025) { learn.r.push(+spin.radiusObs.toFixed(5)); changed = true; }
-  for (const k of ["kI", "r"]) if (learn[k].length > 15) learn[k].splice(0, learn[k].length - 15);
-  if (changed) try { localStorage.setItem(LEARN_KEY, JSON.stringify(learn)); } catch {}
-}
 function parseInfo(dv) {
   const f = k => dv.getFloat32(16 + 4 * k, true);
   return { boot: dv.getUint16(2, true), seq: dv.getUint32(4, true), millis: dv.getUint32(8, true), odr: dv.getUint16(12, true) || 416,
@@ -275,46 +277,60 @@ function onPacket(dv) {
   const type = dv.getUint8(0);
   if (type === 2 && dv.byteLength >= 100) {
     const I = parseInfo(dv);
-    if (rateRef && rateRef.boot === I.boot && I.millis - rateRef.millis >= 8000 && I.seq > rateRef.seq) {
-      const r = (I.seq - rateRef.seq) * 1000 / (I.millis - rateRef.millis);
-      if (r > 380 && r < 460) { rateObs.push(r); if (rateObs.length > 9) rateObs.shift(); }
+    if (lastBoot !== null && I.boot !== lastBoot) {              // the disc restarted: its reading numbers start again at 0
+      st.lastSeq = -1; seqs.fill(-1); pendingCaps.length = 0; rateObs.length = 0; rateRef = null;
     }
-    if (!rateRef || rateRef.boot !== I.boot || I.millis - rateRef.millis >= 8000 || I.millis < rateRef.millis) rateRef = I;
+    lastBoot = I.boot;
+    const span = rateRef ? I.millis - rateRef.millis : -1;
+    if (span >= 8000 && span <= 30000 && I.seq > rateRef.seq) {
+      const r = (I.seq - rateRef.seq) * 1000 / span;
+      if (r > 405 && r < 430) { rateObs.push(r); if (rateObs.length > 9) rateObs.shift(); }
+    }
+    if (!rateRef || span >= 8000 || span < 0) rateRef = I;
     Object.assign(info, I, { seen: true });
     return;
   }
   if (type === 3 && dv.byteLength >= 64) { pendingCaps.push(parseCap(dv)); tryCaps(); return; }
   if (type !== 1 || dv.byteLength < 6) return;
   const n = Math.min(dv.getUint8(1), Math.floor((dv.byteLength - 6) / 12)), seq = dv.getUint32(2, true), c = new Int16Array(6);
+  if (seq + n < st.lastSeq - LRING) { st.lastSeq = -1; seqs.fill(-1); pendingCaps.length = 0; }   // numbers restarted (a missed info packet)
   for (let j = 0; j < n; j++) {
     const sq = seq + j, slot = sq % LRING;
     for (let k = 0; k < 6; k++) c[k] = dv.getInt16(6 + j * 12 + 2 * k, true);
-    if (seqs[slot] !== sq) { ring.set(c, slot * 6); seqs[slot] = sq; }
+    ring.set(c, slot * 6); seqs[slot] = sq;
     if (sq > st.lastSeq) { onSample(c); st.lastSeq = sq; }
   }
   st.rateN += n;
   if (pendingCaps.length) tryCaps();
 }
-// A throw's results packet: once its readings are all in (or 15 s on), cut them out of the buffer and rebuild the throw.
+// A throw's results packet: once its readings are all in, cut them out of the buffer and rebuild the throw. The disc's
+// recording stops ~6 readings before the hit it detected (or 116 after its own release mark), so up to EXTRA readings
+// after it come from the stream too - the rest of the flight, for the spin and the end of the flight. Wait for them up
+// to 1.5 s (15 s for the recording's own).
+const EXTRA = 160;
 function tryCaps() {
   while (pendingCaps.length) {
-    const c = pendingCaps[0];
-    if (st.lastSeq < c.start + c.n - 1 && performance.now() - c.at < 15000) return;
+    const c = pendingCaps[0], end = c.start + c.n - 1, age = performance.now() - c.at;
+    if (st.lastSeq < end + EXTRA && age < (st.lastSeq >= end ? 1500 : 15000)) return;
     pendingCaps.shift();
     if (!c.counted && !(c.res[6] >= 4 && c.res[1] >= 120)) continue;          // handling the disc, not a throw
-    const S = new Int16Array(c.n * 6); let missing = 0;
-    for (let i = 0; i < c.n; i++) {
+    if (c.n < 445) { showHint("A throw came in, but the disc's recording of it was too short to rebuild.", 6000); continue; }
+    let n = c.n; while (n < c.n + EXTRA && seqs[(c.start + n) % LRING] === c.start + n) n++;
+    const S = new Int16Array(n * 6); let missing = 0, first = -1;
+    for (let i = 0; i < n; i++) {
       const sq = c.start + i, sl = sq % LRING;
-      if (seqs[sl] === sq) S.set(ring.subarray(sl * 6, sl * 6 + 6), i * 6);
+      if (seqs[sl] === sq) { S.set(ring.subarray(sl * 6, sl * 6 + 6), i * 6); if (first < 0) first = i; }
       else { missing++; if (i) S.copyWithin(i * 6, (i - 1) * 6, i * 6); }      // a lost reading: a copy (the tracker bridges it)
     }
-    if (missing > 0.2 * c.n || c.n < 470) { showHint(`A throw came in, but ${missing} of its ${c.n} readings were lost on the way: no replay for this one.`, 7000); continue; }
+    if (first < 0 || missing > 0.2 * c.n) { showHint(`A throw came in, but ${missing} of its ${c.n} readings were lost on the way: no replay for this one.`, 7000); continue; }
+    for (let i = 0; i < first; i++) S.copyWithin(i * 6, first * 6, first * 6 + 6);   // lost at the very start: the first that came
     let th = null;
     try { th = analyzeThrow(c, S, missing); } catch (e) { console.error("rebuilding the throw failed", e); }
     if (!th) continue;
+    if (th.nw.info.longestGap > 3) { showHint(`A throw came in, but ${th.nw.info.longestGap} readings in a row were lost during the pull: no replay for this one.`, 7000); continue; }
     // picked up, or dropping out of the net: a throw spins - well over 120 rpm by both counts
     if (Math.abs(th.nw.six.spin) < 120 && !(c.counted && c.res[1] >= 120)) continue;
-    teach(th.nw.info.spin);
+    DiscTrack.teach(th.id, c, th.nw);
     throwsList.push(th); if (throwsList.length > 12) throwsList.shift();
     enterReplay(th);
   }
@@ -325,9 +341,8 @@ function tryCaps() {
 // screen (+Y), the camera behind and above the thrower's side.
 const FLOOR_Z = -0.35, REL_H = FLOOR_Z + 1.0;
 function analyzeThrow(c, S, missing) {
-  const n = c.n, I = { alsb: info.alsb, glsb: info.glsb, bias: info.bias.slice(), radius: info.radius, odr: info.odr, rate: rateNow(), kI: learned("kI") || 0.93 };
-  const rCal = info.radius > 0.0005;
-  if (!rCal && learned("r")) I.radius = learned("r");
+  const n = S.length / 6, L = DiscTrack.learned(), rCal = info.radius > 0.0005;
+  const I = { alsb: info.alsb, glsb: info.glsb, bias: info.bias.slice(), radius: rCal ? info.radius : L.radius, odr: info.odr, rate: rateNow(), kI: L.kI || 0.93 };
   const o = { iRel: c.rel < n ? c.rel : undefined, spinRpm: c.res[1] > 0 ? c.res[1] : undefined };
   const nw = DiscTrack.reconstruct(S, I, o), old = DiscTrack.reconstruct(S, I, Object.assign({ old: true }, o));
   if (!nw.info.rel || !old.info.rel) return null;
@@ -335,7 +350,9 @@ function analyzeThrow(c, S, missing) {
   const v = nw.info.rel.v, psi = Math.PI / 2 - Math.atan2(v[1], v[0]), cz = Math.cos(psi), sz = Math.sin(psi);
   const rotZ = p => [cz * p[0] - sz * p[1], sz * p[0] + cz * p[1], p[2]];
   const qY = new THREE.Quaternion().setFromAxisAngle(Z, psi), pR = nw.info.rel.p;
-  const kA = Math.max(i0, iRel - Math.round(0.3 * rate)), kB = n - 1, N = kB - kA + 1;
+  // from 0.3 s before release to just after the hit (or 0.6 s of flight when there's none in the recording)
+  const iImp = nw.info.iImp, hit = iImp < n;
+  const kA = Math.max(i0, iRel - Math.round(0.3 * rate)), kB = hit ? Math.min(n - 1, iImp + 6) : Math.min(n - 1, iRel + Math.round(0.6 * rate)), N = kB - kA + 1;
   const pos = new Float32Array(N * 3), att = [], spin = new Float32Array(N), spd = new Float32Array(N);
   const fMeas = new Float32Array(N), fNew = new Float32Array(N), clipA = new Uint8Array(N), gMeas = new Float32Array(N), clipG = new Uint8Array(N);
   for (let k = kA; k <= kB; k++) {
@@ -369,8 +386,10 @@ function analyzeThrow(c, S, missing) {
   return { c, S, nw, old, I, rate, iRel, kA, kB, N, pos, att, spin, spd, fMeas, fNew, clipA, gMeas, clipG, ghost,
     relJ: iRel - kA, discRelJ: c.rel - kA, vRel: rotZ(v), vOld: rotZ(old.info.rel.v), oldRelPos: ghost.slice(gRel, gRel + 3),
     accMs: accN / rate * 1000, gyrMs: gyrN / rate * 1000, peak, relShift: iRel - (nw.info.relGiven ?? iRel), missing, at: new Date(),
-    impact: c.end === 1, kI: I.kI, kIN: learn.kI.length >= 2 ? learn.kI.length : 0, radius: I.radius,
-    rSrc: rCal ? "calibrated" : I.radius > 0 ? `learned from ${learn.r.length} throws` : "" };
+    // the net: where the hit was found, or - when the recording stopped short of it - just past its last reading
+    impact: hit || c.end === 1, netJ: hit ? iImp - kA : N - 1, netBeyond: !hit,
+    id: `${info.boot}-${c.start}-${c.tMs}`, kI: I.kI, kIN: L.kI ? L.nKI : 0, radius: I.radius,
+    rSrc: rCal ? "calibrated" : I.radius > 0 ? `learned from ${L.nR} throws` : "" };
 }
 
 // ================================================================ Bluetooth (as sim.html)
@@ -574,8 +593,19 @@ const lineMats = [trailMat, pathMat, ghostMat];
 
 function resize() {
   const w = innerWidth, h = innerHeight;
-  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false); camera.aspect = w / h;
   for (const m of lineMats) m.resolution.set(w, h);
+  frameView();
+}
+// On a phone the replay panel covers the lower half: shift the picture so the disc the camera follows sits in the
+// space between the header and the panel.
+function frameView() {
+  const w = innerWidth, h = innerHeight;
+  if (document.body.classList.contains("replay") && w <= 760) {
+    const top = document.querySelector("header").getBoundingClientRect().bottom, bottom = $("replayPanel").getBoundingClientRect().top;
+    camera.setViewOffset(w, h, 0, Math.max(0, h / 2 - (top + bottom) / 2), w, h);
+  } else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
 }
 addEventListener("resize", resize); resize();
 
@@ -661,15 +691,15 @@ function enterReplay(th) {
   setArrow(arrowNew, relP, vN, Math.max(0.15, vN.length() / 25));
   oldDot.position.set(...th.oldRelPos);
   setArrow(arrowOld, oldDot.position, vO, Math.max(0.12, vO.length() / 25));
-  const E = (th.N - 7) * 3;                                    // the recording ends 6 readings after the net
-  net.visible = th.impact; net.position.set(th.pos[E], th.pos[E + 1] + 0.04, Math.max(th.pos[E + 2], FLOOR_Z + 0.8));
+  const j = th.netJ, E = j * 3, ahead = th.netBeyond ? th.spd[j] / MPH * 7 / th.rate : 0.03;   // a cut-short recording: ~6 readings on
+  net.visible = th.impact; net.position.set(th.pos[E], th.pos[E + 1] + ahead, Math.max(th.pos[E + 2], FLOOR_Z + 0.8));
   rpG.visible = true; trail.visible = false; trailPts.length = 0; showMsg("");
   document.body.classList.add("replay");
   $("panel").hidden = true; $("replayPanel").hidden = false; $("timeline").hidden = false; $("lastBtn").hidden = true;
   // camera: behind the thrower and a little to the right, high enough to see the whole flight to the net
   const relT = new THREE.Vector3(relP.x, relP.z, -relP.y);
   controls.target.copy(relT); camera.position.copy(relT).add(new THREE.Vector3(1.7, 1.5, 3.4));
-  renderReplayPanel(); setSpeedUi();
+  renderReplayPanel(); setSpeedUi(); frameView();
 }
 function exitReplay() {
   if (!rp.on) return;
@@ -679,6 +709,7 @@ function exitReplay() {
   $("panel").hidden = false; $("replayPanel").hidden = true; $("timeline").hidden = true; $("lastBtn").hidden = !throwsList.length;
   const goal = new THREE.Vector3();
   controls.target.copy(goal); camera.position.copy(goal).add(rp.camLive || new THREE.Vector3(0, 0.42, 0.62));
+  frameView();
   if (hard) showHint("The throw spun the gyro past its limit, so the picture's direction is lost: hold the disc with its label reading normally and press <b>Face me</b>.", 9000);
 }
 function setSpeedUi() {
@@ -691,7 +722,7 @@ $("rpExit").onclick = exitReplay;
 $("lastBtn").onclick = () => { if (throwsList.length) enterReplay(throwsList[throwsList.length - 1]); };
 $("rpSel").onchange = () => { const th = throwsList[+$("rpSel").value]; if (th) enterReplay(th); };
 addEventListener("keydown", e => {
-  if (e.target.closest("input, select, textarea")) return;
+  if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || e.target.closest("input, select, textarea")) return;
   if (e.key === "Escape") { if (!$("lookPanel").hidden) $("lookClose").click(); else exitReplay(); }
   else if (e.key === " " && rp.on) { e.preventDefault(); $("rpPlay").click(); }
   else if (e.key === "f" || e.key === "F") faceNow();
@@ -699,16 +730,21 @@ addEventListener("keydown", e => {
 function renderReplayPanel() {
   const th = rp.th, s = th.nw.six, r = th.c.res, f1 = x => x.toFixed(1), sg = x => (x > 0 ? "+" : "") + x.toFixed(1);
   const row = (k, a, b, u) => `<tr><td>${k}</td><td class="new">${a}</td><td class="old">${b}</td><td class="old">${u}</td></tr>`;
-  $("rpBody").innerHTML = `<table class="cmp"><tr><th></th><th>rebuilt</th><th>disc's own</th><th></th></tr>` +
-    row("Speed", f1(s.speed), f1(r[0]), "mph") + row("Spin", s.spin.toFixed(0), r[1].toFixed(0), "rpm") +
-    row("Hyzer", sg(s.hyzer), sg(r[2]), "°") + row("Nose", sg(s.nose), sg(r[3]), "°") + row("Launch", sg(s.launch), sg(r[4]), "°") + `</table>` +
-    `<ul class="notes">` +
+  const atLeast = th.nw.info.spin && th.nw.info.spin.atLeast;
+  $("rpTable").innerHTML = `<table class="cmp"><tr><th></th><th>rebuilt</th><th>disc's own</th><th></th></tr>` +
+    row("Speed", f1(s.speed), f1(r[0]), "mph") + row("Spin", (atLeast ? "≥ " : "") + s.spin.toFixed(0), r[1].toFixed(0), "rpm") +
+    row("Hyzer", sg(s.hyzer), sg(r[2]), "°") + row("Nose", sg(s.nose), sg(r[3]), "°") + row("Launch", sg(s.launch), sg(r[4]), "°") + `</table>`;
+  $("rpMore").innerHTML = `<div class="legend"><span><i style="background:#ff9a3c"></i>rebuilt</span><span><i style="background:#9aa7b6"></i>as the sensor read it</span>` +
+    `<span><i style="background:#60a5fa"></i>gyro</span><span><i style="background:rgba(248,113,113,0.5)"></i>sensor maxed out</span><span><i style="background:#ffd166"></i>release speed</span></div>` +
+    `<details id="rpNotes"${rp.notesOpen ?? !matchMedia("(max-width: 760px)").matches ? " open" : ""}><summary>How it was rebuilt</summary><ul class="notes">` +
     (th.accMs > 0 ? `<li>The force passed the sensor's 16 g for ${th.accMs.toFixed(0)} ms of the pull; rebuilt from the readings it did get, it peaked near ${th.peak.toFixed(0)} g.</li>` : `<li>The force stayed within the sensor's 16 g: nothing had to be rebuilt.</li>`) +
     (th.gyrMs > 0 ? `<li>The spin passed the gyro's 382 rpm ${th.gyrMs.toFixed(0)} ms before release; the spin-up in between is ${th.nw.info.ramp === "fitted" ? "the shape that fits the force readings best" : "a smooth curve to the flight's spin"}.</li>` : "") +
     spinNote(th) +
-    (Math.abs(th.relShift) >= 3 ? `<li>Released ${(Math.abs(th.relShift) / th.rate * 1000).toFixed(0)} ms ${th.relShift > 0 ? "later" : "earlier"} than the disc marked${th.relShift < 0 && th.nw.info.relGiven >= th.nw.info.iImp - 8 ? " (it marked the net)" : ""}: here the readings settled into free flight, after the spin passed 300 rpm.</li>` : "") +
+    (th.nw.info.relSrc !== "settled" ? `<li>Where the hand let go wasn't clear (the readings never settled into free flight): this uses the disc's own release mark.</li>`
+      : Math.abs(th.relShift) >= 3 ? `<li>Released ${(Math.abs(th.relShift) / th.rate * 1000).toFixed(0)} ms ${th.relShift > 0 ? "later" : "earlier"} than the disc marked${th.relShift < 0 && th.nw.info.relGiven >= th.kB - 2 ? " (it marked the net)" : ""}: here the readings settled into free flight once the disc was spun up.</li>` : "") +
     (th.missing ? `<li>${th.missing} readings were lost over Bluetooth and bridged.</li>` : "") +
-    `<li>Orange: the rebuilt flight. Grey dashed: the same readings added up as they came, cut off at 16 g.</li></ul>`;
+    `<li>Orange: the rebuilt flight. Grey dashed: the same readings added up as they came, cut off at 16 g.</li></ul></details>`;
+  $("rpNotes").ontoggle = () => { rp.notesOpen = $("rpNotes").open; frameView(); };
   $("rpSel").innerHTML = throwsList.map((t, i) => `<option value="${i}">${t.at.toLocaleTimeString()} · ${t.nw.six.speed.toFixed(0)} mph</option>`).reverse().join("");
   $("rpSel").value = String(throwsList.indexOf(th));
 }
@@ -716,14 +752,14 @@ function renderReplayPanel() {
 function spinNote(th) {
   const i = th.nw.info, sp = i.spin, src = i.spinSrc, f0 = x => x.toFixed(0);
   if (src === "gyro") return "";
-  const kI = `the wobble turns at ${th.kI.toFixed(2)} × the spin (${th.kIN ? `learned from ${th.kIN} slower throws` : "a golf disc's usual; it learns from throws under 382 rpm"})`;
+  const kI = `its turning rate ÷ ${th.kI.toFixed(2)}, ${th.kIN ? `learned from ${th.kIN} slower throws` : "a golf disc's usual until slower throws teach it"}`;
   const mm = th.radius > 0 ? `${(th.radius * 1000).toFixed(1)} mm off the axis, ${th.rSrc}` : "";
-  const txt = src === "wobble+force" ? `Spin past the gyro's top, measured two ways that agree: the wobble ${f0(sp.wobble)} rpm (${kI}) and the off-centre force ${f0(sp.force)} rpm (sensor ${mm}).`
+  const txt = src === "wobble+force" ? `Spin past the gyro's top, measured two ways that agree: the wobble, ${f0(sp.wobble)} rpm (${kI}); the off-centre force, ${f0(sp.force)} rpm (sensor ${mm}).`
     : src.startsWith("wobble (") ? `Spin past the gyro's top, from the wobble: ${f0(sp.wobble)} rpm (${kI}). The off-centre force says ${f0(sp.force)} rpm - the sensor's radius (${mm}) may be off.`
     : src === "wobble" ? `Spin past the gyro's top, from the wobble: ${f0(sp.wobble)} rpm (${kI}).`
     : src === "force" ? `Spin past the gyro's top, from the off-centre force: ${f0(sp.force)} rpm (sensor ${mm}). Too little wobble to cross-check.`
     : src === "disc" ? "Spin past the gyro's top: the disc's own number (too little wobble or flight here to measure it)."
-    : "Spin: at least 382 rpm, the gyro's top - too little wobble or flight to measure past it.";
+    : "Spin: at least 382 rpm, the gyro's top - too little wobble or flight to measure past it. A calibrated spin radius (calibration page) gives it from the off-centre force.";
   return `<li>${txt}</li>`;
 }
 // the timeline: force and spin over the throw - what the sensor read (grey/blue), where it was maxed (red), and the
@@ -733,19 +769,28 @@ function drawTimeline() {
   if (!W || !H) return;
   if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
   const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
-  const L = 58, R = W - 14, x = j => L + j / (th.N - 1) * (R - L), N = th.N;
-  const lanes = [{ y0: 22, y1: H / 2 - 4 }, { y0: H / 2 + 16, y1: H - 22 }];
+  const L = 46, R = W - 12, x = j => L + j / (th.N - 1) * (R - L), N = th.N, narrow = W < 560;
+  const lanes = [{ y0: 22, y1: H / 2 - 5 }, { y0: H / 2 + 9, y1: H - 22 }];
   g.font = "11.5px system-ui, Segoe UI, sans-serif"; g.textBaseline = "middle";
+  // a label on a dark backing, so lines under it don't make it hard to read; returns its left and right edge
+  const tag = (txt, X, Y, align, col) => {
+    const w = g.measureText(txt).width, x0 = align === "right" ? X - w : align === "center" ? X - w / 2 : X;
+    g.fillStyle = "rgba(11,15,21,0.82)"; g.fillRect(x0 - 4, Y - 8, w + 8, 16);
+    g.fillStyle = col; g.textAlign = "left"; g.fillText(txt, x0, Y); return [x0 - 4, x0 + w + 4];
+  };
   const fMax = Math.max(20, th.peak * 1.12), sMax = Math.max(450, Math.abs(th.nw.six.spin) * 1.15);
-  const lane = (ln, max, unit, limit, limitTxt, title) => {
+  const lane = (ln, max, limit, limitTxt) => {
     const y = v => ln.y1 - Math.min(1.04, v / max) * (ln.y1 - ln.y0);
-    g.strokeStyle = "rgba(255,255,255,0.08)"; g.lineWidth = 1;
+    g.strokeStyle = "rgba(255,255,255,0.1)"; g.lineWidth = 1;
     g.beginPath(); g.moveTo(L, ln.y1 + 0.5); g.lineTo(R, ln.y1 + 0.5); g.stroke();
-    g.fillStyle = "#a7b2c0"; g.textAlign = "right"; g.fillText(`${Math.round(max)}`, L - 6, ln.y0); g.fillText("0", L - 6, ln.y1);
-    g.textAlign = "left"; g.fillText(title, L + 4, ln.y0 - 10);
-    g.setLineDash([4, 4]); g.strokeStyle = "rgba(248,113,113,0.8)"; g.beginPath(); g.moveTo(L, y(limit)); g.lineTo(R, y(limit)); g.stroke(); g.setLineDash([]);
-    g.fillStyle = "rgba(248,113,113,0.9)"; g.textAlign = "right"; g.fillText(limitTxt, R - 2, y(limit) - 7);
+    g.fillStyle = "#a7b2c0"; g.textAlign = "right"; g.fillText(`${Math.round(max)}`, L - 6, ln.y0 + 2); g.fillText("0", L - 6, ln.y1);
+    g.setLineDash([4, 4]); g.strokeStyle = "rgba(248,113,113,0.75)"; g.beginPath(); g.moveTo(L, y(limit)); g.lineTo(R, y(limit)); g.stroke(); g.setLineDash([]);
+    ln.limit = [limitTxt, y(limit)];
     return y;
+  };
+  const laneLabels = (ln, title) => {                            // drawn last, over the curves
+    tag(title, L + 6, ln.y0 + 8, "left", "#e5ebf2");
+    const [txt, yl] = ln.limit; tag(txt, R - 4, yl - 9 < ln.y0 + 8 ? yl + 9 : yl - 9, "right", "#fca5a5");
   };
   const series = (y, arr, col, w, from = 0, to = N - 1, dash) => {
     g.strokeStyle = col; g.lineWidth = w; g.setLineDash(dash || []); g.beginPath();
@@ -755,35 +800,38 @@ function drawTimeline() {
   // maxed stretches (red bands)
   const bands = (flags, ln) => { g.fillStyle = "rgba(248,113,113,0.18)"; for (let j = 0; j < N; j++) if (flags[j]) g.fillRect(x(j) - 0.5, ln.y0, Math.max(1.5, (R - L) / N + 0.5), ln.y1 - ln.y0); };
   bands(th.clipA, lanes[0]); bands(th.clipG, lanes[1]);
-  const yF = lane(lanes[0], fMax, "g", 16, "16 g: sensor's limit (each axis)", "Force on the sensor (g) — grey: as read · orange: rebuilt");
+  const yF = lane(lanes[0], fMax, 16, narrow ? "16 g limit" : "16 g: the sensor's limit (each axis)");
   series(yF, th.fMeas, "#9aa7b6", 1.5); series(yF, th.fNew, "#ff9a3c", 2.2);
-  const yS = lane(lanes[1], sMax, "rpm", 2294 / 6, "382 rpm: gyro's limit", "Spin (rpm) — blue: gyro · orange: rebuilt");
+  const yS = lane(lanes[1], sMax, 2294 / 6, narrow ? "382 rpm limit" : "382 rpm: the gyro's limit");
   const spinAbs = th.spin.map(Math.abs);
   series(yS, th.gMeas, "#60a5fa", 1.5); series(yS, spinAbs, "#ff9a3c", 2.2);
-  // release marks and the time axis (ms from release)
-  const mark = (j, col, txt, dash) => {
-    if (j < 0 || j >= N) return;
-    g.strokeStyle = col; g.setLineDash(dash || []); g.lineWidth = 1.5; g.beginPath(); g.moveTo(x(j), 14); g.lineTo(x(j), H - 18); g.stroke(); g.setLineDash([]);
-    const w = g.measureText(txt).width / 2 + 2;
-    g.fillStyle = col; g.textAlign = "center"; g.fillText(txt, clamp(x(j), L + w, R - w), 8);
-  };
-  if (Math.abs(th.discRelJ - th.relJ) >= 3) mark(th.discRelJ, "#9aa7b6", "disc's release", [3, 3]);
-  mark(th.relJ, "#ff9a3c", "release");
+  // release marks (the disc's own, if it differs) and the time axis (ms from release)
+  const line = (j, col, dash) => { g.strokeStyle = col; g.setLineDash(dash || []); g.lineWidth = 1.5; g.beginPath(); g.moveTo(x(j), 16); g.lineTo(x(j), H - 18); g.stroke(); g.setLineDash([]); };
+  const showDisc = Math.abs(th.discRelJ - th.relJ) >= 3 && th.discRelJ >= 0 && th.discRelJ < N;
+  if (showDisc) line(th.discRelJ, "#9aa7b6", [3, 3]);
+  line(th.relJ, "#ff9a3c");
+  laneLabels(lanes[0], "Force on the sensor (g)"); laneLabels(lanes[1], "Spin (rpm)");
+  const relW = g.measureText("release").width / 2 + 4, relX = clamp(x(th.relJ), L + relW, R - relW), span = tag("release", relX, 8, "center", "#ffb877");
+  if (showDisc) {                                                // beside the release label, on whichever side its line is
+    const txt = narrow ? "disc's" : "disc's release", w = g.measureText(txt).width + 8, dx = x(th.discRelJ);
+    const right = dx > relX ? Math.max(dx - w / 2, span[1] + 4) : Math.min(dx - w / 2, span[0] - 4 - w);
+    tag(txt, clamp(right + 4, L, R - w + 4), 8, "left", "#cbd5e1");
+  }
   g.fillStyle = "#a7b2c0"; g.textAlign = "center";
-  const t0 = (0 - th.relJ) / th.rate * 1000, t1 = (N - 1 - th.relJ) / th.rate * 1000;
-  for (let ms = Math.ceil(t0 / 100) * 100; ms <= t1; ms += 100) { const j = th.relJ + ms / 1000 * th.rate; g.fillText(`${ms > 0 ? "+" : ""}${ms} ms`, x(j), H - 9); }
+  const t0 = (0 - th.relJ) / th.rate * 1000, t1 = (N - 1 - th.relJ) / th.rate * 1000, step = narrow ? 200 : 100;
+  for (let ms = Math.ceil(t0 / step) * step; ms <= t1; ms += step) { const j = th.relJ + ms / 1000 * th.rate; g.fillText(`${ms > 0 ? "+" : ""}${ms} ms`, x(j), H - 9); }
   // the playhead
   const jp = clamp(rp.t * th.rate + th.iRel - th.kA, 0, N - 1);
-  g.strokeStyle = "#ffffff"; g.lineWidth = 2; g.beginPath(); g.moveTo(x(jp), 14); g.lineTo(x(jp), H - 18); g.stroke();
+  g.strokeStyle = "#ffffff"; g.lineWidth = 2; g.beginPath(); g.moveTo(x(jp), 16); g.lineTo(x(jp), H - 18); g.stroke();
 }
 function scrub(e) {
-  const r = $("tl").getBoundingClientRect(), th = rp.th, L = 58, R = r.width - 14;
+  const r = $("tl").getBoundingClientRect(), th = rp.th, L = 46, R = r.width - 12;
   const j = clamp((e.clientX - r.left - L) / (R - L), 0, 1) * (th.N - 1);
   rp.t = (j + th.kA - th.iRel) / th.rate; rp.hold = 0;
 }
-$("tl").addEventListener("pointerdown", e => { if (!rp.on) return; rp.drag = true; rp.wasPlaying = rp.playing; rp.playing = false; setSpeedUi(); $("tl").setPointerCapture(e.pointerId); scrub(e); });
+$("tl").addEventListener("pointerdown", e => { if (!rp.on) return; rp.drag = true; rp.playing = false; setSpeedUi(); $("tl").setPointerCapture(e.pointerId); scrub(e); });
 $("tl").addEventListener("pointermove", e => { if (rp.drag) scrub(e); });
-$("tl").addEventListener("pointerup", () => { rp.drag = false; });
+for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) $("tl").addEventListener(ev, () => { rp.drag = false; });
 
 // the disc at time rp.t of the replay
 function replayFrame(dtF) {
@@ -842,7 +890,8 @@ function frame(now) {
 const fitted = (th, j) => { const w = th.nw.info.fitWindow, k = j + th.kA; return !!w && k >= w[0] && k < w[1]; };
 function replayUi(r) {
   const th = rp.th, j = clamp(r.j, 0, th.N - 1), ms = (j - th.relJ) / th.rate * 1000;
-  $("rpmN").textContent = r.rpm < 1 ? "0" : r.rpm.toFixed(0);
+  const atLeast = th.nw.info.spin && th.nw.info.spin.atLeast && j >= th.relJ;
+  $("rpmN").textContent = r.rpm < 1 ? "0" : (atLeast ? "≥" : "") + r.rpm.toFixed(0);
   $("rpmS").textContent = (th.clipG[j] ? "gyro maxed: rebuilt" : "") + (r.slow ? (th.clipG[j] ? " · " : "") + "shown slowed" : "");
   $("rpNow").innerHTML = `${ms < 0 ? `${(-ms).toFixed(0)} ms before release` : ms < 1 ? "release" : `${ms.toFixed(0)} ms after release`} · ` +
     `<b>${th.spd[j].toFixed(1)} mph</b> · force ${th.fNew[j].toFixed(1)} g` +

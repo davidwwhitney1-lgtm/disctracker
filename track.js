@@ -50,19 +50,27 @@ function relHeading(q0, v) {
   while (d > 180) d -= 360; while (d < -180) d += 360; return d;
 }
 
-// Solve the symmetric positive system A x = b (Cholesky). A is an array of rows.
-function cholSolve(A, b) {
-  const n = b.length, L = A.map(r => r.slice());
+// Solve the symmetric positive system A x = b (Cholesky). A: n x n, flat, row by row (left as it is).
+function cholSolve(A, b, n) {
+  const L = Float64Array.from(A);
   for (let j = 0; j < n; j++) {
-    let d = L[j][j]; for (let k = 0; k < j; k++) d -= L[j][k] * L[j][k];
-    if (d <= 1e-12) d = 1e-12; L[j][j] = Math.sqrt(d);
-    for (let i = j + 1; i < n; i++) { let s = L[i][j]; for (let k = 0; k < j; k++) s -= L[i][k] * L[j][k]; L[i][j] = s / L[j][j]; }
+    const rj = j * n;
+    let d = L[rj + j]; for (let k = 0; k < j; k++) d -= L[rj + k] * L[rj + k];
+    if (d <= 1e-12) d = 1e-12;
+    const ljj = Math.sqrt(d); L[rj + j] = ljj;
+    for (let i = j + 1; i < n; i++) { const ri = i * n; let s = L[ri + j]; for (let k = 0; k < j; k++) s -= L[ri + k] * L[rj + k]; L[ri + j] = s / ljj; }
   }
-  const y = new Array(n);
-  for (let i = 0; i < n; i++) { let s = b[i]; for (let k = 0; k < i; k++) s -= L[i][k] * y[k]; y[i] = s / L[i][i]; }
-  const x = new Array(n);
-  for (let i = n - 1; i >= 0; i--) { let s = y[i]; for (let k = i + 1; k < n; k++) s -= L[k][i] * x[k]; x[i] = s / L[i][i]; }
+  const y = new Float64Array(n), x = new Float64Array(n);
+  for (let i = 0; i < n; i++) { const ri = i * n; let s = b[i]; for (let k = 0; k < i; k++) s -= L[ri + k] * y[k]; y[i] = s / L[ri + i]; }
+  for (let i = n - 1; i >= 0; i--) { let s = y[i]; for (let k = i + 1; k < n; k++) s -= L[k * n + i] * x[k]; x[i] = s / L[i * n + i]; }
   return x;
+}
+// smoothness: a penalty w on the second differences of the knots o, o+step, ... (nk of them), into the normal matrix
+function addBends(A, n, nk, o, step, w) {
+  for (let j = 1; j < nk - 1; j++) {
+    const idx = [o + step * (j - 1), o + step * j, o + step * (j + 1)], cf = [1, -2, 1];
+    for (let a = 0; a < 3; a++) for (let c = 0; c < 3; c++) A[idx[a] * n + idx[c]] += w * cf[a] * cf[c];
+  }
 }
 
 // ---------------------------------------------------------------- the pull's force, fitted through the cut-off parts
@@ -72,60 +80,57 @@ function cholSolve(A, b) {
 // Readings an axis didn't max out are matched; maxed ones must be at least the 16 g the sensor stopped at.
 function fitPullForce(ax, ay, clipX, clipY, ok, th, B, w0, w1, dk, smooth) {
   const nk = Math.ceil((w1 - 1 - w0) / dk) + 1, nu = 2 * nk;
-  const rows = [];                                         // {k, comp (0 x, 1 y), target, active (for maxed ones), sign}
+  const basis = k => { const u = (k - w0) / dk, j = Math.min(nk - 2, Math.floor(u)), f = u - j; return [[j, 1 - f], [j + 1, f]]; };
+  // a reading's model, as coefficients on [Wr_j, Wi_j]: Re(e^{-i th} W) = Wr cos + Wi sin, Im = -Wr sin + Wi cos
+  const coefOf = (k, comp) => {
+    const c = Math.cos(th[k - w0]), s = Math.sin(th[k - w0]), u = (k - w0) / dk, j = Math.min(nk - 2, Math.floor(u)), f = u - j;
+    const ci = [2 * j, 2 * j + 1, 2 * j + 2, 2 * j + 3];
+    const cv = comp ? [-(1 - f) * s, (1 - f) * c, -f * s, f * c] : [(1 - f) * c, (1 - f) * s, f * c, f * s];
+    return { ci, cv };
+  };
+  const rows = [];                                         // {k, comp (0 x, 1 y), meas, clipped, sign, active, ci, cv, Bc}
   for (let k = w0; k < w1; k++) {
     if (!ok[k]) continue;
     for (const comp of [0, 1]) {
       const meas = comp ? ay[k] : ax[k], clipped = comp ? clipY[k] : clipX[k];
-      rows.push({ k, comp, meas, clipped, sign: clipped ? Math.sign(meas) : 0, active: true });
+      rows.push(Object.assign({ k, comp, meas, clipped, sign: clipped ? Math.sign(meas) : 0, active: true, Bc: B[k - w0][comp] }, coefOf(k, comp)));
     }
   }
-  const basis = k => { const u = (k - w0) / dk, j = Math.min(nk - 2, Math.floor(u)), f = u - j; return [[j, 1 - f], [j + 1, f]]; };
-  const rowCoef = (k, comp) => {                           // the reading's model, as coefficients on [Wr_j, Wi_j]
-    const c = Math.cos(th[k - w0]), s = Math.sin(th[k - w0]), out = [];
-    for (const [j, h] of basis(k)) {
-      if (h === 0) continue;
-      if (!comp) out.push([2 * j, h * c], [2 * j + 1, h * s]);          // Re(e^{-i th} W) = Wr cos + Wi sin
-      else out.push([2 * j, -h * s], [2 * j + 1, h * c]);               // Im(e^{-i th} W) = -Wr sin + Wi cos
-    }
-    return out;
-  };
   // Maxed readings are one-sided: the true value is somewhere past 16 g. Each counts only while the fit sits below
   // 16 g there (then it pulls the fit up to 16 g); re-solve until that set stops changing.
+  const A = new Float64Array(nu * nu), b = new Float64Array(nu);
   let W = null;
   for (let it = 0; it < 20; it++) {
-    const A = Array.from({ length: nu }, () => new Array(nu).fill(0)), b = new Array(nu).fill(0);
+    A.fill(0); b.fill(0);
     for (const r of rows) {
       if (!r.active) continue;
-      const co = rowCoef(r.k, r.comp), Bc = r.comp ? B[r.k - w0][1] : B[r.k - w0][0];
-      const target = (r.clipped ? r.sign * AMAX : r.meas) - Bc, wgt = r.clipped ? 100 : 1;
-      for (const [i, vi] of co) { b[i] += wgt * vi * target; for (const [j, vj] of co) A[i][j] += wgt * vi * vj; }
+      const target = (r.clipped ? r.sign * AMAX : r.meas) - r.Bc, wgt = r.clipped ? 100 : 1;
+      for (let p = 0; p < 4; p++) {
+        const i = r.ci[p], vi = wgt * r.cv[p]; b[i] += vi * target;
+        for (let q = 0; q < 4; q++) A[i * nu + r.ci[q]] += vi * r.cv[q];
+      }
     }
-    for (let j = 1; j < nk - 1; j++) for (const o of [0, 1]) {   // smoothness: second differences of W
-      const idx = [2 * (j - 1) + o, 2 * j + o, 2 * (j + 1) + o], cf = [1, -2, 1];
-      for (let a = 0; a < 3; a++) for (let c = 0; c < 3; c++) A[idx[a]][idx[c]] += smooth * cf[a] * cf[c];
-    }
-    for (let i = 0; i < nu; i++) A[i][i] += 1e-6;
-    W = cholSolve(A, b);
+    addBends(A, nu, nk, 0, 2, smooth); addBends(A, nu, nk, 1, 2, smooth);
+    for (let i = 0; i < nu; i++) A[i * nu + i] += 1e-6;
+    W = cholSolve(A, b, nu);
     let changed = 0;
     for (const r of rows) {
       if (!r.clipped) continue;
-      let m = 0; for (const [i, v] of rowCoef(r.k, r.comp)) m += v * W[i];
-      m += r.comp ? B[r.k - w0][1] : B[r.k - w0][0];
+      let m = r.Bc; for (let p = 0; p < 4; p++) m += r.cv[p] * W[r.ci[p]];
       const act = r.sign * m < AMAX;
       if (act !== r.active) { r.active = act; changed++; }
     }
     if (!changed) break;
   }
-  const model = (k, comp) => { let m = 0; for (const [i, v] of rowCoef(k, comp)) m += v * W[i]; return m + (comp ? B[k - w0][1] : B[k - w0][0]); };
-  return { W, nk, model, rows, basis };
+  const model = (k, comp) => { const { ci, cv } = coefOf(k, comp); let m = B[k - w0][comp]; for (let p = 0; p < 4; p++) m += cv[p] * W[ci[p]]; return m; };
+  return { W, nk, dk, model, rows, basis };
 }
 
 // The same readings, with the force as a size and a direction that are each smooth on their own: a push that grows
 // and fades while it turns at a steady rate. (Smooth x and y parts would make a turning push cost "bend", so a missing
 // part would come out short.) Started from the plain fit; Levenberg-Marquardt, with the same one-sided maxed readings.
 function fitPolar(th, B, w0, cart, sM, sP) {
-  const { nk, basis, rows } = cart, np = 2 * nk, x = new Array(np);
+  const { nk, rows, dk } = cart, np = 2 * nk, x = new Float64Array(np);
   let prev = null;
   for (let j = 0; j < nk; j++) {
     const wr = cart.W[2 * j], wi = cart.W[2 * j + 1];
@@ -133,48 +138,53 @@ function fitPolar(th, B, w0, cart, sM, sP) {
     if (prev != null) { while (a - prev > Math.PI) a -= TAU; while (a - prev < -Math.PI) a += TAU; }
     x[j] = Math.hypot(wr, wi); x[nk + j] = a; prev = a;
   }
+  const knot = k => { const u = (k - w0) / dk, j = Math.min(nk - 2, Math.floor(u)); return [j, u - j]; };
+  const nr = rows.length, rj = new Int32Array(nr), rf = new Float64Array(nr), rth = new Float64Array(nr);
+  rows.forEach((r, q) => { const [j, f] = knot(r.k); rj[q] = j; rf[q] = f; rth[q] = th[r.k - w0]; });
   const at = (k, x) => {
-    let M = 0, P = 0; const hs = basis(k);
-    for (const [j, h] of hs) { M += h * x[j]; P += h * x[nk + j]; }
-    const ang = P - th[k - w0];
-    return { M, c: Math.cos(ang), s: Math.sin(ang), hs };
+    const [j, f] = knot(k), M = (1 - f) * x[j] + f * x[j + 1], ang = (1 - f) * x[nk + j] + f * x[nk + j + 1] - th[k - w0];
+    return { M, c: Math.cos(ang), s: Math.sin(ang) };
   };
   const value = (k, comp, x) => { const e = at(k, x); return (comp ? e.M * e.s : e.M * e.c) + B[k - w0][comp]; };
   const cost = x => {
     let c = 0;
-    for (const r of rows) {
-      const m = value(r.k, r.comp, x);
+    for (let q = 0; q < nr; q++) {
+      const r = rows[q], j = rj[q], f = rf[q], M = (1 - f) * x[j] + f * x[j + 1], ang = (1 - f) * x[nk + j] + f * x[nk + j + 1] - rth[q];
+      const m = (r.comp ? M * Math.sin(ang) : M * Math.cos(ang)) + r.Bc;
       if (!r.clipped) c += (m - r.meas) ** 2;
       else if (r.sign * m < AMAX) c += 100 * (m - r.sign * AMAX) ** 2;
     }
     for (let j = 1; j < nk - 1; j++) c += sM * (x[j - 1] - 2 * x[j] + x[j + 1]) ** 2 + sP * (x[nk + j - 1] - 2 * x[nk + j] + x[nk + j + 1]) ** 2;
     return c;
   };
+  const H = new Float64Array(np * np), g = new Float64Array(np), Ad = new Float64Array(np * np), ng = new Float64Array(np), xn = new Float64Array(np);
+  const Ji = new Int32Array(4), Jv = new Float64Array(4);
   let mu = 1e-3, cur = cost(x);
   for (let it = 0; it < 40; it++) {
-    const H = Array.from({ length: np }, () => new Array(np).fill(0)), g = new Array(np).fill(0);
-    for (const r of rows) {
-      const e = at(r.k, x), m = (r.comp ? e.M * e.s : e.M * e.c) + B[r.k - w0][r.comp];
+    H.fill(0); g.fill(0);
+    for (let q = 0; q < nr; q++) {
+      const r = rows[q], j = rj[q], f = rf[q], M = (1 - f) * x[j] + f * x[j + 1], ang = (1 - f) * x[nk + j] + f * x[nk + j + 1] - rth[q];
+      const c = Math.cos(ang), s = Math.sin(ang), m = (r.comp ? M * s : M * c) + r.Bc;
       let res, wgt;
       if (!r.clipped) { res = m - r.meas; wgt = 1; }
       else if (r.sign * m < AMAX) { res = m - r.sign * AMAX; wgt = 100; }
       else continue;
-      const J = [];
-      for (const [j, h] of e.hs) {
-        if (!h) continue;
-        J.push([j, h * (r.comp ? e.s : e.c)], [nk + j, h * (r.comp ? e.M * e.c : -e.M * e.s)]);
-      }
-      for (const [i, vi] of J) { g[i] += wgt * vi * res; for (const [j, vj] of J) H[i][j] += wgt * vi * vj; }
+      const dM = r.comp ? s : c, dP = r.comp ? M * c : -M * s;
+      Ji[0] = j; Jv[0] = (1 - f) * dM; Ji[1] = j + 1; Jv[1] = f * dM; Ji[2] = nk + j; Jv[2] = (1 - f) * dP; Ji[3] = nk + j + 1; Jv[3] = f * dP;
+      for (let p = 0; p < 4; p++) { const i = Ji[p], vi = wgt * Jv[p]; g[i] += vi * res; for (let t = 0; t < 4; t++) H[i * np + Ji[t]] += vi * Jv[t]; }
     }
-    for (let j = 1; j < nk - 1; j++) for (const [o, sw] of [[0, sM], [nk, sP]]) {
-      const idx = [o + j - 1, o + j, o + j + 1], cf = [1, -2, 1], d2 = x[idx[0]] - 2 * x[idx[1]] + x[idx[2]];
-      for (let a = 0; a < 3; a++) { g[idx[a]] += sw * cf[a] * d2; for (let c = 0; c < 3; c++) H[idx[a]][idx[c]] += sw * cf[a] * cf[c]; }
+    for (const [o, sw] of [[0, sM], [nk, sP]]) {
+      for (let j = 1; j < nk - 1; j++) { const d2 = x[o + j - 1] - 2 * x[o + j] + x[o + j + 1]; g[o + j - 1] += sw * d2; g[o + j] -= 2 * sw * d2; g[o + j + 1] += sw * d2; }
+      addBends(H, np, nk, o, 1, sw);
     }
+    for (let i = 0; i < np; i++) ng[i] = -g[i];
     let improved = false;
     for (let tries = 0; tries < 8 && !improved; tries++) {
-      const A = H.map((row, i) => row.map((v, j) => i === j ? v * (1 + mu) + 1e-9 : v));
-      const d = cholSolve(A, g.map(v => -v)), xn = x.map((v, i) => v + d[i]), cn = cost(xn);
-      if (cn < cur) { for (let i = 0; i < np; i++) x[i] = xn[i]; const rel = (cur - cn) / cur; cur = cn; mu = Math.max(1e-6, mu / 3); improved = true; if (rel < 1e-7) it = 99; }
+      Ad.set(H); for (let i = 0; i < np; i++) Ad[i * np + i] = H[i * np + i] * (1 + mu) + 1e-9;
+      const d = cholSolve(Ad, ng, np);
+      for (let i = 0; i < np; i++) xn[i] = x[i] + d[i];
+      const cn = cost(xn);
+      if (cn < cur) { x.set(xn); const rel = (cur - cn) / cur; cur = cn; mu = Math.max(1e-6, mu / 3); improved = true; if (rel < 1e-7) it = 99; }
       else mu *= 4;
     }
     if (!improved) break;
@@ -198,9 +208,9 @@ const median = arr => { const v = Array.from(arr).sort((x, y) => x - y), m = v.l
 // second) or 80 % of its fastest, whichever comes first. Returns -1 if nothing settles.
 function findRelease(ax, ay, az, gzDps, satG, clipX, clipY, trig, n) {
   const M = 12, T = 4 * GMS, TZ = 5 * GMS;
-  let top = 0; for (let k = trig; k < n; k++) top = Math.max(top, satG[k] ? 1e9 : Math.abs(gzDps[k]));
+  let top = 0; for (let k = 0; k < n; k++) top = Math.max(top, satG[k] ? 1e9 : Math.abs(gzDps[k]));
   const goal = Math.min(1800, 0.8 * top);
-  let k0 = trig; for (let k = Math.max(0, trig - 60); k < n; k++) if (satG[k] || Math.abs(gzDps[k]) >= goal) { k0 = k; break; }
+  let k0 = trig; for (let k = 0; k < n; k++) if (satG[k] || Math.abs(gzDps[k]) >= goal) { k0 = k; break; }
   const settled = (k, rail) => {
     let cx = 0, cy = 0, cg = 0;
     for (let j = k; j < k + M; j++) { cx += clipX[j]; cy += clipY[j]; cg += satG[j]; }
@@ -233,23 +243,44 @@ function findRelease(ax, ay, az, gzDps, satG, clipX, clipY, trig, n) {
   }
   return -1;
 }
-// The end of the flight: the first reading after the release that jumps 5 g from the flight's steady values (the
-// net, a catch, the ground).
-function findImpact(ax, ay, az, rel, n) {
-  const M = 12; if (rel + M >= n) return n;
-  const mx = median(ax.subarray(rel, rel + M)), my = median(ay.subarray(rel, rel + M)), mz = median(az.subarray(rel, rel + M));
-  for (let k = rel + M; k < n; k++) if (Math.hypot(ax[k] - mx, ay[k] - my) > 5 * GMS || Math.abs(az[k] - mz) > 5 * GMS) return k;
-  return n;
+// The end of the flight (the net, a catch, the ground), whichever shows first:
+// - the spin drops: below the gyro's top if it was maxed in flight, else under 85 % of the flight's, 3 readings running
+//   (a net or a hand stops the spin; wobble hardly touches this axis);
+// - a hit: a reading more than 4.5 g from the middle of the 12 just before it, arriving with a jump of 1.2 g or more
+//   between readings - or 9 g away on its own (a big wobble drifts the flight's readings slowly by several g, a hit
+//   is sudden).
+function findImpact(ax, ay, az, gzDps, satG, rel, n) {
+  const M = 12, lim = 4.5 * GMS, jump = 1.2 * GMS, far = 9 * GMS;
+  let spinEnd = n;
+  if (rel + M < n) {
+    let allSat = true; const lv = [];
+    for (let k = rel + 2; k < rel + M; k++) { if (!satG[k]) allSat = false; lv.push(Math.abs(gzDps[k])); }
+    const level = median(lv);
+    const low = k => allSat ? !satG[k] : Math.abs(gzDps[k]) < 0.85 * level;
+    if (allSat || level > 120) for (let k = rel + M; k + 2 < n; k++) if (low(k) && low(k + 1) && low(k + 2)) { spinEnd = k; break; }
+  }
+  for (let k = rel + M; k < Math.min(n, spinEnd); k++) {
+    const mx = median(ax.subarray(k - M, k)), my = median(ay.subarray(k - M, k)), mz = median(az.subarray(k - M, k));
+    const d = Math.max(Math.hypot(ax[k] - mx, ay[k] - my), Math.abs(az[k] - mz));
+    if (d > far) return k;
+    if (d > lim) {
+      let j = 0; for (let i = k - 2; i <= k; i++) j = Math.max(j, Math.hypot(ax[i] - ax[i - 1], ay[i] - ay[i - 1], az[i] - az[i - 1]));
+      if (j >= jump) return k;
+    }
+  }
+  return spinEnd;
 }
 // A wobbling disc's in-plane turning rate (gyro x and y, which don't max out) turns round, in the disc's own axes, at
 // (I3 - I1) / I1 x its spin - about 0.93 x for a golf disc, whose axial moment of inertia is ~1.93 x its cross one -
 // whatever the spin, so it measures the spin while the gyro's spin axis is maxed. Its rate of change turns the same
 // way round zero, so the angle of that, unwrapped, against time gives the rate without needing the circle's centre
 // (which a sensor a degree off the spin axis shifts). Returns {w (rad/s), n, rms (rad), mag, turns} or null.
-function turnRate(xs, ys, dt) {
+function turnRate(xs, ys, dt, top = Infinity) {
   const t = [], ph = [];
   let prev = null, off = 0, mag = 0;
+  const maxed = i => Math.abs(xs[i]) >= top || Math.abs(ys[i]) >= top;
   for (let i = 2; i < xs.length - 2; i++) {
+    if (maxed(i - 2) || maxed(i - 1) || maxed(i) || maxed(i + 1) || maxed(i + 2)) continue;   // a huge wobble maxes x or y too
     const dx = (xs[i + 2] - xs[i - 2]) / (4 * dt), dy = (ys[i + 2] - ys[i - 2]) / (4 * dt);
     mag += Math.hypot(dx, dy);
     let a = Math.atan2(dy, dx) + off;
@@ -271,7 +302,8 @@ function turnRate(xs, ys, dt) {
 // maxed stretch), trig (trigger index, default 415), old (true = the disc's current maths, for comparison)}.
 function reconstruct(S, I, o = {}) {
   const n = S.length / 6, old = !!o.old, info0 = {};
-  const dt = old ? 1 / 416 : 1 / (I.rate > 380 && I.rate < 460 ? I.rate : (I.odr || 416));
+  if (n < 100) throw new Error(`a capture of ${n} readings is too short to rebuild`);
+  const dt = old ? 1 / 416 : 1 / (I.rate > 380 && I.rate < 460 ? I.rate : 418.6);        // this chip's clock if none measured
   const GL = I.glsb, AL = I.alsb;
   const gx = new Float64Array(n), gy = new Float64Array(n), gz = new Float64Array(n);
   const ax = new Float64Array(n), ay = new Float64Array(n), az = new Float64Array(n);
@@ -298,17 +330,21 @@ function reconstruct(S, I, o = {}) {
     k = e;
   }
   const trig = Math.min(o.trig ?? 415, n - 30);
-  let iRel = Math.min(n - 1, Math.max(trig, o.iRel ?? trig + 60));
+  let iRel = Math.min(n - 1, Math.max(40, o.iRel ?? trig + 60));
   // ---- 0. release (findRelease: where the in-plane readings settle, searching from the spin-up) and the flight's end.
   // The disc's own release point is kept only if nothing settles (and always in the "old" maths).
-  info0.relGiven = iRel; info0.relSrc = "disc";
+  info0.relGiven = o.iRel ?? iRel; info0.relSrc = "disc";
   if (!old && !o.keepRel) {
     const gzDps = Float64Array.from(gz, v => v - I.bias[2]);
     const k = findRelease(ax, ay, az, gzDps, satG, clipX, clipY, trig, n);
-    if (k >= trig) { iRel = k; info0.relSrc = "settled"; }
+    if (k >= 40) { iRel = k; info0.relSrc = "settled"; }
   }
-  const iImp = old ? n : findImpact(ax, ay, az, iRel, n);
+  const iImp = old ? n : findImpact(ax, ay, az, Float64Array.from(gz, v => v - I.bias[2]), satG, iRel, n);
   info0.iImp = iImp;
+  // the longest run of lost readings (repeats) around the pull: a few in a row leave the force fit with no data there,
+  // so the pages don't rebuild or learn from such a throw
+  let run = 0; info0.longestGap = 0;
+  for (let k = Math.max(1, trig - 60); k < Math.min(n, iRel + 60); k++) { run = dup[k] ? run + 1 : 0; if (run > info0.longestGap) info0.longestGap = run; }
   // ---- 1. the still moment before the throw: "down" and the gyro's zero error (as the disc does)
   const win = Math.floor(0.15 / dt);
   let bias = I.bias.slice(), iStart = 0, q0 = null;
@@ -340,7 +376,7 @@ function reconstruct(S, I, o = {}) {
   // wobble's turning rate (turnRate) over kI = (I3 - I1) / I1, and the off-centre sensor's steady force
   // |c| = (w^2 + wp^2 / 2) r with a calibrated radius r (wp: the wobble's own rate) - weighed together when both are
   // there. Last resort: the disc's own number (o.spinRpm), else the gyro's top.
-  const kI = I.kI > 0.5 && I.kI < 1.1 ? I.kI : 0.93;
+  const kI = I.kI > 0.5 && I.kI < 1.1 ? I.kI : 0.93, gTopXY = 32767 * GL * D2R;
   const f0 = Math.min(n - 1, iRel + 4), f1 = Math.max(f0, Math.min(n, iImp - 3));
   let fSum = 0, fSat = 0; for (let k = f0; k < f1; k++) { fSum += wz[k]; fSat += satG[k]; }
   const fN = f1 - f0, sgn = fSum < 0 ? -1 : 1;
@@ -353,9 +389,10 @@ function reconstruct(S, I, o = {}) {
     const cx = median(ax.subarray(f0, f1)), cy = median(ay.subarray(f0, f1)), cM = Math.hypot(cx, cy);
     spin.c = [cx, cy]; spin.wp = Math.sqrt(wpMean2);
     if (fSat > fN / 4 && !old) {
-      const tr = turnRate(gxs, gys, dt);
-      // the wobble's: enough of it, a straight line, at least half a turn, the same way round as the gyro says
-      const okB = !!tr && tr.mag > 600 * D2R && tr.rms < 0.45 && tr.turns >= 0.5 && Math.sign(tr.w) === sgn;
+      const tr = turnRate(gxs, gys, dt, 0.98 * gTopXY);
+      // the wobble's: enough of it, a straight line, at least half a turn (a third when the line is clean and long
+      // enough - short flights), the same way round as the gyro says
+      const okB = !!tr && tr.mag > 600 * D2R && tr.rms < 0.45 && tr.turns >= (tr.n >= 16 && tr.rms < 0.3 ? 0.3 : 0.5) && Math.sign(tr.w) === sgn;
       const wB = okB ? Math.abs(tr.w) / kI : 0;
       const wA = I.radius > 0.0005 ? Math.sqrt(Math.max(0, cM / I.radius - wpMean2 / 2)) : 0;
       spin.wobble = okB ? wB * 60 / TAU : null; spin.force = wA ? wA * 60 / TAU : null; spin.fit = tr;
@@ -368,13 +405,13 @@ function reconstruct(S, I, o = {}) {
       else if (wA) { w = wA; spinSrc = "force"; }
       if (w > Math.abs(wFlight)) wFlight = sgn * w;
       else if (o.spinRpm && o.spinRpm * TAU / 60 > Math.abs(wFlight)) { wFlight = sgn * o.spinRpm * TAU / 60; spinSrc = "disc"; }
-      else spinSrc = "gyro's top (at least)";
+      else { spinSrc = "gyro's top (at least)"; spin.atLeast = true; }
       if (wB && cM > 0.3 * GMS) spin.radius = cM / (wB * wB + wpMean2 / 2);   // what this throw says the radius is
     } else if (fSat > fN / 4 && o.spinRpm) { wFlight = sgn * o.spinRpm * TAU / 60; spinSrc = "disc"; }
     else if (!fSat && !old && Math.abs(wFlight) > 60 * TAU / 60) {
       // the gyro saw this flight's spin: what it says about this disc, for the throws it won't see. kI from the wobble's
       // turning rate; the radius from the steady force (once it is big enough to read well)
-      const tr = turnRate(gxs, gys, dt);
+      const tr = turnRate(gxs, gys, dt, 0.98 * gTopXY);
       if (tr && tr.mag > 600 * D2R && tr.rms < 0.3 && tr.turns >= 1 && Math.sign(tr.w) === sgn) spin.kIObs = Math.abs(tr.w / wFlight);
       if (cM > 0.5 * GMS) spin.radiusObs = cM / (wFlight * wFlight + wpMean2 / 2);
     }
@@ -473,5 +510,40 @@ function reconstruct(S, I, o = {}) {
   return { six, info: Object.assign(info, { iStart, iRel, r, dt }), path, att, vel, q0, iStart, wz, fx, fy, fz };
 }
 
-G.DiscTrack = { reconstruct, sixFrom, relHeading, fitPullForce, fitPolar, findRelease, findImpact, turnRate, median };
+// ---------------------------------------------------------------- what slower throws teach about this disc
+// Throws the gyro can still follow (under 382 rpm) show how fast this disc's wobble turns for its spin (kI, its shape)
+// and how far off the axis the sensor sits - kept in this browser (shared by the pages) for the fast throws the gyro
+// can't follow. Only complete, real throws teach (learnWorthy), each once (by id); the middle value of the last 15 is used.
+const LEARN_KEY = "disc3d.learn.v1";
+const nums = a => Array.isArray(a) ? a.filter(x => typeof x === "number" && isFinite(x)) : [];
+function learnRead() {
+  try {
+    const o = JSON.parse(localStorage.getItem(LEARN_KEY)) || {};
+    return { kI: nums(o.kI), r: nums(o.r), ids: Array.isArray(o.ids) ? o.ids.filter(x => typeof x === "string") : [] };
+  } catch { return { kI: [], r: [], ids: [] }; }
+}
+function learned() {
+  const L = learnRead();
+  return { kI: L.kI.length >= 2 ? median(L.kI) : 0, radius: L.r.length >= 2 ? median(L.r) : 0, nKI: L.kI.length, nR: L.r.length };
+}
+// c: the disc's results packet (counted, n, res[1] spin, res[6] peak); r: reconstruct's result
+const learnWorthy = (c, r) => !!r && c.n >= 445 && (c.counted || (c.res[6] >= 4 && c.res[1] >= 120)) && Math.abs(r.six.spin) >= 120 &&
+  r.info.relSrc === "settled" && !(r.info.longestGap > 3);
+function teach(id, c, r) {
+  if (!learnWorthy(c, r)) return false;
+  const sp = r.info.spin || {};
+  if (!(sp.kIObs > 0.8 && sp.kIObs < 1.02) && !(sp.radiusObs > 0.002 && sp.radiusObs < 0.025)) return false;
+  try {
+    const L = learnRead(); if (L.ids.includes(id)) return false;
+    if (sp.kIObs > 0.8 && sp.kIObs < 1.02) L.kI.push(+sp.kIObs.toFixed(4));
+    if (sp.radiusObs > 0.002 && sp.radiusObs < 0.025) L.r.push(+sp.radiusObs.toFixed(5));
+    L.ids.push(id);
+    for (const [k, m] of [["kI", 15], ["r", 15], ["ids", 200]]) if (L[k].length > m) L[k].splice(0, L[k].length - m);
+    localStorage.setItem(LEARN_KEY, JSON.stringify(L));
+    return true;
+  } catch { return false; }
+}
+
+G.DiscTrack = { reconstruct, sixFrom, relHeading, fitPullForce, fitPolar, findRelease, findImpact, turnRate, median,
+                learned, teach, learnWorthy };
 })(typeof window !== "undefined" ? window : globalThis);

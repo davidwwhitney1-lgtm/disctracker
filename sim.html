@@ -352,7 +352,9 @@
   </aside>
   <section class="lp-card">
     <div class="lp-bar"><b>How the last throw was measured</b><select id="lpThrowSel" style="display:none"></select><span id="lpCheck"></span>
-      <span class="spacer"></span><span id="lgCount"></span>
+      <span class="spacer"></span>
+      <label title="Also draw the new tracker (orange): the force rebuilt past the 16 g limit, the spin past the gyro's 382 rpm, and its own release point"><input type="checkbox" id="lpRebuilt" checked> rebuilt</label>
+      <span id="lgCount"></span>
       <button class="small" id="lgCsv" title="Your labels next to the disc's numbers, one row per throw">Export log (Excel)</button>
       <button class="small" id="lgJson" title="Everything including the raw readings, for re-tuning the calculations">Data file</button></div>
     <div class="lp-break-body"><div class="cvwrap"><canvas id="lpBreak"></canvas></div>
@@ -384,6 +386,7 @@
 </div>
 
 <script src="flight.js?v=2026-10-21b"></script>
+<script src="track.js?v=2026-10-23"></script>
 <script type="module">
 import * as THREE from "three";
 import { Line2 } from "three/addons/lines/Line2.js";
@@ -695,6 +698,7 @@ function header(type, n, tMs, x = {}) {
     F(160, P.relMinRpm); F(164, P.relPeakG); dv.setUint16(168, P.prePeak, true); dv.setUint16(170, P.steadyN, true);
     dv.setUint16(172, I.calFlags || 0, true); dv.setInt16(174, I.tempCdeg || 0, true); F(176, P.biasTol);
     dv.setUint32(180, (I.calSeq || 0) >>> 0, true); dv.setUint32(184, (x.seq0 || 0) >>> 0, true); F(188, x.lever);
+    F(192, discRate(I, rec.infos));                            // the disc's measured samples per second (the odr above is the nominal 416)
   }
   return buf;
 }
@@ -1022,11 +1026,49 @@ function discAngles(q, vx, vy, vz, ccw) {
   return { speed: Math.hypot(vx, vy, vz) * 2.2369363, launch, hyzer, nose, normal: [nx, ny, nz] };
 }
 
+// The new tracker (track.js) on the same readings: the force through the stretch the accelerometer maxed out, the spin
+// past the gyro's top (the wobble's turning rate, the off-centre force) and its own release point - where the readings
+// settle into free flight, searched from where the spin passes 300 rpm (the disc's can land on the net). What slower
+// throws teach about this disc (the wobble ratio kI, the sensor's radius) is shared with the 3D page (same storage).
+// Samples per second by the disc's own clock: pairs of this boot's info packets 8-30 s apart (samples counted /
+// milliseconds). Standby or a calibration stops the count while the clock runs on, so a pair spanning one reads low:
+// only 405-430 counts, and the middle value once two agree within 0.3 %; until then 418.6, what this disc measured.
+function discRate(I, list = live.infos) {
+  const mine = list.filter(x => x.boot === I.boot).sort((a, b) => a.millis - b.millis), rs = [];
+  for (let i = 0; i < mine.length; i++) for (let j = i + 1; j < mine.length; j++) {
+    const span = mine[j].millis - mine[i].millis; if (span < 8000) continue; if (span > 30000) break;
+    const r = (mine[j].seq - mine[i].seq) * 1000 / span; if (r > 405 && r < 430) rs.push(r); break;
+  }
+  if (rs.length < 2) return 418.6;
+  const m = DiscTrack.median(rs); return rs.filter(r => Math.abs(r - m) < 0.003 * m).length >= 2 ? m : 418.6;
+}
+function rebuild(S, info, c) {
+  if (!window.DiscTrack || !S || !info || c.n < 445) return null;
+  const L = DiscTrack.learned();
+  const I = { alsb: info.alsb, glsb: info.glsb, bias: info.bias, radius: info.radius > 0.0005 ? info.radius : L.radius, odr: info.odr,
+              rate: discRate(info), kI: L.kI || 0.93 };
+  try {
+    const r = DiscTrack.reconstruct(S, I, { iRel: c.rel < c.n ? c.rel : undefined, spinRpm: c.res[1] > 0 ? c.res[1] : undefined }), x = r.info;
+    return { res: r, speed: r.six.speed, spin: r.six.spin, hyzer: r.six.hyzer, nose: r.six.nose, launch: r.six.launch, rel: x.iRel,
+             relFound: x.relSrc === "settled", imp: x.iImp, spinSrc: x.spinSrc, atLeast: !!(x.spin && x.spin.atLeast), gap: x.longestGap,
+             iStart: r.iStart, wz: r.wz, vel: r.vel, fx: r.fx, fy: r.fy, fz: r.fz, fit: x.fitWindow || null, rate: 1 / x.dt };
+  } catch (err) { console.warn("rebuilding the throw failed", err); return null; }
+}
+// A throw's rebuild, worked out the first time something needs it: throws reloaded from the log wait until they are
+// shown, a new throw right after its own numbers are on screen. Sx: the capture plus the stream's readings after it.
+const nwOf = e => e.nwPending ? null : e.nw !== undefined ? e.nw : (e.nw = rebuild(e.Sx || e.S, e.info, e.c));
+const spinTxt = nw => `${nw.atLeast ? "≥ " : ""}${nw.spin.toFixed(0)} rpm`;
+// The new tracker (track.js) on the same readings: the force through the stretch the accelerometer maxed out, the spin
+// past the gyro's top (the wobble's turning rate, the off-centre force) and its own release point - where the readings
+// settle into free flight, searched from where the spin passes 300 rpm (the disc's can land on the net). The disc's
+// recording stops ~6 readings before the hit it found, so the rebuild also gets up to EXTRA of the stream's readings
+// after it. What slower throws teach about this disc (kI, the sensor's radius) is shared with the 3D page (track.js).
+const EXTRA = 160;
 // A throw's results packet arrived: cut its samples out of the live buffer and redo the maths here, step by step.
 function liveTryCaps() {
   while (live.pendingCaps.length) {
-    const c = live.pendingCaps[0];
-    if (live.last < c.start + c.n - 1 && performance.now() - c.at < 15000) return;
+    const c = live.pendingCaps[0], end = c.start + c.n - 1, age = performance.now() - c.at;
+    if (live.last < end + EXTRA && age < (live.last >= end ? 1500 : 15000)) return;
     live.pendingCaps.shift();
     const S = new Int16Array(c.n * 6); let missing = 0;
     for (let i = 0; i < c.n; i++) {
@@ -1038,7 +1080,10 @@ function liveTryCaps() {
     const info = infoAt(live.infos, live.info, c.start + c.n) || DEFAULT_INFO;
     try { an = analyzeCapture(S, info); } catch (e) { console.error("analysis failed", e); }
     const rr = live.rels.find(r => Math.abs(r.seq - (c.start + c.rel)) < 60);
-    const ent = { id: `${info.boot}-${c.start}-${c.tMs}`, c, S, an, missing, at: Date.now(), info, label: null,
+    let nx = c.n; while (nx < c.n + EXTRA && live.seqs[(c.start + nx) % LRING] === c.start + nx) nx++;
+    const Sx = new Int16Array(nx * 6); Sx.set(S);
+    for (let i = c.n; i < nx; i++) { const sl = (c.start + i) % LRING; Sx.set(live.ring.subarray(sl * 6, sl * 6 + 6), i * 6); }
+    const ent = { id: `${info.boot}-${c.start}-${c.tMs}`, c, S, Sx, an, nwPending: true, missing, at: Date.now(), info, label: null,
                   liveEst: rr ? { speed: rr.speed, launch: rr.launch, hyzer: rr.hyzer, nose: rr.nose } : null };
     // v4: a spinless capture that ran to the 3 s limit is handling ("quiet": the disc raises no banner for it and
     // keeps no record of it unless the stream is on). It shows in the graphs and the list, but it does not take
@@ -1048,9 +1093,18 @@ function liveTryCaps() {
     ent.flight = capFlight(ent);
     live.caps.push(ent);
     if (live.caps.length > 40) live.caps.shift();
+    // the rebuild (a tenth of a second or so) once the disc's own numbers are on screen; then it teaches and is logged
+    setTimeout(() => {
+      try {
+        ent.nwPending = false; const nw = nwOf(ent);
+        if (nw && !ent.quiet && missing <= 0.2 * c.n) try { DiscTrack.teach(ent.id, c, nw.res); } catch (err) { console.warn("learning", err); }
+      } finally {
+        if (!ent.quiet) logSave(ent, true);
+        if (live.sel === ent) { renderBreakdown(); renderLastThrow(); }
+      }
+    }, 0);
     if (ent.quiet) { ent.logged = false; if (live.sel) { renderThrowSel(); continue; } }
     live.sel = ent;
-    if (!ent.quiet) logSave(ent, true);
     renderThrowSel(); renderBreakdown(); renderLastThrow(); renderLog(true);
   }
 }
@@ -1286,7 +1340,7 @@ const niceStep = (range, target) => { const raw = range / target, p = Math.pow(1
 const fmtTick = v => Math.abs(v) >= 1000 ? +(v / 1000).toFixed(1) + "k" : String(+v.toFixed(3));
 const BAND = { pre: "rgba(148,163,184,0.10)", still: "rgba(59,130,246,0.26)", seed: "rgba(56,189,248,0.16)", pull: "rgba(251,146,60,0.20)",
                settle: "rgba(148,163,184,0.30)", flight: "rgba(52,211,153,0.22)", after: "rgba(248,113,113,0.14)" };
-const COL = { x: "#f87171", y: "#4ade80", z: "#60a5fa", abs: "#cbd5e1", hand: "#fb923c", spinG: "#60a5fa", spinC: "#c084fc", speed: "#fbbf24", fill: "#e879f9" };
+const COL = { x: "#f87171", y: "#4ade80", z: "#60a5fa", abs: "#cbd5e1", hand: "#fb923c", spinG: "#60a5fa", spinC: "#c084fc", speed: "#fbbf24", fill: "#e879f9", rebuilt: "#ff6b3d" };
 const FONT = "11px system-ui, Segoe UI, sans-serif", FONT_B = "600 12px system-ui, Segoe UI, sans-serif", TITLE_H = 17;
 // Sample ranges laid side by side across [x, x + w): a time axis with a break, so the dull stretch between the
 // still moment and the throw can be cut out. A short range still gets `minFrac` of the width.
@@ -1370,10 +1424,13 @@ function panel(g, r, o) {
       const x = X(vl.i); if (x < sg.x0 || x > sg.x1) continue;
       g.strokeStyle = vl.color; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x, r.y); g.lineTo(x, r.y + r.h); g.stroke();
     }
+    const ptags = [];
     for (const pt of o.points || []) {
-      const x = X(pt.i), y = Y(pt.v); if (x < sg.x0 || x > sg.x1) continue;
-      g.fillStyle = "#fff"; g.beginPath(); g.arc(x, y, 3.5, 0, 2 * Math.PI); g.fill();
-      labelBox(g, pt.label, x + 7, Math.max(r.y + TITLE_H + 8, y - 9), "#fff");
+      const x = X(pt.i), y = Y(pt.v), col = pt.color || "#fff"; if (x < sg.x0 || x > sg.x1) continue;
+      g.fillStyle = col; g.beginPath(); g.arc(x, y, 3.5, 0, 2 * Math.PI); g.fill();
+      const tw = g.measureText(pt.label).width; let ly = Math.max(r.y + TITLE_H + 8, y - 9);
+      while (clash(ptags, { x0: x + 4, x1: x + tw + 10, y: ly }) && ly < r.y + r.h - 8) ly += 14;
+      ptags.push(labelBox(g, pt.label, x + 7, ly, col));
     }
     g.restore();
   }
@@ -1465,6 +1522,11 @@ function drawLive() {
       ptSpeed.push({ i: s0 + an.iRel, v: e.c.res[0], label: `disc: ${e.c.res[0].toFixed(1)} mph` });
       ptSpin.push({ i: s0 + Math.round((an.f0 + an.f1) / 2), v: e.c.res[1], label: `disc: ${e.c.res[1].toFixed(0)} rpm` });
     }
+    if (e.nw && !e.nwPending && $("lpRebuilt").checked) {
+      if (!an || Math.abs(e.nw.rel - an.iRel) >= 3) vlines.push({ i: s0 + e.nw.rel, color: COL.rebuilt, label: "release (rebuilt)" });
+      ptSpeed.push({ i: s0 + e.nw.rel, v: e.nw.speed, label: `rebuilt: ${e.nw.speed.toFixed(1)} mph`, color: COL.rebuilt });
+      ptSpin.push({ i: s0 + Math.min(e.nw.imp, e.nw.rel + 30), v: e.nw.spin, label: `rebuilt: ${spinTxt(e.nw)}`, color: COL.rebuilt });
+    }
   }
   // releases and impacts spotted here, until the disc's results for that throw take over
   const reported = i => live.caps.some(e => !e.old && i >= e.c.start && i <= e.c.start + e.c.n + 60);
@@ -1540,7 +1602,9 @@ function renderLastThrow() {
   const c = (k, v) => `<span>${k}</span><span class="v">${v}</span>`;
   $("lpLast").innerHTML = c("Speed", `${d[0].toFixed(1)} mph`) + c("Spin", `${d[1].toFixed(0)} rpm`) + c("Hyzer", `${signed(d[2])}°`) +
     c("Nose", `${signed(d[3])}°`) + c("Launch", `${signed(d[4])}°`) + c("Wobble", `${d[5].toFixed(1)}°`) +
-    c("Peak force", `${d[6].toFixed(1)} g`) + c("Counted", e.c.counted ? "yes" : "no (see the steps)");
+    c("Peak force", `${d[6].toFixed(1)} g`) + c("Counted", e.c.counted ? "yes" : "no (see the steps)") +
+    ((nw => nw && $("lpRebuilt").checked ? `<span class="why" style="color:${COL.rebuilt}">Rebuilt past the sensor's limits: ${nw.speed.toFixed(1)} mph, ${spinTxt(nw)} (${nw.spinSrc}), ` +
+      `hyzer ${signed(nw.hyzer)}°, nose ${signed(nw.nose)}°, launch ${signed(nw.launch)}°${nw.relFound ? "" : " - release not found, the disc's mark used"}.</span>` : "")(nwOf(e)));
 }
 function renderThrowSel() {
   const sel = $("lpThrowSel");
@@ -1563,13 +1627,17 @@ function renderBreakdown() {
   let move = an.iStart;
   for (let i = an.iStart; i < an.iRel; i++)
     if (Math.abs(A(i) - 1) > 0.3 || Math.hypot(S[i * 6], S[i * 6 + 1], S[i * 6 + 2]) * I.glsb > 60) { move = i; break; }
-  const pad = Math.round(0.04 * odr), end = Math.max(an.f1, an.imp < n ? an.imp : n - 1) + Math.round(0.06 * odr);
+  const nw = nwOf(e), nwOn = !!nw && $("lpRebuilt").checked;
+  // up to the disc's flight and impact - and the rebuilt release and impact, when those come later
+  const lastI = Math.max(an.f1, an.imp < n ? an.imp : 0, nwOn ? Math.min(n - 1, Math.max(nw.rel + Math.round(0.05 * odr), nw.imp)) : 0);
+  const pad = Math.round(0.04 * odr), end = Math.min(n - 1, lastI + Math.round(0.06 * odr));
   const b0 = Math.max(0, Math.min(move, 415, an.iRel) - Math.round(0.12 * odr));
   const sAt = an.stillAt >= 0 ? an.stillAt : an.seedAt >= 0 ? an.seedAt : -1;   // v4: the quiet moment used instead
   const ranges = sAt >= 0 && b0 - an.iStart > 0.25 * odr ? [[Math.max(0, sAt - pad), an.iStart + pad], [b0, end]]
     : [[Math.max(0, Math.min(sAt >= 0 ? sAt - pad : b0, b0)), end]];
   const segs = xLayout(ranges, 0, W);
   const bands = captureBands(an, n), vlines = [{ i: 415, color: "#94a3b8", label: "trigger" }, { i: an.iRel, color: "#fbbf24", label: "release" }];
+  if (nwOn && Math.abs(nw.rel - an.iRel) >= 3) vlines.push({ i: nw.rel, color: COL.rebuilt, label: "release (rebuilt)" });
   if (an.imp < n) vlines.push({ i: an.imp, color: "#f87171", label: "impact" });
   else if (e.c.end === 1) vlines.push({ i: n - 1, color: "#f87171", label: "impact: recording ends" });
   let fpk = 0; for (const [a, b] of ranges) for (let i = a; i <= Math.min(b, n - 1); i++) fpk = Math.max(fpk, A(i));
@@ -1577,24 +1645,34 @@ function renderBreakdown() {
   const fl = [{ v: I.trigG, color: "#94a3b8", label: `trigger ${nf(I.trigG)} g` }, { v: I.freeG, color: "#fbbf24", label: `release: under ${nf(I.freeG)} g` }];
   if (an.v4) fl.push({ v: an.rules.relPeakG, color: "#a78bfa", label: `pull peak over ${nf(an.rules.relPeakG)} g` });
   if (an.imp < n && an.impLim) fl.push({ v: an.impLim, color: "#f87171", label: `impact: over ${an.impLim.toFixed(1)} g` });
-  panel(g, Rk(0), { segs, yMin: 0, yMax: Math.min(30, Math.max(5, fpk * 1.1)), sqrt: true, title: "Force (g)", bands, vlines, vlabels: true, hlines: fl,
+  const nwF = i => nwOn && nw.fit && i >= nw.fit[0] && i < nw.fit[1] ? Math.hypot(nw.fx[i], nw.fy[i], nw.fz[i]) / GMS : null;
+  let fnw = 0; if (nwOn && nw.fit) for (let i = nw.fit[0]; i < nw.fit[1]; i++) fnw = Math.max(fnw, nwF(i));
+  panel(g, Rk(0), { segs, yMin: 0, yMax: Math.min(80, Math.max(5, fpk * 1.1, fnw * 1.05)), sqrt: true, title: "Force (g)", bands, vlines, vlabels: true, hlines: fl,
     series: [{ get: i => i >= 0 && i < n ? A(i) : null, color: COL.abs, label: "total" },
-             { get: i => isFinite(an.hand[i]) ? an.hand[i] : null, color: COL.hand, label: "hand force (off-center part removed)", width: 1.8 }] });
+             { get: i => isFinite(an.hand[i]) ? an.hand[i] : null, color: COL.hand, label: "hand force (off-center part removed)", width: 1.8 }]
+      .concat(nwOn && nw.fit ? [{ get: nwF, color: COL.rebuilt, label: "rebuilt past the 16 g limit", width: 2, dash: [5, 3] }] : []) });
   const inFlight = val => i => i >= an.f0 && i < an.f1 && val > 0 ? val : null;
   const spinSeries = [{ get: i => i >= 0 && i < n ? Math.abs(S[i * 6 + 2] * I.glsb - an.bias[2]) / 6 : null, color: COL.spinG, label: "gyro z ÷ 6" }];
   if (an.c0 >= 0) spinSeries.push({ get: i => isFinite(an.fill[i]) ? an.fill[i] : null, color: COL.fill, label: "filled in (gyro maxed)", dash: [5, 3], width: 2 });
   if (an.spinC > 0) spinSeries.push({ get: inFlight(an.spinC), color: COL.spinC, label: "√(a/r)", dash: [4, 3] });
   if (an.wave.rpm > 0) spinSeries.push({ get: inFlight(an.wave.rpm), color: "#f472b6", label: "drag wave", dash: [2, 3] });
   spinSeries.push({ get: inFlight(an.spin), color: COL.y, label: `result ${an.spin.toFixed(0)} rpm`, width: 2.4 });
-  panel(g, Rk(1), { segs, yMin: 0, yMax: Math.max(420, ...[an.spin, an.spinC, an.wave.rpm].map(val => (val || 0) * 1.15)), title: "Spin-axis rate (rpm)",
+  if (nwOn) spinSeries.push({ get: i => i >= nw.iStart && i < n ? Math.abs(nw.wz[i]) * 60 / (2 * Math.PI) : null, color: COL.rebuilt, label: `rebuilt ${spinTxt(nw)}`, width: 2 });
+  panel(g, Rk(1), { segs, yMin: 0, yMax: Math.max(420, ...[an.spin, an.spinC, an.wave.rpm, nwOn ? nw.spin : 0].map(val => (val || 0) * 1.15)), title: "Spin-axis rate (rpm)",
     bands, vlines, series: spinSeries, hlines: [{ v: GYRO_MAX / 6, color: "#f87171", label: "gyro max 382 rpm" }] });
-  panel(g, Rk(2), { segs, yMin: 0, yMax: Math.max(10, an.speed * 1.15), title: "Speed being added up (mph)", bands, vlines,
-    series: [{ get: i => isFinite(an.speedTrace[i]) ? an.speedTrace[i] : null, color: COL.speed, label: `|velocity| → ${an.speed.toFixed(1)} mph at release`, width: 2 }] });
+  // the rebuilt speed being added up, held at its release (after that it only means the flight and the hit)
+  const nwV = i => { if (!nwOn || i < nw.iStart || i >= n) return null; if (i > nw.rel) return nw.speed; const v = nw.vel[i - nw.iStart]; return v ? Math.hypot(v[0], v[1], v[2]) * 2.2369363 : null; };
+  panel(g, Rk(2), { segs, yMin: 0, yMax: Math.max(10, an.speed * 1.15, nwOn ? nw.speed * 1.15 : 0), title: "Speed being added up (mph)", bands, vlines,
+    series: [{ get: i => isFinite(an.speedTrace[i]) ? an.speedTrace[i] : null, color: COL.speed, label: `|velocity| → ${an.speed.toFixed(1)} mph at release`, width: 2 }]
+      .concat(nwOn ? [{ get: nwV, color: COL.rebuilt, label: `rebuilt → ${nw.speed.toFixed(1)} mph, held at its release`, width: 2 }] : []) });
   timeAxis(g, segs, H - axisH + 3, odr, 415, t => `${t > 0 ? "+" : ""}${t} s`);
   // the disc's own numbers vs this page's re-calculation
   const d = e.c.res, ok = Math.abs(d[0] - an.speed) < 0.6 && Math.abs(d[1] - an.spin) < 4 && Math.abs(d[2] - an.hyzer) < 1 && Math.abs(d[4] - an.launch) < 1;
-  $("lpCheck").innerHTML = ok ? `<span style="color:var(--good)">✓ this page's re-calculation matches the disc</span>` :
-    `<span style="color:var(--warn)">re-calculation differs from the disc (disc ${d[0].toFixed(1)} mph / ${d[1].toFixed(0)} rpm vs ${an.speed.toFixed(1)} / ${an.spin.toFixed(0)})${e.missing ? ` – ${e.missing} readings were missing` : ""}</span>`;
+  $("lpCheck").innerHTML = (ok ? `<span style="color:var(--good)">✓ this page's re-calculation matches the disc</span>` :
+    `<span style="color:var(--warn)">re-calculation differs from the disc (disc ${d[0].toFixed(1)} mph / ${d[1].toFixed(0)} rpm vs ${an.speed.toFixed(1)} / ${an.spin.toFixed(0)})${e.missing ? ` – ${e.missing} readings were missing` : ""}</span>`) +
+    (nwOn ? ` · <span style="color:${COL.rebuilt}">rebuilt: ${nw.speed.toFixed(1)} mph, ${spinTxt(nw)}` +
+      (!nw.relFound ? ", release not found (used the disc's mark)"
+        : Math.abs(nw.rel - e.c.rel) >= 3 ? `, released ${(Math.abs(nw.rel - e.c.rel) / nw.rate * 1000).toFixed(0)} ms ${nw.rel < e.c.rel ? "before" : "after"} the disc's mark` : "") + `</span>` : "");
   renderSteps(e);
 }
 function renderSteps(e) {
@@ -1675,6 +1753,7 @@ function renderCalState() {
     (f != null && (f & 8) ? " · a calibration is active but not saved" : "");
 }
 $("lpThrowSel").onchange = () => { live.sel = live.caps[+$("lpThrowSel").value] || live.sel; renderBreakdown(); renderLastThrow(); renderLog(true); };
+$("lpRebuilt").onchange = () => { renderBreakdown(); renderLastThrow(); };
 window.addEventListener("resize", () => { if (settings.mode === "live") { renderBreakdown(); renderLog(); } });
 
 // ================================================================ throw log: what each throw really was
@@ -1702,6 +1781,9 @@ function capFlight(e) {
   return simulateFlight({ speedMph: d[0], spinRpm: d[1], hyzer: d[2], nose: d[3], launch: d[4], wobble: d[5], ccw: !!(e.c.flags & 128),
     disc, windMph: settings.windMph, windFrom: settings.windFrom, heightFt: settings.heightFt });
 }
+// the rebuilt numbers kept with a logged throw (null: it couldn't be rebuilt)
+const rebuiltRec = e => { const nw = nwOf(e); return nw ? { speed: nw.speed, spin: nw.spin, spinAtLeast: nw.atLeast, hyzer: nw.hyzer, nose: nw.nose,
+  launch: nw.launch, spinFrom: nw.spinSrc, releaseFound: nw.relFound, relShiftMs: (nw.rel - e.c.rel) / nw.rate * 1000 } : null; };
 function capRecord(e) {
   const an = e.an && e.an.n ? e.an : null, fl = e.flight;
   return { id: e.id, at: e.at, label: e.label, c: e.c, S: e.S, info: e.info, missing: e.missing, live: e.liveEst,
@@ -1709,6 +1791,7 @@ function capRecord(e) {
       spinGyro: an.spinGyro, spinCentrip: an.spinC, spinWave: an.wave.rpm, flags: an.flags, src: an.src, rel: an.iRel, stillAt: an.stillAt,
       imp: an.imp, flightMs: (an.f1 - an.f0) / an.odr * 1000, fillMs: an.c0 >= 0 ? (an.iRel - an.c0 + 1) / an.odr * 1000 : 0,
       leverMph: an.v4 ? an.lever : null, seedAt: an.v4 ? an.seedAt : null },
+    rebuilt: rebuiltRec(e),
     sim: fl && { distFt: fl.distFt, lateralFt: fl.lateralFt, maxHFt: fl.maxHFt, timeS: fl.timeS, disc: e.simDisc } };
 }
 async function logSave(e, isNew) {
@@ -1789,19 +1872,35 @@ $("lgCsv").onclick = async () => {
   const head = ["time", "labeled", "what_it_was", "thrown_into", "my_speed_mph", "disc_speed_mph", "speed_diff_mph", "my_spin", "disc_spin_rpm",
     "spin_in_my_range", "my_distance_ft", "sim_distance_ft", "distance_diff_ft", "my_angle", "disc_hyzer_deg", "my_nose", "disc_nose_deg",
     "disc_launch_deg", "my_wobble", "disc_wobble_deg", "counted", "spin_from", "peak_g", "gyro_spin_rpm", "centripetal_spin_rpm", "wave_spin_rpm",
-    "gyro_maxed_ms", "flight_window_ms", "ended_by", "live_speed_mph", "page_matches_disc", "sim_disc", "notes"];
+    "gyro_maxed_ms", "flight_window_ms", "ended_by", "live_speed_mph", "page_matches_disc", "sim_disc", "notes",
+    "rebuilt_speed_mph", "rebuilt_spin_rpm", "rebuilt_spin_is_at_least", "rebuilt_hyzer_deg", "rebuilt_nose_deg", "rebuilt_launch_deg", "rebuilt_spin_from",
+    "rebuilt_release_found", "rebuilt_release_vs_disc_ms"];
   const SRC = ["gyro", "drag wave", "centripetal", "wave+centripetal"], END = { 1: "impact", 2: "flight window", 3: "time limit", 4: "readings lost" };
-  const rows = recs.map(r => {
-    const d = r.c.res, L = r.label || {}, pg = r.page || {}, sim = r.sim || {};
+  // throws logged before the new tracker are rebuilt here once (a few at a time, so the page keeps going) and kept
+  const rows = [], fresh = [];
+  for (let i = 0; i < recs.length; i++) {
+    const r = recs[i];
+    if (r.rebuilt === undefined) {
+      const e = live.caps.find(x => x.id === r.id);
+      r.rebuilt = rebuiltRec(e || { S: r.S, info: r.info, c: r.c }); fresh.push(r);
+      if (fresh.length % 3 === 0) { $("lgCount").textContent = `Rebuilding older throws… ${i + 1} of ${recs.length}`; await new Promise(res => setTimeout(res)); }
+    }
+    rows.push(r);
+  }
+  if (fresh.length) { logTx("readwrite", st => { let q; for (const r of fresh) q = st.put(r); return q; }).catch(err => console.warn("throw log", err)); renderLogCount(); }
+  const lines = rows.map(r => {
+    const d = r.c.res, L = r.label || {}, pg = r.page || {}, sim = r.sim || {}, rb = r.rebuilt || {};
     const rng = L.spin ? L.spin.split("-").map(Number) : null;
     const match = r.page ? Math.abs(pg.speed - d[0]) < 0.6 && Math.abs(pg.spin - d[1]) < 4 : null;
     return [new Date(r.at).toLocaleString(), r.label ? "yes" : "", L.type, L.where, L.speed, d[0], L.speed != null ? d[0] - L.speed : null,
       L.spin ? $("lgSpin").querySelector(`option[value="${L.spin}"]`)?.textContent || L.spin : null, d[1], rng ? (d[1] >= rng[0] && d[1] < rng[1] ? "yes" : "no") : null,
       L.distFt, sim.distFt, L.distFt != null && sim.distFt != null ? sim.distFt - L.distFt : null, L.angle, d[2], L.nose, d[3], d[4], L.wobble, d[5],
       r.c.counted ? "yes" : "no", SRC[r.c.src] || "", d[6], pg.spinGyro, pg.spinCentrip, pg.spinWave, pg.fillMs, pg.flightMs, END[r.c.end] || "",
-      r.live ? r.live.speed : null, match == null ? "" : match ? "yes" : "NO", sim.disc, L.note].map(csvCell).join(",");
+      r.live ? r.live.speed : null, match == null ? "" : match ? "yes" : "NO", sim.disc, L.note,
+      rb.speed, rb.spin, rb.spin == null ? null : rb.spinAtLeast ? "yes" : "no", rb.hyzer, rb.nose, rb.launch, rb.spinFrom,
+      rb.releaseFound == null ? null : rb.releaseFound ? "yes" : "no (used the disc's mark)", rb.relShiftMs].map(csvCell).join(",");
   });
-  saveFile(`disc_throw_log_${stamp()}.csv`, [head.join(","), ...rows].join("\n") + "\n", "text/csv");
+  saveFile(`disc_throw_log_${stamp()}.csv`, [head.join(","), ...lines].join("\n") + "\n", "text/csv");
 };
 $("lgJson").onclick = async () => {
   const recs = (await logAll()).sort((a, b) => a.at - b.at);
